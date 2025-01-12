@@ -1,7 +1,9 @@
+import ssl
 from django.conf import settings
-from django.core.mail import send_mail, EmailMultiAlternatives
+from django.core.mail import send_mail, get_connection, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+from smtplib import SMTP
 
 from environment_settings.enums import EnvironmentType
 from environment_settings.models import EnvironmentSettings
@@ -16,6 +18,7 @@ class EmailService():
 
         if environment.environment_type != EnvironmentType.PRODUCTION:
             recipients = [environment.test_recipient_email]
+            title = "[TEST EMAIL] " + title
 
         self.content_html = render_to_string(
             'email_templates/{0}.html'.format(template_path), context)
@@ -29,7 +32,18 @@ class EmailService():
             self.message.attach_file(attachment)
 
     def send(self):
-        self.message.send()
+        with SMTP(settings.EMAIL_HOST, 587) as server:
+            context = ssl.create_default_context()
+            login_email = settings.EMAIL_HOST_USER
+            password = settings.EMAIL_HOST_PASSWORD
+            
+            server.ehlo()
+            server.starttls(context=context)
+            server.ehlo()
+            server.login(login_email, password)
+
+            self.message.send()
+            server.quit()
 
     def plain_content(self):
         return strip_tags(self.content_html)

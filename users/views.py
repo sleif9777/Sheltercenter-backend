@@ -19,25 +19,31 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["POST"], url_path="GenerateOTP")
     def GenerateOTP(self, request, *args, **kwargs):
-        # Confirm a user exists
         try:
-            user = UserProfile.objects.get(primary_email=request.data["email"])
-        except ObjectDoesNotExist:
-            return JsonResponse({
-                "message": "No user exists with this email address. Email adoptions@savinggracenc.org for assistance."
-            }, status=status.HTTP_200_OK)
-        
-        # If still timed out, quit early
-        if user.timed_out:
-            return JsonResponse({
-                "message": "Max attempts reached. Try again in 15 minutes."
-            }, status=status.HTTP_200_OK)
-        
-        user.reset_otp()
+            # Confirm a user exists
+            try:
+                user = UserProfile.objects.get(primary_email=request.data["email"])
+            except ObjectDoesNotExist:
+                return JsonResponse({
+                    "message": "No user exists with this email address. Email adoptions@savinggracenc.org for assistance."
+                }, status=status.HTTP_200_OK)
+            
+            # If still timed out, quit early
+            if user.timed_out:
+                return JsonResponse({
+                    "message": "Max attempts reached. Try again in 15 minutes."
+                }, status=status.HTTP_200_OK)
+            
+            user.reset_otp()
 
-        return JsonResponse({
-            "message": "New one-time password sent to your email."
-        }, status=status.HTTP_202_ACCEPTED)
+            return JsonResponse({
+                "message": "New one-time password sent to your email."
+            }, status=status.HTTP_202_ACCEPTED)
+        except Exception as e:
+            print(e)
+            return JsonResponse({
+                "message": "Something went wrong. Contact an administrator for help."
+            }, status=status.HTTP_200_OK)
         
     @action(detail=False, methods=["POST"], url_path="AuthenticateOTP")
     def AuthenticateOTP(self, request, *args, **kwargs):
