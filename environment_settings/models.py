@@ -12,5 +12,5 @@ class EnvironmentSettings(models.Model):
     email_host = models.CharField(max_length=1000, null=False, blank=False)
 
     # FOSTER-TO-ADOPT FILES
-    fta_doc_1 = models.FileField(null=True, blank=True)
-    fta_doc_2 = models.FileField(null=True, blank=True)
+    fta_doc_1 = models.FileField(upload_to='media/', null=True, blank=True)
+    fta_doc_2 = models.FileField(upload_to='media/', null=True, blank=True)
