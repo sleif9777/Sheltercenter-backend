@@ -1,0 +1,349 @@
+import csv
+import datetime
+import io
+import random
+import string
+
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.core.exceptions import ObjectDoesNotExist
+from django.core.validators import validate_email
+from django.db import models
+from django.utils import timezone
+import pandas
+
+from backend import settings
+
+from adopters.enums import AdopterStatuses
+from adopters.models import Adopter
+from email_templates.views import EmailViewSet
+
+from .enums import SecurityLevels
+from .managers import UserProfileManager
+
+# Create your models here.
+class UserProfile(AbstractBaseUser, PermissionsMixin):
+    # DEMOGRAPHICS
+    first_name = models.CharField(
+        default="", 
+        max_length=100, 
+        null=False, 
+        blank=False
+    )
+    last_name = models.CharField(
+        default="", 
+        max_length=100, 
+        null=False, 
+        blank=False
+    )
+    city = models.CharField(
+        default="", 
+        max_length=100, 
+        null=True, 
+        blank=True
+    )
+    state = models.CharField(
+        default="", 
+        max_length=2, 
+        null=True, 
+        blank=True
+    )
+    registered = models.DateTimeField(auto_now_add=True)
+
+    # CONTACT INFO
+    primary_email = models.EmailField(
+        default="", 
+        max_length=100, 
+        null=False, 
+        blank=False, 
+        unique=True,
+        validators=[validate_email],
+    )
+    secondary_email = models.EmailField(
+        default="", 
+        max_length=100, 
+        null=True, 
+        blank=True,
+    )
+    phone_number = models.CharField(
+        default="", 
+        max_length=50, 
+        null=True, 
+        blank=True,
+    )
+
+    # AUTHENTICATION
+    password = models.CharField(max_length=100, blank=True, null=True)
+    otp = models.CharField(max_length=8, null=True, blank=True)
+    otp_expiration = models.DateTimeField(null=True, blank=True)
+    max_otp_try = models.IntegerField(default=settings.MAX_OTP_TRY)
+    otp_max_out = models.DateTimeField(blank=True, null=True)
+
+    # HISTORY-BASED SECURITY
+    has_acknowledged_faq = models.BooleanField(default=False)
+    adoption_completed = models.BooleanField(default=False)
+    requested_access = models.BooleanField(default=False)
+    requested_surrender = models.BooleanField(default=False)
+
+    # ROLE-BASED SECURITY
+    security_level = models.IntegerField(
+        choices=SecurityLevels.choices, 
+        null=False, 
+        blank=False,
+    )
+    adopter_profile = models.OneToOneField(Adopter, on_delete=models.CASCADE, related_name="user_profile", null=True, blank=True)
+    is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
+
+    email_signature = models.TextField(default="", null=True, blank=True)
+
+    USERNAME_FIELD = "primary_email"
+    PASSWORD_FIELD = "password"
+    REQUIRED_FIELDS = ["first_name", "last_name"]
+
+    objects = UserProfileManager()
+    # show_fields_on_appt_cards (array field)
+    
+    def __repr__(self):
+        return self.disambiguated_name
+    
+    def __str__(self):
+        return self.disambiguated_name
+    
+    @property
+    def full_name(self):
+        return self.first_name + " " + self.last_name
+    
+    @property
+    def out_of_state(self):
+        return self.state not in ["", "NC", "VA", "SC"]
+
+    @property
+    def timed_out(self):
+        if self.max_otp_try > 0 or self.otp_max_out == None:
+            return False
+        
+        return timezone.now() < (self.otp_max_out + datetime.timedelta(minutes=15))
+    
+    @property
+    def otp_expired(self):
+        return timezone.now() > self.otp_expiration
+    
+    def update_from_shelterluv_import(self, data):
+        self.first_name = data['first_name'].title()
+        self.last_name = data['last_name'].title()
+        self.city = data['city'].title()
+        self.state = data['state']
+        self.phone_number = data['phone_number']
+
+        if 'secondary_email' in data:
+            self.secondary_email = data['secondary_email']
+        self.save()
+
+    @property
+    def disambiguated_name(self):
+        matches = UserProfile.objects.filter(
+            first_name=self.first_name,
+            last_name=self.last_name
+        )
+
+        if matches.count() > 1:
+            return self.full_name + " ({0})".format(self.primary_email)
+        
+        return self.full_name
+    
+    @property
+    def all_emails(self):
+        return [email for email in [self.primary_email, self.secondary_email] if email is not None]
+
+    @staticmethod
+    def generate_otp():
+        valid_letters = (string.ascii_uppercase
+            .replace("O", "")
+            .replace("I", "")
+        )
+
+        four_letters = [random.choice(valid_letters) for _ in range (4)]
+        four_digits = [random.choice(string.digits) for _ in range (4)]
+        combined = four_letters + four_digits
+        random.shuffle(combined)
+        return ''.join(combined)
+    
+    def reset_otp(self):
+        self.otp = UserProfile.generate_otp()
+        self.otp_expiration = timezone.now() + datetime.timedelta(minutes=15)
+        self.max_otp_try = 3
+        self.otp_max_out = None
+        self.save()
+
+        EmailViewSet().NewOTP(self)
+
+    def failed_authentication(self):
+        self.max_otp_try -= 1
+            
+        if self.max_otp_try == 0:
+            self.otp_max_out = timezone.now()
+        
+        self.save()
+
+        return self.max_otp_try == 0
+    
+    ### Shared File Import Functions ###
+    @staticmethod
+    def run_all_rows_in_batch(all_rows):
+        successes, updates, failures = 0, 0, 0
+        aversions = []
+
+        for row in all_rows:
+            try:
+                assert(UserProfile.validate_row_data(row))
+                adopter, created, approval_averted = UserProfile.update_or_create_from_row(row)
+                if created:
+                    successes += 1
+                elif approval_averted:
+                    aversions.append(adopter)
+                else:
+                    updates += 1
+            except Exception as e:
+                failures += 1
+
+        return successes, updates, failures, aversions
+    
+    @staticmethod
+    def validate_row_data(row_data):
+        validate_length = [27, 14, 15, 4]
+        
+        for i in validate_length:
+            if len(row_data[i]) == 0:
+                return False
+            
+        return True
+    
+    @staticmethod
+    def update_or_create_from_row(row_data):
+        new_status, approval_averted = Adopter.get_application_status(row_data[4], row_data[27])
+
+        adopter, adopter_created = Adopter.objects.update_or_create(
+            primary_email=row_data[27],
+            defaults={
+                "status": new_status,
+                "shelterluv_id": row_data[13],
+                "shelterluv_app_id": row_data[0],
+                "approved_until": Adopter.get_default_approval_date(),
+                "application_comments": row_data[12],
+            },
+            create_defaults={
+                "status": new_status,
+                "shelterluv_id": row_data[13],
+                "shelterluv_app_id": row_data[0],
+                "approved_until": Adopter.get_default_approval_date(),
+                "application_comments": row_data[12],
+            }
+        )
+        
+        profile, profile_created = UserProfile.objects.update_or_create(
+            primary_email=row_data[27],
+            defaults={
+                "first_name": row_data[14].title(),
+                "last_name": row_data[15].title(),
+                "city": row_data[19],
+                "state": row_data[20],
+                "secondary_email": row_data[28],
+                "phone_number": row_data[23],
+            },
+            create_defaults={
+                "adopter_profile": adopter,
+                "first_name": row_data[14].title(),
+                "last_name": row_data[15].title(),
+                "city": row_data[19],
+                "password": None,
+                "state": row_data[20],
+                "secondary_email": row_data[28],
+                "phone_number": row_data[23],
+                "security_level": SecurityLevels.ADOPTER
+            }
+        )
+
+        if profile_created:
+            profile.set_unusable_password()
+            profile.save()
+
+        if adopter.send_approval_email():
+            EmailViewSet().ApplicationApproved(adopter)
+
+        adopter.last_uploaded = timezone.now()
+        adopter.save()
+        
+        return adopter, (adopter_created and profile_created), approval_averted
+
+    ### CSV File Import Functions ###
+    @staticmethod
+    def import_csv_spreadsheet_batch(import_file):
+        csv_file = import_file
+        decoded_file = csv_file.read().decode('utf-8')
+        io_string = io.StringIO(decoded_file)
+        all_rows = list(csv.reader(io_string, delimiter=','))
+        return UserProfile.run_all_rows_in_batch(all_rows[1:])
+    
+    ### XLSX File Import Functions ###
+    @staticmethod
+    def import_xlsx_spreadsheet_batch(import_file):
+        df = pandas.read_excel(import_file)
+        all_rows = df.values.tolist()
+        return UserProfile.run_all_rows_in_batch(all_rows)
+    
+    ### Create/Update By Form ###
+    @staticmethod
+    def create_update_by_form(form_data):
+        if form_data["context"] == "Upload":
+            new_status, approval_averted = Adopter.get_application_status(
+                form_data["status"], 
+                form_data["primaryEmail"]
+            )
+        else:
+            new_status, approval_averted = form_data["status"], False
+
+        adopter, adopter_created = Adopter.objects.update_or_create(
+            primary_email=form_data["primaryEmail"],
+            defaults={
+                "status": new_status,
+                "internal_notes": form_data["internalNotes"]
+            },
+            create_defaults={
+                "approved_until": Adopter.get_default_approval_date(),
+                "status": form_data["status"],
+                "internal_notes": form_data["internalNotes"]
+            }
+        )
+
+        profile, profile_created = UserProfile.objects.update_or_create(
+            primary_email=form_data["primaryEmail"],
+            defaults={
+                "first_name": form_data["firstName"].title(),
+                "last_name": form_data["lastName"].title(),
+            },
+            create_defaults={
+                "adopter_profile": adopter,
+                "first_name": form_data["firstName"].title(),
+                "last_name": form_data["lastName"].title(),
+                "security_level": SecurityLevels.ADOPTER,
+            }
+        )
+
+        if form_data["context"] == "Upload":
+            if not adopter_created:
+                adopter.approved_until = Adopter.get_default_approval_date()
+
+            if adopter.send_approval_email():
+                EmailViewSet().ApplicationApproved(adopter)
+
+            adopter.last_uploaded = timezone.now()
+            adopter.save()
+
+        return adopter, (adopter_created and profile_created), approval_averted
+
+    def update_email(self, new_email):
+        self.primary_email = new_email
+        self.save()
+
+        self.adopter_profile.primary_email = new_email
+        self.adopter_profile.save()

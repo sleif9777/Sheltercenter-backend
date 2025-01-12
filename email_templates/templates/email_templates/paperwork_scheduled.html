@@ -1,0 +1,24 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    You're all set to pick up {{appointment.paperwork_adoption.dog}}!
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{appointment.paperwork_adoption.adopter.user_profile.first_name}},
+        </p>
+    </div>
+    <div>
+        <p>
+            Great news! Your paperwork appointment has been confirmed! You're all set for {{appointment.get_time_string}} to complete the {{paperwork_type}} paperwork for {{appointment.paperwork_adoption.dog}}. We can't wait to see you and help get everything finalized so your new furry friend can officially join your family!
+        </p>
+        <p>
+            We're so grateful that you've chosen to work with Saving Grace and are opening your heart and home to a dog in need. Before you arrive, please take a moment to review the helpful Visitor Instructions below so you can make the most of your visit. It'll also help us assist you even better. See you soon!
+        </p>
+    </div>
+    {% include 'email_templates/signature.html' %}
+    <hr />
+    {% include 'email_templates/visitor_instructions.html' %}
+{% endblock %}

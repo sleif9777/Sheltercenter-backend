@@ -1,0 +1,34 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    Your appointment is canceled.
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{appointment.get_current_booking.adopter.user_profile.first_name}},
+        </p>
+    </div>
+    <div>
+        <p>
+            Your appointment for {{appointment.get_time_string}} has been cancelled. Your adoption request is valid for one year from its original approval.
+        </p>
+        <p>
+            If you would like to schedule a new appointment, please email us three times within our operating hours:
+        </p>
+        <p>
+            Mondays, Tuesdays, Wednesdays, Fridays - noon to 6pm<br />
+            Thursdays - 1pm to 6pm<br />
+            Saturdays - 12 to 3pm
+        </p>
+        <p>
+            If you need any further assistance, please feel free to email us directly at adoptions@savinggracenc.org. We hope to see you on the farm soon!
+        </p>
+    </div>
+    <div>
+        <p>Thank you,</p>
+        <p class="pink signature">The Adoptions Team</p>
+        <p>Saving Grace Animals for Adoption</p>
+    </div>
+{% endblock %}

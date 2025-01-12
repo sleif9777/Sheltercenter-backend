@@ -1,0 +1,11 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    A message from Saving Grace
+{% endblock %}
+
+{% block content %}
+    <div>
+        {{message|safe}}
+    </div>
+{% endblock %}
