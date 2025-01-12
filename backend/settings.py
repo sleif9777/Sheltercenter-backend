@@ -14,6 +14,7 @@ import django_on_heroku
 import os
 
 from datetime import timedelta
+from django.utils.log import DEFAULT_LOGGING as LOGGING
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -112,13 +113,39 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
+POSTGRES_DB = os.environ.get("POSTGRES_DB") #database name
+POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD") #user password
+POSTGRES_USER = os.environ.get("POSTGRES_USER") #username
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST") #databasehost
+POSTGRES_PORT = os.environ.get("POSTGRES_PORT") #databaseport
+
+POSTGRES_READY = (
+    POSTGRES_DB is not None
+    and POSTGRES_PASSWORD is not None
+    and POSTGRES_USER is not None
+    and POSTGRES_HOST is not None
+    and POSTGRES_PORT is not None
+)
+
+if POSTGRES_READY:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": POSTGRES_DB,
+            "USER": POSTGRES_USER,
+            "PASSWORD": POSTGRES_PASSWORD,
+            "HOST": POSTGRES_HOST,
+            "PORT": POSTGRES_PORT,
+            "DISABLE_SERVER_SIDE_CURSORS": True, #databaseport
+        }
+    }
+else:
+    DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Rest framework configuration
 REST_FRAMEWORK = {
@@ -181,11 +208,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # EMAIL CONFIGURATION
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST = os.environ.get('EMAIL_ADDRESS')
+EMAIL_USE_SSL = False
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER = "sheltercenterdev@gmail.com"
-EMAIL_HOST_PASSWORD = "isij ilbz ghvq oabh" #password associate
+EMAIL_HOST_USER = os.environ.get('EMAIL_USER')
+# EMAIL_HOST_PASSWORD = "isij ilbz ghvq oabh" #password associate
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD')
+LOGGING['handlers']['mail_admins']['include_html'] = True
 
 # MEDIA CONFIGURATION
 
