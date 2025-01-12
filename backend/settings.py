@@ -185,3 +185,7 @@ EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = "sheltercenterdev@gmail.com"
 EMAIL_HOST_PASSWORD = "isij ilbz ghvq oabh" #password associate
+
+# Configure Django App for Heroku.
+import django_on_heroku
+django_on_heroku.settings(locals())

@@ -49,15 +49,6 @@ class AppointmentBase(models.Model):
     @property
     def instant(self):
         return datetime.datetime(1900, 1, self.weekday + 1, self.time.hour, self.time.minute)
-    
-    # def get_type(self):
-    #     match self.type:
-    #         case AppointmentTypes.ADULTS:
-    #             return "Adults"
-    #         case AppointmentTypes.PUPPIES:
-    #             return "Puppies"
-    #         case AppointmentTypes.ALL_AGES:
-    #             return "All Ages"
             
     # def get_time(self):
     #     return "TimeStringHere"
