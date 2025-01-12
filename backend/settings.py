@@ -25,10 +25,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY")
+SECRET_KEY = str(os.environ.get("SECRET_KEY"))
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG")
+DEBUG = bool(os.environ.get("DEBUG"))
 
 ALLOWED_HOSTS = []
 
@@ -83,15 +83,15 @@ MIDDLEWARE = [
 
 CORS_ORIGIN_ALLOW_ALL = False
 
-CORS_ORIGIN_WHITELIST = (
+CORS_ORIGIN_WHITELIST = [
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:8000',
-    os.environ.get("HEROKU_CLIENT_URL"),
-    os.environ.get("SQUARESPACE_CLIENT_URL"),
-    os.environ.get("HEROKU_SERVER_URL"),
-    os.environ.get("SQUARESPACE_SERVER_URL")
-)
+    "https://sheltercenter-frontend-dd9bd669653c.herokuapp.com",
+    "https://sheltercenter-frontend-dd9bd669653c.herokuapp.com",
+    "https://sheltercenter-backend-2ba7b40ab2d4.herokuapp.com",
+    "https://sheltercenter-api.com"
+]
 
 ROOT_URLCONF = 'backend.urls'
 
