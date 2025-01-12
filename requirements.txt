@@ -6,8 +6,10 @@ django-on-heroku==1.1.2
 django-rest-framework==0.1.0
 djangorestframework==3.15.2
 djangorestframework_simplejwt==5.4.0
+et_xmlfile==2.0.0
 gunicorn==23.0.0
 numpy==2.2.1
+openpyxl==3.1.5
 packaging==24.2
 pandas==2.2.3
 psycopg2==2.9.10

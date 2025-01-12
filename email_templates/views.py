@@ -14,7 +14,7 @@ from pending_adoptions.enums import CircumstanceOptions
 from.services import EmailService
 
 class EmailViewSet(viewsets.ViewSet):
-    def ApplicationApproved(self, adopter):
+    def ApplicationApproved(self, adopter, batch=False):
         subject = "Your application has been reviewed: {0}".format(
             adopter.user_profile.full_name.upper()
         )
@@ -30,7 +30,11 @@ class EmailViewSet(viewsets.ViewSet):
             }, 
             adopter.user_profile.all_emails
         )
-        email.send()
+
+        if batch:
+            return email
+        else:
+            email.send()
 
     def AppointmentScheduled(self, appointment):
         booking = appointment.get_current_booking()

@@ -32,18 +32,21 @@ class EmailService():
             self.message.attach_file(attachment)
 
     def send(self):
-        with SMTP(settings.EMAIL_HOST, 587) as server:
-            context = ssl.create_default_context()
-            login_email = settings.EMAIL_HOST_USER
-            password = settings.EMAIL_HOST_PASSWORD
-            
-            server.ehlo()
-            server.starttls(context=context)
-            server.ehlo()
-            server.login(login_email, password)
+        if "office365" in settings.EMAIL_HOST:
+            with SMTP(settings.EMAIL_HOST, 587, timeout=100) as server:
+                context = ssl.create_default_context()
+                login_email = settings.EMAIL_HOST_USER
+                password = settings.EMAIL_HOST_PASSWORD
+                
+                server.connect()
+                server.ehlo()
+                server.starttls(context=context)
+                server.login(login_email, password)
 
+                self.message.send()
+                server.quit()
+        else:
             self.message.send()
-            server.quit()
 
     def plain_content(self):
         return strip_tags(self.content_html)

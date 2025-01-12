@@ -5,7 +5,6 @@ import random
 import string
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
-from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import validate_email
 from django.db import models
 from django.utils import timezone
@@ -13,8 +12,8 @@ import pandas
 
 from backend import settings
 
-from adopters.enums import AdopterStatuses
 from adopters.models import Adopter
+from email_templates.services import EmailService
 from email_templates.views import EmailViewSet
 
 from .enums import SecurityLevels
@@ -192,19 +191,28 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     def run_all_rows_in_batch(all_rows):
         successes, updates, failures = 0, 0, 0
         aversions = []
+        emails = []
 
         for row in all_rows:
             try:
                 assert(UserProfile.validate_row_data(row))
-                adopter, created, approval_averted = UserProfile.update_or_create_from_row(row)
+                adopter, created, approval_averted, email = UserProfile.update_or_create_from_row(row)
+                
+                # Update batch counts
                 if created:
                     successes += 1
                 elif approval_averted:
                     aversions.append(adopter)
                 else:
                     updates += 1
+
+                # Add to email batch
+                if email is not None:
+                    email.send()
             except Exception as e:
                 failures += 1
+
+        # EmailService.send_batch(emails)
 
         return successes, updates, failures, aversions
     
@@ -221,6 +229,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     @staticmethod
     def update_or_create_from_row(row_data):
         new_status, approval_averted = Adopter.get_application_status(row_data[4], row_data[27])
+        email = None
 
         adopter, adopter_created = Adopter.objects.update_or_create(
             primary_email=row_data[27],
@@ -268,12 +277,13 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             profile.save()
 
         if adopter.send_approval_email():
-            EmailViewSet().ApplicationApproved(adopter)
+            email = EmailViewSet().ApplicationApproved(adopter, batch=True)
+            print(email.message.subject)
 
         adopter.last_uploaded = timezone.now()
         adopter.save()
         
-        return adopter, (adopter_created and profile_created), approval_averted
+        return adopter, (adopter_created and profile_created), approval_averted, email
 
     ### CSV File Import Functions ###
     @staticmethod
