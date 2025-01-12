@@ -32,6 +32,11 @@ class EmailService():
             self.message.attach_file(attachment)
 
     def send(self):
+        environment = EnvironmentSettings.objects.get(pk=1)
+
+        if environment.environment_type == EnvironmentType.STAGING:
+            return
+
         if "office365" in settings.EMAIL_HOST:
             with SMTP(settings.EMAIL_HOST, 587, timeout=100) as server:
                 context = ssl.create_default_context()
