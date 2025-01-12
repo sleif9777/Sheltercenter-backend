@@ -187,5 +187,10 @@ EMAIL_PORT = 587
 EMAIL_HOST_USER = "sheltercenterdev@gmail.com"
 EMAIL_HOST_PASSWORD = "isij ilbz ghvq oabh" #password associate
 
+# MEDIA CONFIGURATION
+
+MEDIA_ROOT = 'media/'
+MEDIA_URL = 'media/'
+
 # Configure Django App for Heroku.
 django_on_heroku.settings(locals())
