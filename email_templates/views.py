@@ -138,12 +138,15 @@ class EmailViewSet(viewsets.ViewSet):
         attachments = []
 
         if adoption.heartworm_positive:
+            # file1 = "media/Heartworm_Postive_Refrence_Sheet_for_ADOPTERS_rev_11_24_2024_clean.docx"
+            # file2 = "media/Heartworm_Treatment_Options_0521_v2.docx"
             environment = EnvironmentSettings.objects.get(pk=1)
-            attachments.append(environment.fta_doc_1.path)
-            attachments.append(environment.fta_doc_2.path)
+            attachments.append(environment.fta_doc_1_path)
+            attachments.append(environment.fta_doc_2_path)
+            attachments = [a for a in attachments if a]
 
-        match timezone.weekday():
-            case 0, 1, 3: # MON/TUE/THU
+        match timezone.now().weekday():
+            case 0 | 1 | 3 | 6: # MON/TUE/THU/SUN
                 next_bus_day = "tomorrow"
                 today_close = "6:00pm"
                 open_hour = "12:00pm" # TUE/WED/FRI
