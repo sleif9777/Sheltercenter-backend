@@ -212,8 +212,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             except Exception as e:
                 failures += 1
 
-        # EmailService.send_batch(emails)
-
         return successes, updates, failures, aversions
     
     @staticmethod

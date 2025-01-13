@@ -81,17 +81,25 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
 ]
 
-CORS_ORIGIN_ALLOW_ALL = False
-
-CORS_ORIGIN_WHITELIST = [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:8000',
-    "https://sheltercenter-frontend-dd9bd669653c.herokuapp.com",
-    "https://sheltercenter-frontend-dd9bd669653c.herokuapp.com",
-    "https://sheltercenter-backend-2ba7b40ab2d4.herokuapp.com",
-    "https://sheltercenter-api.com"
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
 ]
+
+# CORS_ORIGIN_WHITELIST = [
+#     'http://localhost:5173',
+#     'http://localhost:5174',
+#     'http://localhost:8000',
+#     "https://sheltercenter-frontend-dd9bd669653c.herokuapp.com",
+#     "https://sheltercenter-frontend-dd9bd669653c.herokuapp.com",
+#     "https://sheltercenter-backend-2ba7b40ab2d4.herokuapp.com",
+#     "https://sheltercenter-api.com"
+# ]
 
 ROOT_URLCONF = 'backend.urls'
 
