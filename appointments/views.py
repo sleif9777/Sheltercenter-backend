@@ -155,6 +155,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             type=request.data["type"],
             instant=date,
             appointment_notes=request.data["appointmentNotes"],
+            surrendered_dog=request.data["surrenderedDog"],
+            surrendered_dog_fka=request.data["surrenderedDogFka"]
         )
 
         if appointment.type == AppointmentTypes.PAPERWORK:
