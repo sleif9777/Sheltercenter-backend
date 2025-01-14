@@ -146,7 +146,6 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["POST"], url_path="SpreadsheetImportBatch")
     def SpreadsheetImportBatch(self, request, *args, **kwargs):
         try:
-            # print(request.data, request.FILES)
             if "batchFile" not in request.FILES:
                 print("not in request".upper())
                 return JsonResponse({ status: HTTPStatus.BAD_REQUEST })
