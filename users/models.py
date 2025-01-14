@@ -101,6 +101,9 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     objects = UserProfileManager()
     # show_fields_on_appt_cards (array field)
+
+    class Meta:
+        ordering = ["first_name", "last_name", "primary_email"]
     
     def __repr__(self):
         return self.disambiguated_name

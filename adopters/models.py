@@ -61,6 +61,9 @@ class Adopter(models.Model):
     def has_current_booking(self):
         return self.bookings.filter(status=BookingStatus.ACTIVE).count() > 0
     
+    class Meta:
+        ordering = ["user_profile", "primary_email"]
+    
     def get_current_appointment(self):
         try:
             return self.bookings.get(status=BookingStatus.ACTIVE).appointment
