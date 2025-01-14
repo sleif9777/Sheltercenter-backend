@@ -154,6 +154,13 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             fileType, _ = mimetypes.guess_type(importFile.name)
             print(request.FILES["batchFile"], importFile, fileType)
 
+            if importFile.temporary_file_path[-4:] == ".csv":
+                print("AAA")
+                fileType = "text/csv"
+            elif importFile.temporary_file_path[-5:] == ".xlsx":
+                print("BBB")
+                fileType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
             if fileType == "text/csv":
                 successes, updates, failures, aversions = UserProfile.import_csv_spreadsheet_batch(importFile)
                 return JsonResponse(
