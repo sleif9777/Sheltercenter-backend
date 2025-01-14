@@ -57,7 +57,8 @@ class EmailService():
                     server.quit()
             else:
                 self.message.send()
-        except:
+        except Exception as e:
+            print(e)
             traceback.print_exc()
 
     def plain_content(self):
