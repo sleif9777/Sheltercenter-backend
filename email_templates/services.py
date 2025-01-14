@@ -16,8 +16,10 @@ class EmailService():
     def __init__(self, title, template_path, context, recipients, attachments=[]):
         environment = EnvironmentSettings.objects.get(pk=1)
 
-        if environment.environment_type != EnvironmentType.PRODUCTION:
+        if environment.environment_type not in [EnvironmentType.PRODUCTION, EnvironmentType.STAGING]:
             recipients = [environment.test_recipient_email]
+
+        if environment.environment_type == EnvironmentType.PRODUCTION:
             title = "[TEST EMAIL] " + title
 
         self.content_html = render_to_string(
