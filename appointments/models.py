@@ -23,6 +23,10 @@ class Appointment(models.Model):
     appointment_notes = models.CharField(default="", max_length=1000, null=True, blank=True)  
     outcome = models.IntegerField(choices=OutcomeTypes, null=True, blank=True)
 
+    # SURRENDER ONLY FIELDS
+    surrendered_dog = models.CharField(default="", max_length=1000, null=True, blank=True)
+    surrendered_dog_fka = models.CharField(default="", max_length=1000, null=True, blank=True)
+
     def __repr__(self):
         return "{0} at {1}".format(
             datetime.datetime.strftime(self.instant, "%b %d, %Y"),

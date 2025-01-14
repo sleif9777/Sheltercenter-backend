@@ -39,6 +39,8 @@ class AppointmentSerializer(serializers.HyperlinkedModelSerializer):
     )
     heartwormPositive = serializers.BooleanField(source="paperwork_adoption.heartworm_positive")
     appointmentNotes = serializers.CharField(source="appointment_notes")
+    surrenderedDog = serializers.CharField(source="surrendered_dog")
+    surrenderedDogFka = serializers.CharField(source="surrendered_dog_fka")
 
     class Meta:
         model = Appointment
@@ -58,5 +60,7 @@ class AppointmentSerializer(serializers.HyperlinkedModelSerializer):
             'paperworkAdoptionDog',
             'paperworkAdoptionID',
             'heartwormPositive',
-            'appointmentNotes'
+            'appointmentNotes',
+            'surrenderedDog',
+            'surrenderedDogFka',
         ]
