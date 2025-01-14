@@ -186,8 +186,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             else:
                 print("NOPE")
                 return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
-        except:
-            print("EXCEPT")
+        except Exception as e:
+            print("EXCEPT", e)
             return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["POST"], url_path="GetCurrentAuth")
