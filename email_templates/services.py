@@ -1,4 +1,5 @@
 import ssl
+import traceback
 from django.conf import settings
 from django.core.mail import send_mail, get_connection, EmailMultiAlternatives
 from django.template.loader import render_to_string
@@ -39,21 +40,24 @@ class EmailService():
         if environment.environment_type == EnvironmentType.STAGING and not always_send:
             return
 
-        if "office365" in settings.EMAIL_HOST:
-            with SMTP(settings.EMAIL_HOST, 587, timeout=100) as server:
-                context = ssl.create_default_context()
-                login_email = settings.EMAIL_HOST_USER
-                password = settings.EMAIL_HOST_PASSWORD
-                
-                server.connect()
-                server.ehlo()
-                server.starttls(context=context)
-                server.login(login_email, password)
+        try:
+            if "office365" in settings.EMAIL_HOST:
+                with SMTP(settings.EMAIL_HOST, 587, timeout=100) as server:
+                    context = ssl.create_default_context()
+                    login_email = settings.EMAIL_HOST_USER
+                    password = settings.EMAIL_HOST_PASSWORD
+                    
+                    server.connect()
+                    server.ehlo()
+                    server.starttls(context=context)
+                    server.login(login_email, password)
 
+                    self.message.send()
+                    server.quit()
+            else:
                 self.message.send()
-                server.quit()
-        else:
-            self.message.send()
+        except:
+            traceback.print_exc()
 
     def plain_content(self):
         return strip_tags(self.content_html)
