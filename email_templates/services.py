@@ -46,6 +46,7 @@ class EmailService():
                     context = ssl.create_default_context()
                     login_email = settings.EMAIL_HOST_USER
                     password = settings.EMAIL_HOST_PASSWORD
+                    print(login_email, password)
                     
                     server.connect()
                     server.ehlo()
