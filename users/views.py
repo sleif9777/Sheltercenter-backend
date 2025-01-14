@@ -1,4 +1,5 @@
 import mimetypes
+import traceback
 
 from django.contrib.auth import login
 from django.core.exceptions import ObjectDoesNotExist
@@ -190,6 +191,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print("EXCEPT", e)
+            traceback.print_exc()
             return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["POST"], url_path="GetCurrentAuth")

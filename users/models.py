@@ -298,9 +298,12 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     ### XLSX File Import Functions ###
     @staticmethod
     def import_xlsx_spreadsheet_batch(import_file):
-        df = pandas.read_excel(import_file)
-        all_rows = df.values.tolist()
-        return UserProfile.run_all_rows_in_batch(all_rows)
+        try:
+            df = pandas.read_excel(import_file)
+            all_rows = df.values.tolist()
+            return UserProfile.run_all_rows_in_batch(all_rows)
+        except:
+            print("FAILED models306")
     
     ### Create/Update By Form ###
     @staticmethod
