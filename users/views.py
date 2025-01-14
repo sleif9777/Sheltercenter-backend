@@ -150,16 +150,18 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 print("not in request".upper())
                 return JsonResponse({ status: HTTPStatus.BAD_REQUEST })
             
-            importFile = request.FILES["batchFile"]
+            importFile = request.FILES["batchFile"].file
             fileType, _ = mimetypes.guess_type(importFile.name)
             print(request.FILES["batchFile"], importFile, fileType)
 
-            if importFile.temporary_file_path[-4:] == ".csv":
-                print("AAA")
-                fileType = "text/csv"
-            elif importFile.temporary_file_path[-5:] == ".xlsx":
-                print("BBB")
-                fileType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            # if fileType is None:
+            #     match importFile.temporary_file_path.split(".")[1]:
+            #         case "csv":
+            #             print("AAA")
+            #             fileType = "text/csv"
+            #         case "xlsx":
+            #             print("BBB")
+            #             fileType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
             if fileType == "text/csv":
                 successes, updates, failures, aversions = UserProfile.import_csv_spreadsheet_batch(importFile)
