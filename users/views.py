@@ -151,7 +151,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 print("not in request".upper())
                 return JsonResponse({ status: HTTPStatus.BAD_REQUEST })
             
-            importFile = request.FILES["batchFile"]
+            importFile = request.FILES.get("batchFile")
             fileType, _ = mimetypes.guess_type(importFile)
             print(request.FILES["batchFile"], importFile, fileType)
 
