@@ -60,6 +60,7 @@ class EmailService():
         except Exception as e:
             print(e)
             traceback.print_exc()
+            raise(e)
 
     def plain_content(self):
         return strip_tags(self.content_html)

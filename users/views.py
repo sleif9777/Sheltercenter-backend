@@ -35,11 +35,18 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                     "message": "Max attempts reached. Try again in 15 minutes."
                 }, status=status.HTTP_200_OK)
             
-            user.reset_otp()
+            try:
+                user.reset_otp()
 
-            return JsonResponse({
-                "message": "New one-time password sent to your email."
-            }, status=status.HTTP_202_ACCEPTED)
+                return JsonResponse({
+                    "message": "New one-time password sent to your email."
+                }, status=status.HTTP_202_ACCEPTED)
+            except:
+                user.reset_otp()
+
+                return JsonResponse({
+                    "message": "Your one-time passcode is: " + user.otp
+                }, status=status.HTTP_202_ACCEPTED)
         except Exception as e:
             print(e)
             return JsonResponse({
