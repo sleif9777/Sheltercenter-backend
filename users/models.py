@@ -192,6 +192,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     ### Shared File Import Functions ###
     @staticmethod
     def run_all_rows_in_batch(all_rows):
+        UserProfile.remove_faulty()
+
         successes, updates, failures = 0, 0, 0
         aversions = []
         emails = []
@@ -228,7 +230,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         return True
     
     @staticmethod
-    def update_or_create_from_row(row_data):
+    def update_or_create_from_row(row_data):        
         if "Foster" in row_data[1]:
             return None, False, False, None
 
@@ -298,14 +300,21 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         all_rows = list(csv.reader(io_string, delimiter=','))
         return UserProfile.run_all_rows_in_batch(all_rows[1:])
     
-    ### XLSX File Import Functions ###
     @staticmethod
-    def import_xlsx_spreadsheet_batch(import_file):
+    def remove_faulty():
         faulty = Adopter.objects.filter(user_profile=None)
 
         for adopter in faulty:
             adopter.delete()
 
+        faulty = UserProfile.objects.filter(adopter_profile=None)
+
+        for user in faulty:
+            user.delete()
+    
+    ### XLSX File Import Functions ###
+    @staticmethod
+    def import_xlsx_spreadsheet_batch(import_file):
         try:
             df = pandas.read_excel(import_file)
             all_rows = df.values.tolist()
