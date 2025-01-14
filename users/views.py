@@ -144,35 +144,41 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=["POST"], url_path="SpreadsheetImportBatch")
     def SpreadsheetImportBatch(self, request, *args, **kwargs):
-        if "batchFile" not in request.FILES:
-            return JsonResponse({ status: HTTPStatus.BAD_REQUEST })
-        
-        importFile = request.FILES["batchFile"]
-        fileType, _ = mimetypes.guess_type(importFile.name)
+        try:
+            if "batchFile" not in request.FILES:
+                print("not in request".upper())
+                return JsonResponse({ status: HTTPStatus.BAD_REQUEST })
+            
+            importFile = request.FILES["batchFile"]
+            fileType, _ = mimetypes.guess_type(importFile.name)
 
-        if fileType == "text/csv":
-            successes, updates, failures, aversions = UserProfile.import_csv_spreadsheet_batch(importFile)
-            return JsonResponse(
-                {
-                    "successes": successes,
-                    "updates": updates,
-                    "failures": failures,
-                    "aversions": [AdopterSerializer(adopter).data for adopter in aversions],
-                },
-                status=status.HTTP_201_CREATED,
-            )
-        elif fileType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-            successes, updates, failures, aversions = UserProfile.import_xlsx_spreadsheet_batch(importFile)
-            return JsonResponse(
-                {
-                    "successes": successes,
-                    "updates": updates,
-                    "failures": failures,
-                    "aversions": [AdopterSerializer(adopter).data for adopter in aversions],
-                },
-                status=status.HTTP_201_CREATED,
-            )
-        else:
+            if fileType == "text/csv":
+                successes, updates, failures, aversions = UserProfile.import_csv_spreadsheet_batch(importFile)
+                return JsonResponse(
+                    {
+                        "successes": successes,
+                        "updates": updates,
+                        "failures": failures,
+                        "aversions": [AdopterSerializer(adopter).data for adopter in aversions],
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+            elif fileType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                successes, updates, failures, aversions = UserProfile.import_xlsx_spreadsheet_batch(importFile)
+                return JsonResponse(
+                    {
+                        "successes": successes,
+                        "updates": updates,
+                        "failures": failures,
+                        "aversions": [AdopterSerializer(adopter).data for adopter in aversions],
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+            else:
+                print("NOPE")
+                return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            print("EXCEPT")
             return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["POST"], url_path="GetCurrentAuth")
