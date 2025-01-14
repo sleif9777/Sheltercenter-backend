@@ -298,6 +298,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     ### XLSX File Import Functions ###
     @staticmethod
     def import_xlsx_spreadsheet_batch(import_file):
+        faulty = Adopter.objects.get(user_profile=None)
+
+        for adopter in faulty:
+            adopter.delete()
+
         try:
             df = pandas.read_excel(import_file)
             all_rows = df.values.tolist()
