@@ -146,13 +146,13 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["POST"], url_path="SpreadsheetImportBatch")
     def SpreadsheetImportBatch(self, request, *args, **kwargs):
         try:
-            print(request.data, request.FILES)
+            # print(request.data, request.FILES)
             if "batchFile" not in request.FILES:
                 print("not in request".upper())
                 return JsonResponse({ status: HTTPStatus.BAD_REQUEST })
             
             importFile = request.FILES.values()
-            fileType, _ = mimetypes.guess_type(importFile.temporary_file_path())
+            fileType, _ = mimetypes.guess_type(importFile.name)
             print(request.FILES["batchFile"], type(request.FILES["batchFile"]), importFile.temporary_file_path(), fileType, type(request.FILES.get("batchFile")))
 
             if fileType is None:
