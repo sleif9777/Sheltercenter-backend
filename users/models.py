@@ -226,6 +226,9 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     
     @staticmethod
     def update_or_create_from_row(row_data):
+        if "Foster" in row_data[1]:
+            return None, False, False, None
+
         new_status, approval_averted = Adopter.get_application_status(row_data[4], row_data[27])
         email = None
 
