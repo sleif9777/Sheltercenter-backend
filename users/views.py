@@ -151,6 +151,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             
             importFile = request.FILES["batchFile"]
             fileType, _ = mimetypes.guess_type(importFile.name)
+            print(fileType)
 
             if fileType == "text/csv":
                 successes, updates, failures, aversions = UserProfile.import_csv_spreadsheet_batch(importFile)
