@@ -42,8 +42,6 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                     "message": "New one-time password sent to your email."
                 }, status=status.HTTP_202_ACCEPTED)
             except:
-                user.reset_otp()
-
                 return JsonResponse({
                     "message": "Your one-time passcode is: " + user.otp
                 }, status=status.HTTP_202_ACCEPTED)
