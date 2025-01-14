@@ -153,7 +153,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             
             importFile = request.FILES.get("batchFile")
             fileType, _ = mimetypes.guess_type(importFile.temporary_file_path())
-            print(request.FILES["batchFile"], importFile.temporary_file_path(), fileType)
+            print(request.FILES["batchFile"], type(request.FILES["batchFile"]), importFile.temporary_file_path(), fileType, type(request.FILES.get("batchFile")))
 
             # if fileType is None:
             #     match importFile.temporary_file_path.split(".")[1]:
