@@ -224,5 +224,11 @@ LOGGING['handlers']['mail_admins']['include_html'] = True
 MEDIA_ROOT = 'media/'
 MEDIA_URL = 'media/'
 
+# UPLOAD FILE HANDLING
+
+FILE_UPLOAD_HANDLERS = [
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+]
+
 # Configure Django App for Heroku.
 django_on_heroku.settings(locals())
