@@ -214,7 +214,7 @@ class EmailViewSet(viewsets.ViewSet):
             }, 
             [user.primary_email]
         )
-        email.send() 
+        email.send(True) 
 
     def GenericMessage(self, user, subject, message):
         email = EmailService(
@@ -226,4 +226,3 @@ class EmailViewSet(viewsets.ViewSet):
             user.all_emails
         )
         email.send()
-        return

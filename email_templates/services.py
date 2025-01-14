@@ -31,10 +31,10 @@ class EmailService():
         for attachment in attachments:
             self.message.attach_file(attachment)
 
-    def send(self):
+    def send(self, always_send=False):
         environment = EnvironmentSettings.objects.get(pk=1)
 
-        if environment.environment_type == EnvironmentType.STAGING:
+        if environment.environment_type == EnvironmentType.STAGING and not always_send:
             return
 
         if "office365" in settings.EMAIL_HOST:
