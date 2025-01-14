@@ -73,12 +73,9 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=["GET"], url_path="GetAllPendingAdoptionsAwaitingPaperwork")
     def GetAllPendingAdoptionsAwaitingPaperwork(self, request: HttpRequest, *args, **kwargs):
-        adoptions = PendingAdoption.objects.exclude( #TODO: see if this can be called from the earlier function
-            status=PendingAdoptionStatus.COMPLETED
-        ).exclude(
-            status=PendingAdoptionStatus.CANCELED
-        ).filter(
-            paperwork_appointment=None
+        adoptions = PendingAdoption.objects.filter(
+            paperwork_appointment=None,
+            status=PendingAdoptionStatus.READY_TO_ROLL
         )
 
         serialized = [PendingAdoptionsSerializer(adoption).data for adoption in adoptions]

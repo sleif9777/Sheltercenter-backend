@@ -163,7 +163,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             adoption = PendingAdoption.objects.get(pk=request.data["paperworkAdoptionID"])
             adoption.paperwork_appointment = appointment
             adoption.save()
-            adoption.mark_status(PendingAdoptionStatus.READY_TO_ROLL)
 
         return JsonResponse(
             {
