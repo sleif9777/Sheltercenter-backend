@@ -162,7 +162,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             print(fileType) 
 
             if fileType is None:
-                match importFile.temporary_file_path.split(".")[1]:
+                match importFile.name.split(".")[1]:
                     case "csv":
                         print("AAA")
                         fileType = "text/csv"
