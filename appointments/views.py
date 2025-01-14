@@ -316,17 +316,18 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def ScheduleAppointment(self, request, *args, **kwargs):
         # Fetch the appointment and adopter
         appointment = Appointment.objects.get(pk=request.data["appointmentID"])
-
-        if appointment.get_current_booking() is not None:
-            return JsonResponse(
-                {}, 
-                status=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION
-            )
-
         adopter = Adopter.objects.get(pk=request.data["adopterID"])
         
         # Update the adopter demographics
         adopter.update_from_booking(request.data)
+
+        if appointment.get_current_booking() is not None:
+            appointment
+
+            return JsonResponse(
+                {}, 
+                status=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION
+            )
 
         # Create a new booking
         booking = Booking.objects.create(
