@@ -204,7 +204,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 # Update batch counts
                 if created:
                     successes += 1
-                elif approval_averted:
+                elif approval_averted and adopter not in aversions:
                     aversions.append(adopter)
                 else:
                     updates += 1
