@@ -168,7 +168,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                         fileType = "text/csv"
                     case "xlsx":
                         print("BBB")
-                        fileType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        fileType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
             if fileType == "text/csv":
                 successes, updates, failures, aversions = UserProfile.import_csv_spreadsheet_batch(importFile)
