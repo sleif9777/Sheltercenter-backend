@@ -152,7 +152,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 return JsonResponse({ status: HTTPStatus.BAD_REQUEST })
             
             importFile = request.FILES.get("batchFile")
-            fileType, _ = mimetypes.guess_type(importFile)
+            fileType, _ = mimetypes.guess_type(importFile.temporary_file_path())
             print(request.FILES["batchFile"], importFile, fileType)
 
             # if fileType is None:
