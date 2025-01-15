@@ -210,7 +210,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         host_weekend = request.data["hostWeekend"] if "hostWeekend" in request.data else True
 
         appointment = Appointment.objects.get(pk=id)
-        appointment.check_out(outcome)
+        appointment.check_out(outcome, dog)
 
         if outcome == OutcomeTypes.CHOSEN:
             pending_adoption, created = PendingAdoption.objects.get_or_create(

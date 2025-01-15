@@ -15,6 +15,7 @@ class AppointmentSerializer(serializers.HyperlinkedModelSerializer):
     clothingDescription = serializers.CharField(source="clothing_description")
     counselor = serializers.CharField()
     outcome = serializers.IntegerField()
+    chosenDog = serializers.CharField(source="chosen_dog")
     sourceAdoptionDog = serializers.SlugRelatedField(
         source="source_adoption",
         many=False,
@@ -55,6 +56,7 @@ class AppointmentSerializer(serializers.HyperlinkedModelSerializer):
             'clothingDescription',
             'counselor',
             'outcome',
+            'chosenDog',
             'sourceAdoptionDog',
             'sourceAdoptionID',
             'paperworkAdoptionDog',
