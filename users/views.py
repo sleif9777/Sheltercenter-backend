@@ -23,7 +23,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         try:
             # Confirm a user exists
             try:
-                user = UserProfile.objects.get(primary_email__iexact=request.data["email"])
+                user = UserProfile.objects.get(primary_email__iexact=request.data["email"].lower())
             except ObjectDoesNotExist:
                 return JsonResponse({
                     "message": "No user exists with this email address. Email adoptions@savinggracenc.org for assistance."

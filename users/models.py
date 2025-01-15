@@ -5,6 +5,7 @@ import random
 import string
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import validate_email
 from django.db import models
 from django.utils import timezone
@@ -312,10 +313,16 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         for user in faulty:
             user.delete()
 
-        for user in UserProfile.objects.all():
-            if user.primary_email != user.primary_email.lower():
+        users_without_lower_email = [u for u in UserProfile.objects.all() 
+                                     if u.primary_email != u.primary_email.lower()]
+
+        for user in users_without_lower_email:
+            try:
+                duplicate = UserProfile.objects.get(primary_email=user.primary_email.lower())
+                user.delete()
+            except ObjectDoesNotExist:
                 user.primary_email = user.primary_email.lower()
-                user.save()
+                user.save()                
     
     ### XLSX File Import Functions ###
     @staticmethod
@@ -339,7 +346,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             new_status, approval_averted = form_data["status"], False
 
         adopter, adopter_created = Adopter.objects.update_or_create(
-            primary_email=form_data["primaryEmail"],
+            primary_email=form_data["primaryEmail"].lower(),
             defaults={
                 "status": new_status,
                 "internal_notes": form_data["internalNotes"]
@@ -352,7 +359,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         )
 
         profile, profile_created = UserProfile.objects.update_or_create(
-            primary_email=form_data["primaryEmail"],
+            primary_email=form_data["primaryEmail"].lower(),
             defaults={
                 "first_name": form_data["firstName"].title(),
                 "last_name": form_data["lastName"].title(),
