@@ -1,14 +1,7 @@
-import datetime
-from django.conf import settings
-from django.core.mail import send_mail, EmailMultiAlternatives
-from django.shortcuts import render
-from django.template.loader import render_to_string
 from django.utils import timezone
-from django.utils.html import strip_tags
-from rest_framework import status, viewsets
+from rest_framework import viewsets
 
 from environment_settings.models import EnvironmentSettings
-from utils import DateTimeUtils
 from pending_adoptions.enums import CircumstanceOptions
 
 from.services import EmailService
@@ -142,8 +135,6 @@ class EmailViewSet(viewsets.ViewSet):
         attachments = []
 
         if adoption.heartworm_positive:
-            # file1 = "media/Heartworm_Postive_Refrence_Sheet_for_ADOPTERS_rev_11_24_2024_clean.docx"
-            # file2 = "media/Heartworm_Treatment_Options_0521_v2.docx"
             environment = EnvironmentSettings.objects.get(pk=1)
             attachments.append(environment.fta_doc_1_path)
             attachments.append(environment.fta_doc_2_path)
@@ -214,7 +205,7 @@ class EmailViewSet(viewsets.ViewSet):
             }, 
             [user.primary_email]
         )
-        email.send(True) 
+        email.send(always_send=True, cc_adoptions=False) 
 
     def GenericMessage(self, user, subject, message):
         email = EmailService(

@@ -23,7 +23,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         try:
             # Confirm a user exists
             try:
-                user = UserProfile.objects.get(primary_email=request.data["email"])
+                user = UserProfile.objects.get(primary_email__iexact=request.data["email"])
             except ObjectDoesNotExist:
                 return JsonResponse({
                     "message": "No user exists with this email address. Email adoptions@savinggracenc.org for assistance."
@@ -41,7 +41,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 return JsonResponse({
                     "message": "New one-time password sent to your email."
                 }, status=status.HTTP_202_ACCEPTED)
-            except:
+            except Exception as e:
+                print(e)
+                traceback.print_exc()
                 return JsonResponse({
                     "message": "Your one-time passcode is: " + user.otp
                 }, status=status.HTTP_202_ACCEPTED)
