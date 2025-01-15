@@ -21,7 +21,7 @@ class EmailViewSet(viewsets.ViewSet):
             { 
                 "adopter": adopter,
             }, 
-            adopter.user_profile.all_emails
+            adopter.user_profile.primary_email
         )
 
         if batch:
@@ -44,7 +44,7 @@ class EmailViewSet(viewsets.ViewSet):
             { 
                 "appointment": appointment,
             }, 
-            booking.adopter.user_profile.all_emails
+            booking.adopter.user_profile.primary_email
         )
         email.send()
 
@@ -63,7 +63,7 @@ class EmailViewSet(viewsets.ViewSet):
             { 
                 "appointment": appointment,
             }, 
-            booking.adopter.user_profile.all_emails
+            booking.adopter.user_profile.primary_email
         )
         email.send()
 
@@ -80,7 +80,7 @@ class EmailViewSet(viewsets.ViewSet):
             { 
                 "appointment": appointment,
             }, 
-            booking.adopter.user_profile.all_emails
+            booking.adopter.user_profile.primary_email
         )
         email.send()
 
@@ -97,7 +97,7 @@ class EmailViewSet(viewsets.ViewSet):
                 "appointment": appointment,
                 "host_weekend": host_weekend
             }, 
-            booking.adopter.user_profile.all_emails
+            booking.adopter.user_profile.primary_email
         )
         email.send()
 
@@ -111,7 +111,7 @@ class EmailViewSet(viewsets.ViewSet):
             { 
                 "appointment": appointment,
             }, 
-            booking.adopter.user_profile.all_emails
+            booking.adopter.user_profile.primary_email
         )
         email.send()
 
@@ -126,7 +126,7 @@ class EmailViewSet(viewsets.ViewSet):
                 "host_weekend": adoption.circumstance == CircumstanceOptions.HOST_WEEKEND,
                 "foster": adoption.circumstance == CircumstanceOptions.FOSTER,
             }, 
-            adoption.adopter.user_profile.all_emails
+            adoption.adopter.user_profile.primary_email
         )
         email.send()
 
@@ -172,7 +172,7 @@ class EmailViewSet(viewsets.ViewSet):
                 "open_hour": open_hour,
                 "close_hour": close_hour
             }, 
-            adoption.adopter.user_profile.all_emails,
+            adoption.adopter.user_profile.primary_email,
             attachments=attachments
         )
         email.send()
@@ -190,7 +190,7 @@ class EmailViewSet(viewsets.ViewSet):
                 "appointment": appointment,
                 "paperwork_type": "FTA" if appointment.paperwork_adoption.heartworm_positive else "adoption"
             }, 
-            appointment.paperwork_adoption.adopter.user_profile.all_emails
+            appointment.paperwork_adoption.adopter.user_profile.primary_email
         )
         email.send()
 
