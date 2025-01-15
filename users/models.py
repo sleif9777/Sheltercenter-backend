@@ -238,7 +238,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         email = None
 
         adopter, adopter_created = Adopter.objects.update_or_create(
-            primary_email=row_data[27],
+            primary_email=row_data[27].lower(),
             defaults={
                 "status": new_status,
                 "shelterluv_id": row_data[13],
@@ -256,7 +256,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         )
         
         profile, profile_created = UserProfile.objects.update_or_create(
-            primary_email=row_data[27],
+            primary_email=row_data[27].lower(),
             defaults={
                 "first_name": row_data[14].title(),
                 "last_name": row_data[15].title(),
@@ -311,6 +311,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
         for user in faulty:
             user.delete()
+
+        for user in UserProfile.objects.all():
+            if user.primary_email != user.primary_email.lower():
+                user.primary_email = user.primary_email.lower()
+                user.save()
     
     ### XLSX File Import Functions ###
     @staticmethod

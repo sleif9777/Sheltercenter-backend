@@ -65,6 +65,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         appointment_dict = {}
         for appointment in appointments:
+            print(appointment.id)
             serialized = AppointmentSerializer(appointment).data
             instant_str = str(appointment.instant)
             if instant_str not in appointment_dict:
