@@ -60,8 +60,7 @@ class EmailService():
                 return        
 
             if cc_adoptions:
-                print("EEEEEEEEEEE")
-                self.message['Cc'] = 'leifersam1@gmail.com'
+                self.message['Cc'] = 'adoptions@savinggracenc.org'
 
         try:
             context = ssl.create_default_context()
