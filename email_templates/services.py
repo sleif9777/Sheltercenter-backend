@@ -60,6 +60,7 @@ class EmailService():
                 return        
 
             if cc_adoptions:
+                print("EEEEEEEEEEE")
                 self.message['Cc'] = 'leifersam1@gmail.com'
 
         try:
