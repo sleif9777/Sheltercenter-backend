@@ -16,31 +16,51 @@ from environment_settings.models import EnvironmentSettings
 class EmailService():
     content_html = ""
     content_plain = ""
-    message = MIMEMultipart()
+    subject = ""
+    sender = ""
+    recipient = ""
+    attachments = []
+    # message = MIMEMultipart()
 
     def __init__(self, title, template_path, context, recipients, attachments=[]):
-        environment = EnvironmentSettings.objects.get(pk=1)
-
-        if environment.environment_type not in [EnvironmentType.PRODUCTION, EnvironmentType.STAGING]:
-            recipients = environment.test_recipient_email
-
-        if environment.environment_type != EnvironmentType.PRODUCTION:
-            title = "[TEST EMAIL] " + title
-        
         self.content_html = render_to_string(
             'email_templates/{0}.html'.format(template_path), context)
         self.content_html.encode("utf-8")
         self.content_plain = self.plain_content()
-        self.message['Subject'] = title
-        self.message['From'] = "savinggracencscheduler@gmail.com"
-        self.message['To'] = recipients
-        self.message['reply-to'] = 'adoptions@savinggracenc.org'
+        self.subject = title
+        self.sender = "savinggracencscheduler@gmail.com"
+        self.attachments = attachments
+
+        environment = EnvironmentSettings.objects.get(pk=1)
+
+        if environment.environment_type not in [EnvironmentType.PRODUCTION, EnvironmentType.STAGING]:
+            self.recipient = environment.test_recipient_email
+        else:
+            self.recipient = recipients
+
+        if environment.environment_type != EnvironmentType.PRODUCTION:
+            self.subject = "[TEST EMAIL] " + title
+        
+    def create_message(self):
+        environment = EnvironmentSettings.objects.get(pk=1)
+
+        if environment.environment_type not in [EnvironmentType.PRODUCTION, EnvironmentType.STAGING]:
+            self.sender = environment.test_recipient_email
+
+        if environment.environment_type != EnvironmentType.PRODUCTION:
+            title = "[TEST EMAIL] " + title
+        
+        message = MIMEMultipart()
+        message['Subject'] = self.subject
+        message['From'] = self.sender
+        message['To'] = self.recipient
+        message['reply-to'] = 'adoptions@savinggracenc.org'
         
         html = MIMEText(self.content_html, 'html')
         plain = MIMEText(self.content_plain, 'text')
 
-        if len(attachments) > 0:
-            for attachment in attachments:
+        if len(self.attachments) > 0:
+            for attachment in self.attachments:
                 with open(attachment, "rb") as a:
                     part = MIMEApplication(
                         a.read(),
@@ -49,13 +69,15 @@ class EmailService():
                 part['Content-Disposition'] = 'attachment; filename="%s"' % basename(attachment)
                 self.message.attach(part)
 
-        self.message.attach(html)
+        message.attach(html)
+
+        return message
         # self.message.attach(plain)
 
-    def connect_to_gmail(self):
+    def connect_to_gmail(self, message):
         # if is_cc_adoptions or self.message['reply-to'] != 'sheltercenterdev@gmail.com':
         #     self.message['reply-to'], self.message['To'] = self.message['To'], self.message['reply-to']
-        print(self.message.get('To'))
+        print(message.get('To'))
 
         context = ssl.create_default_context()
         server = smtplib.SMTP('smtp.gmail.com', 587, timeout=100)
@@ -63,13 +85,14 @@ class EmailService():
         server.starttls(context=context)
         # server.ehlo()
         server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
-        server.send_message(self.message)
+        server.send_message(message)
         server.quit()
         print("SUCCEED")
+        self.message = None
 
     def send(self, always_send=False, cc_adoptions=True):
         environment = EnvironmentSettings.objects.get(pk=1)
-
+        message = self.create_message()
         # print(self.message['To'])
 
         if environment.environment_type == EnvironmentType.STAGING:
@@ -78,7 +101,8 @@ class EmailService():
 
         if cc_adoptions:
             print("HIT")
-            self.message['Cc'] = 'adoptions@savinggracenc.org'
+            # self.message['Cc'] = 'adoptions@savinggracenc.org'
+            message['Cc'] = 'adoptions@savinggracenc.org'
 
         try:
             # context = ssl.create_default_context()
@@ -89,7 +113,7 @@ class EmailService():
             # server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
             # server.send_message(self.message)
             # server.quit()
-            self.connect_to_gmail()
+            self.connect_to_gmail(message)
             # self.connect_to_gmail(is_cc_adoptions=True)
         except Exception as e:
             print(e)

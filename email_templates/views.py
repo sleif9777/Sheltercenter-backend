@@ -28,7 +28,7 @@ class EmailViewSet(viewsets.ViewSet):
         if batch:
             return email
         else:
-            email.send(always_send=True, cc_adoptions=True)
+            email.send()
 
     def AppointmentScheduled(self, appointment):
         booking = appointment.get_current_booking()
@@ -47,7 +47,7 @@ class EmailViewSet(viewsets.ViewSet):
             }, 
             booking.adopter.user_profile.primary_email
         )
-        email.send(always_send=True, cc_adoptions=False)
+        email.send(cc_adoptions=False)
 
     def AppointmentCanceled(self, appointment):
         booking = appointment.get_current_booking()
@@ -66,7 +66,7 @@ class EmailViewSet(viewsets.ViewSet):
             }, 
             booking.adopter.user_profile.primary_email
         )
-        email.send()
+        email.send(cc_adoptions=False)
 
     def DogChosen(self, appointment):
         booking = appointment.get_current_booking()
