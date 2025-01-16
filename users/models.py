@@ -311,18 +311,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         faulty = UserProfile.objects.filter(adopter_profile=None)
 
         for user in faulty:
-            user.delete()
-
-        users_without_lower_email = [u for u in UserProfile.objects.all() 
-                                     if u.primary_email != u.primary_email.lower()]
-
-        for user in users_without_lower_email:
-            try:
-                duplicate = UserProfile.objects.get(primary_email=user.primary_email.lower())
-                user.delete()
-            except ObjectDoesNotExist:
-                user.primary_email = user.primary_email.lower()
-                user.save()                
+            user.delete()               
     
     ### XLSX File Import Functions ###
     @staticmethod
