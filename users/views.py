@@ -154,26 +154,16 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def SpreadsheetImportBatch(self, request, *args, **kwargs):
         try:
             if "batchFile" not in request.FILES:
-                print("not in request".upper())
                 return JsonResponse({ status: HTTPStatus.BAD_REQUEST })
             
             importFile = request.FILES.get("batchFile")
             fileType, _ = mimetypes.guess_type(importFile.name)
-            print(request.FILES["batchFile"]) 
-            print(type(request.FILES["batchFile"]))
-            print(request.FILES.get("batchFile"))
-            print(type(request.FILES.get("batchFile")))
-            print(importFile.temporary_file_path()) 
-            print(importFile.name) 
-            print(fileType) 
 
             if fileType is None:
                 match importFile.name.split(".")[1]:
                     case "csv":
-                        print("AAA")
                         fileType = "text/csv"
                     case "xlsx":
-                        print("BBB")
                         fileType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
             if fileType == "text/csv":
@@ -199,10 +189,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_201_CREATED,
                 )
             else:
-                print("NOPE")
                 return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print("EXCEPT", e)
             traceback.print_exc()
             return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
 

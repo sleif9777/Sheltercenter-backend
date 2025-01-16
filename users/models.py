@@ -285,7 +285,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
         if adopter.send_approval_email():
             email = EmailViewSet().ApplicationApproved(adopter, batch=True)
-            print(email.message.subject)
 
         adopter.last_uploaded = timezone.now()
         adopter.save()
@@ -316,12 +315,9 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     ### XLSX File Import Functions ###
     @staticmethod
     def import_xlsx_spreadsheet_batch(import_file):
-        try:
-            df = pandas.read_excel(import_file)
-            all_rows = df.values.tolist()
-            return UserProfile.run_all_rows_in_batch(all_rows)
-        except:
-            print("FAILED models306")
+        df = pandas.read_excel(import_file)
+        all_rows = df.values.tolist()
+        return UserProfile.run_all_rows_in_batch(all_rows)
     
     ### Create/Update By Form ###
     @staticmethod

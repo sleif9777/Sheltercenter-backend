@@ -8,7 +8,6 @@ from.services import EmailService
 
 class EmailViewSet(viewsets.ViewSet):
     def ApplicationApproved(self, adopter, batch=False):
-        print(adopter.id)
         subject = "Your application has been reviewed: {0}".format(
             adopter.user_profile.full_name.upper()
         )

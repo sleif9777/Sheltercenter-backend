@@ -73,3 +73,17 @@ class AdopterViewSet(viewsets.ModelViewSet):
             {},
             status=status.HTTP_200_OK
         )  
+    
+    @action(detail=False, methods=["POST"], url_path="ResendApproval")
+    def ResendApproval(self, request):
+        adopter_id = request.data["adopterID"]
+        adopter = Adopter.objects.get(pk=adopter_id)
+        print("HIT")
+
+        EmailViewSet().ApplicationApproved(adopter)
+
+        print("LEAVE")
+        return JsonResponse(
+            {},
+            status=status.HTTP_200_OK
+        )

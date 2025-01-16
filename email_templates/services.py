@@ -45,7 +45,7 @@ class EmailService():
         environment = EnvironmentSettings.objects.get(pk=1)
 
         if environment.environment_type not in [EnvironmentType.PRODUCTION, EnvironmentType.STAGING]:
-            self.sender = environment.test_recipient_email
+            self.sender = "leifersam9@gmail.com"
 
         if environment.environment_type != EnvironmentType.PRODUCTION:
             title = "[TEST EMAIL] " + title
@@ -75,46 +75,28 @@ class EmailService():
         # self.message.attach(plain)
 
     def connect_to_gmail(self, message):
-        # if is_cc_adoptions or self.message['reply-to'] != 'sheltercenterdev@gmail.com':
-        #     self.message['reply-to'], self.message['To'] = self.message['To'], self.message['reply-to']
-        print(message.get('To'))
-
         context = ssl.create_default_context()
         server = smtplib.SMTP('smtp.gmail.com', 587, timeout=100)
         server.ehlo()
         server.starttls(context=context)
-        # server.ehlo()
         server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
         server.send_message(message)
         server.quit()
-        print("SUCCEED")
         self.message = None
 
     def send(self, always_send=False, cc_adoptions=True):
         environment = EnvironmentSettings.objects.get(pk=1)
         message = self.create_message()
-        # print(self.message['To'])
 
         if environment.environment_type == EnvironmentType.STAGING:
             if not always_send:
                 return
 
         if cc_adoptions:
-            print("HIT")
-            # self.message['Cc'] = 'adoptions@savinggracenc.org'
             message['Cc'] = 'adoptions@savinggracenc.org'
 
         try:
-            # context = ssl.create_default_context()
-            # server = smtplib.SMTP('smtp.gmail.com', 587, timeout=100)
-            # server.ehlo()
-            # server.starttls(context=context)
-            # server.ehlo()
-            # server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
-            # server.send_message(self.message)
-            # server.quit()
             self.connect_to_gmail(message)
-            # self.connect_to_gmail(is_cc_adoptions=True)
         except Exception as e:
             print(e)
             traceback.print_exc()
