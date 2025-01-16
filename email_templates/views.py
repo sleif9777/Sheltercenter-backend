@@ -8,6 +8,7 @@ from.services import EmailService
 
 class EmailViewSet(viewsets.ViewSet):
     def ApplicationApproved(self, adopter, batch=False):
+        print(adopter.id)
         subject = "Your application has been reviewed: {0}".format(
             adopter.user_profile.full_name.upper()
         )
@@ -27,7 +28,7 @@ class EmailViewSet(viewsets.ViewSet):
         if batch:
             return email
         else:
-            email.send()
+            email.send(always_send=True, cc_adoptions=True)
 
     def AppointmentScheduled(self, appointment):
         booking = appointment.get_current_booking()
@@ -46,7 +47,7 @@ class EmailViewSet(viewsets.ViewSet):
             }, 
             booking.adopter.user_profile.primary_email
         )
-        email.send()
+        email.send(always_send=True, cc_adoptions=False)
 
     def AppointmentCanceled(self, appointment):
         booking = appointment.get_current_booking()
@@ -190,7 +191,7 @@ class EmailViewSet(viewsets.ViewSet):
                 "appointment": appointment,
                 "paperwork_type": "FTA" if appointment.paperwork_adoption.heartworm_positive else "adoption"
             }, 
-            appointment.paperwork_adoption.adopter.user_profile.primary_email
+            [appointment.paperwork_adoption.adopter.user_profile.primary_email]
         )
         email.send()
 

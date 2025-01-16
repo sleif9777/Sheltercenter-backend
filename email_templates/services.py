@@ -22,9 +22,9 @@ class EmailService():
         environment = EnvironmentSettings.objects.get(pk=1)
 
         if environment.environment_type not in [EnvironmentType.PRODUCTION, EnvironmentType.STAGING]:
-            recipients = [environment.test_recipient_email]
+            recipients = environment.test_recipient_email
 
-        if environment.environment_type == EnvironmentType.STAGING:
+        if environment.environment_type != EnvironmentType.PRODUCTION:
             title = "[TEST EMAIL] " + title
         
         self.content_html = render_to_string(
@@ -33,7 +33,7 @@ class EmailService():
         self.content_plain = self.plain_content()
         self.message['Subject'] = title
         self.message['From'] = "savinggracencscheduler@gmail.com"
-        self.message['To'] = ', '.join(recipients)
+        self.message['To'] = recipients
         self.message['reply-to'] = 'adoptions@savinggracenc.org'
         
         html = MIMEText(self.content_html, 'html')
@@ -52,24 +52,45 @@ class EmailService():
         self.message.attach(html)
         # self.message.attach(plain)
 
+    def connect_to_gmail(self):
+        # if is_cc_adoptions or self.message['reply-to'] != 'sheltercenterdev@gmail.com':
+        #     self.message['reply-to'], self.message['To'] = self.message['To'], self.message['reply-to']
+        print(self.message.get('To'))
+
+        context = ssl.create_default_context()
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=100)
+        server.ehlo()
+        server.starttls(context=context)
+        # server.ehlo()
+        server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+        server.send_message(self.message)
+        server.quit()
+        print("SUCCEED")
+
     def send(self, always_send=False, cc_adoptions=True):
         environment = EnvironmentSettings.objects.get(pk=1)
 
+        # print(self.message['To'])
+
         if environment.environment_type == EnvironmentType.STAGING:
             if not always_send:
-                return        
+                return
 
-            if cc_adoptions:
-                self.message['Cc'] = 'adoptions@savinggracenc.org'
+        if cc_adoptions:
+            print("HIT")
+            self.message['Cc'] = 'adoptions@savinggracenc.org'
 
         try:
-            context = ssl.create_default_context()
-            server = smtplib.SMTP('smtp.gmail.com', 587, timeout=100)
-            server.ehlo()
-            server.starttls(context=context)
-            server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
-            server.send_message(self.message)
-            server.quit()
+            # context = ssl.create_default_context()
+            # server = smtplib.SMTP('smtp.gmail.com', 587, timeout=100)
+            # server.ehlo()
+            # server.starttls(context=context)
+            # server.ehlo()
+            # server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+            # server.send_message(self.message)
+            # server.quit()
+            self.connect_to_gmail()
+            # self.connect_to_gmail(is_cc_adoptions=True)
         except Exception as e:
             print(e)
             traceback.print_exc()
