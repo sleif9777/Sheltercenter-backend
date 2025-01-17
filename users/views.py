@@ -100,7 +100,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                     "userID": user.id,
                     "userFName": user.first_name,
                     "userLName": user.last_name,
-                    "adopterID": user.adopter_profile.id,
+                    "adopterID": user.adopter_profile.id if user.adopter_profile else None,
                     "securityLevel": user.security_level,
                     'refreshToken': str(refresh_token),
                     'accessToken': str(access_token),

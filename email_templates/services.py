@@ -46,9 +46,6 @@ class EmailService():
 
         if environment.environment_type not in [EnvironmentType.PRODUCTION, EnvironmentType.STAGING]:
             self.sender = "leifersam9@gmail.com"
-
-        if environment.environment_type != EnvironmentType.PRODUCTION:
-            title = "[TEST EMAIL] " + title
         
         message = MIMEMultipart()
         message['Subject'] = self.subject
