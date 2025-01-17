@@ -13,7 +13,7 @@ class DateTimeUtils:
     
     @staticmethod
     def GetNow() -> datetime.datetime:
-        return timezone.now()
+        return timezone.now().astimezone(tz=pytz.timezone("US/Eastern"))
     
     @staticmethod
     def IsShortNotice(referenceInstant: datetime.datetime, actionInstant: datetime.datetime=GetNow()) -> bool:
@@ -38,20 +38,19 @@ class DateTimeUtils:
     def Parse(instant: string, format: string, isUTC=False) -> datetime.datetime:
         match format:
             case "MM/DD/YYYY":
-                return datetime.datetime.strptime(instant, "%m/%d/%Y")
+                return datetime.datetime.strptime(instant, "%m/%d/%Y").astimezone(tz=pytz.timezone("US/Eastern"))
             case "JSON":
-                parsed_date = datetime.datetime.strptime(instant, "%Y-%m-%dT%H:%M:%S.%fZ")
-
                 return datetime.datetime \
                     .strptime(instant, "%Y-%m-%dT%H:%M:%S.%fZ") \
                     .replace(tzinfo=pytz.utc) \
-                    .astimezone(tz=None)
+                    .astimezone(tz=pytz.timezone("US/Eastern"))
             case _:
                 return
             
     @staticmethod
     def GetRangeForDate(instant: datetime.datetime, backdateDays=0, forwarddateDays=0) -> Union[datetime.datetime, datetime.datetime]:
         minDate, maxDate = None, None
+        eastern = pytz.timezone("US/Eastern")
 
         if backdateDays > 0:
             minDate = DateTimeUtils.GetToday() - datetime.timedelta(days=backdateDays)
@@ -59,9 +58,10 @@ class DateTimeUtils:
         if forwarddateDays > 0:
             maxDate = DateTimeUtils.GetToday() + datetime.timedelta(days=forwarddateDays)
 
-        return (datetime.datetime.combine((minDate or instant), datetime.time.min),
-                datetime.datetime.combine((maxDate or instant), datetime.time.max))
+        return (datetime.datetime.combine((minDate or instant), datetime.time.min).astimezone(tz=eastern),
+                datetime.datetime.combine((maxDate or instant), datetime.time.max).astimezone(tz=eastern))
     
     @staticmethod
     def GetMinForDate(date: datetime.datetime) -> datetime.datetime:
-        return datetime.datetime.combine(date, datetime.time.min)
+        eastern = pytz.timezone("US/Eastern")
+        return datetime.datetime.combine(date, datetime.time.min).astimezone(tz=eastern)

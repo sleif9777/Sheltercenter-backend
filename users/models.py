@@ -305,12 +305,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         faulty = Adopter.objects.filter(user_profile=None)
 
         for adopter in faulty:
-            adopter.delete()
-
-        faulty = UserProfile.objects.filter(adopter_profile=None)
-
-        for user in faulty:
-            user.delete()               
+            adopter.delete()             
     
     ### XLSX File Import Functions ###
     @staticmethod

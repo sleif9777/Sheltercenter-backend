@@ -1,4 +1,6 @@
 import datetime
+import pytz
+
 from django.db import models
 from django.utils import timezone
 
@@ -31,21 +33,29 @@ class Appointment(models.Model):
     surrendered_dog_fka = models.CharField(default="", max_length=1000, null=True, blank=True)
 
     def __repr__(self):
-        return "{0} at {1}".format(
-            datetime.datetime.strftime(self.instant, "%b %d, %Y"),
-            datetime.datetime.strftime(self.instant, "%h:%M %A"),
-        )
+        return str(self)
+        # return "{0} at {1}".format(
+        #     datetime.datetime.strftime(self.instant, "%b %d, %Y"),
+        #     datetime.datetime.strftime(self.instant, "%h:%M %A"),
+        # )
     
     def __str__(self):
-        return "{0} at {1}".format(
-            self.type,
-            datetime.datetime.strftime(self.instant, "%-H:%M %p (%b %d, %Y)"),
+        return "{0} - {1}".format(
+            (self.get_current_booking().adopter 
+             if self.get_current_booking() 
+             else self.type),
+            self.get_time_string(),
         )
     
     def get_time_string(self):
+        print(self.instant)
+        eastern_time = pytz.timezone("US/Eastern")
+        localized = self.instant.astimezone(eastern_time)
+        print(localized)
+
         return "{0} at {1}".format(
             datetime.datetime.strftime(self.instant, "%b %d, %Y"),
-            datetime.datetime.strftime(self.instant, "%-H:%M %p"),
+            datetime.datetime.strftime(self.instant, "%-I:%M %p"),
         )
     
     def toggle_lock(self, override: bool|None=None):

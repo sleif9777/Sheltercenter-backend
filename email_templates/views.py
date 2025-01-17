@@ -46,7 +46,7 @@ class EmailViewSet(viewsets.ViewSet):
             }, 
             booking.adopter.user_profile.primary_email
         )
-        email.send(cc_adoptions=False)
+        email.send()
 
     def AppointmentCanceled(self, appointment):
         booking = appointment.get_current_booking()
@@ -65,7 +65,7 @@ class EmailViewSet(viewsets.ViewSet):
             }, 
             booking.adopter.user_profile.primary_email
         )
-        email.send(cc_adoptions=False)
+        email.send()
 
     def DogChosen(self, appointment):
         booking = appointment.get_current_booking()
@@ -190,7 +190,7 @@ class EmailViewSet(viewsets.ViewSet):
                 "appointment": appointment,
                 "paperwork_type": "FTA" if appointment.paperwork_adoption.heartworm_positive else "adoption"
             }, 
-            [appointment.paperwork_adoption.adopter.user_profile.primary_email]
+            appointment.paperwork_adoption.adopter.user_profile.primary_email
         )
         email.send()
 
@@ -203,7 +203,7 @@ class EmailViewSet(viewsets.ViewSet):
             { 
                 "user": user    
             }, 
-            [user.primary_email]
+            user.primary_email
         )
         email.send(always_send=True, cc_adoptions=False) 
 
@@ -214,6 +214,6 @@ class EmailViewSet(viewsets.ViewSet):
             {
                 "message": message.replace("\n", "<br />")
             },
-            user.all_emails
+            user.primary_email
         )
         email.send()
