@@ -40,10 +40,11 @@ class Appointment(models.Model):
         # )
     
     def __str__(self):
+        # TODO: Make this more dynamic
         return "{0} - {1}".format(
             (self.get_current_booking().adopter 
-             if self.get_current_booking() 
-             else self.type),
+            if self.get_current_booking() 
+            else self.type),
             self.get_time_string(),
         )
     
