@@ -215,6 +215,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 # Add to email batch
                 if email is not None:
                     email.send()
+                    adopter.approval_emailed = True
+                    adopter.save()
             except Exception as e:
                 failures += 1
 

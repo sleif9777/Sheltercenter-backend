@@ -32,13 +32,23 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def GetContextForDate(self, request: HttpRequest, *args, **kwargs):
         date = DateTimeUtils.Parse(request.query_params["forDate"], "JSON").date()
 
-        # Get logged-in adopters appointment (if applicable)
+        # Get logged-in adopter's appointment or exceptions (if applicable)
         if "forUserID" in request.query_params:
             try:
                 user = UserProfile.objects.get(pk=int(request.query_params["forUserID"]))
+                exceptions = []
 
                 if user.adopter_profile == None:
                     raise Exception
+                
+                if user.adoption_completed:
+                    exceptions.append("adoptionCompleted")
+                
+                if user.requested_access:
+                    exceptions.append("requestedAccess")
+
+                if user.requested_surrender:
+                    exceptions.append("requestedSurrender")
 
                 user_current_appt = Booking.objects.get(
                     adopter=user.adopter_profile,
@@ -79,6 +89,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 "emptyDates": self.GetDatesWithNoAppointments(),
                 "missingOutcomes": [AppointmentSerializer(appt).data for appt in Appointment.get_appts_missing_outcomes()],
                 "userCurrentAppointment": user_current_appt,
+                "userExceptions": exceptions,
             }
         )
     

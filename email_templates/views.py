@@ -28,6 +28,8 @@ class EmailViewSet(viewsets.ViewSet):
             return email
         else:
             email.send()
+            adopter.approval_emailed = True
+            adopter.save()
 
     def AppointmentScheduled(self, appointment):
         booking = appointment.get_current_booking()
