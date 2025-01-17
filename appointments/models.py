@@ -53,8 +53,8 @@ class Appointment(models.Model):
         localized = self.instant.astimezone(eastern_time)
 
         return "{0} at {1}".format(
-            datetime.datetime.strftime(self.instant, "%b %d, %Y"),
-            datetime.datetime.strftime(self.instant, "%-I:%M %p"),
+            datetime.datetime.strftime(localized, "%b %d, %Y"),
+            datetime.datetime.strftime(localized, "%-I:%M %p"),
         )
     
     def toggle_lock(self, override: bool|None=None):
