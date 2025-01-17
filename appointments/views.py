@@ -31,12 +31,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["GET"], url_path="GetContextForDate")
     def GetContextForDate(self, request: HttpRequest, *args, **kwargs):
         date = DateTimeUtils.Parse(request.query_params["forDate"], "JSON").date()
+        exceptions = []
 
         # Get logged-in adopter's appointment or exceptions (if applicable)
         if "forUserID" in request.query_params:
             try:
                 user = UserProfile.objects.get(pk=int(request.query_params["forUserID"]))
-                exceptions = []
 
                 if user.adopter_profile == None:
                     raise Exception
