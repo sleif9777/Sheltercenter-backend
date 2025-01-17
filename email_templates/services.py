@@ -80,7 +80,6 @@ class EmailService():
         server.send_message(message)
         server.quit()
         self.message = None
-        print("DONE")
 
     def send(self, always_send=False, cc_adoptions=True):
         environment = EnvironmentSettings.objects.get(pk=1)

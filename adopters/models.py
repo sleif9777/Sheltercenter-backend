@@ -1,23 +1,15 @@
-import csv
 import datetime
-import io
-import pandas
-import pytz
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.contrib.auth.models import BaseUserManager
 from django.utils import timezone
 
 from bookings.enums import BookingStatus
-from email_templates.views import EmailViewSet
 
 from .enums import *
-# from users.models import SecurityLevels #, UserProfile
 
 # Create your models here.
 class Adopter(models.Model):
     # USER PROFILE ITEMS
-    # user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE, related_name="adopter")
     primary_email = models.EmailField(default="", max_length=100, null=False, blank=False, unique=True)
     status = models.IntegerField(choices=AdopterStatuses.choices)
 
@@ -26,6 +18,7 @@ class Adopter(models.Model):
     shelterluv_id = models.CharField(default="", max_length=50, null=True, blank=True)
     approved_until = models.DateField(null=False, blank=False)
     last_uploaded = models.DateTimeField(null=True, blank=True)
+    approval_emailed = models.BooleanField(default=False)
 
     # HOUSING ENVIRONMENT ITEMS
     homeowner = models.IntegerField(choices=HomeownershipOptons.choices, null=True, blank=True)
@@ -74,9 +67,10 @@ class Adopter(models.Model):
         return self.status == AdopterStatuses.APPROVED and self.recently_uploaded()
     
     def recently_uploaded(self):
-        two_days_ago = timezone.now() - datetime.timedelta(days=2)
+        two_days_ago = timezone.now() - datetime.timedelta(hours=48)
 
-        return (self.last_uploaded is None) or (self.last_uploaded < two_days_ago)
+        return (((self.last_uploaded is None) or 
+                 (self.last_uploaded < two_days_ago)) and not self.approval_emailed)
 
     def __repr__(self):
         return self.user_profile.disambiguated_name

@@ -285,7 +285,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
         if adopter.send_approval_email():
             email = EmailViewSet().ApplicationApproved(adopter, batch=True)
-
+            
         adopter.last_uploaded = timezone.now()
         adopter.save()
         

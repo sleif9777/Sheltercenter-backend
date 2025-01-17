@@ -49,10 +49,8 @@ class Appointment(models.Model):
         )
     
     def get_time_string(self):
-        print(self.instant)
         eastern_time = pytz.timezone("US/Eastern")
         localized = self.instant.astimezone(eastern_time)
-        print(localized)
 
         return "{0} at {1}".format(
             datetime.datetime.strftime(self.instant, "%b %d, %Y"),
