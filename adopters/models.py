@@ -67,10 +67,12 @@ class Adopter(models.Model):
         return self.status == AdopterStatuses.APPROVED and self.recently_uploaded()
     
     def recently_uploaded(self):
-        two_days_ago = timezone.now() - datetime.timedelta(hours=48)
+        never_uploaded = self.last_uploaded is None
 
-        return (((self.last_uploaded is None) or 
-                 (self.last_uploaded < two_days_ago)) and not self.approval_emailed)
+        two_days_ago = timezone.now() - datetime.timedelta(hours=48)
+        uploaded_last_48 = self.last_uploaded > two_days_ago
+
+        return ((never_uploaded or uploaded_last_48) and not self.approval_emailed)
 
     def __repr__(self):
         return self.user_profile.disambiguated_name
