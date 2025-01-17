@@ -86,6 +86,10 @@ class Adopter(models.Model):
         self.approved_until = self.get_default_approval_date()
         self.save()
 
+    def complete_adoption(self):
+        self.user_profile.adoption_completed = True
+        self.user_profile.save()
+
     @staticmethod
     def get_default_approval_date():
         year = datetime.datetime.today().year + 1

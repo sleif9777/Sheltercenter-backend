@@ -75,7 +75,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         appointment_dict = {}
         for appointment in appointments:
-            print(appointment.id)
             serialized = AppointmentSerializer(appointment).data
             instant_str = str(appointment.instant)
             if instant_str not in appointment_dict:
@@ -237,6 +236,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
             if created:
                 EmailViewSet().DogChosen(appointment)
+                appointment.get_current_booking().adopter.complete_adoption()
         elif outcome == OutcomeTypes.NO_DECISION:
             try:
                 pending_adoption = PendingAdoption.objects.get_or_create(
@@ -248,6 +248,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 pass
 
             EmailViewSet().NoDecision(appointment, host_weekend)
+        elif outcome in [OutcomeTypes.ADOPTION, OutcomeTypes.FTA]:
+            appointment.get_current_booking().adopter.complete_adoption()
 
         return JsonResponse(
             {
