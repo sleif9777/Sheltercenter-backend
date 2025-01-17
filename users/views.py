@@ -98,6 +98,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 {
                     "isAuthenticated": True,
                     "userID": user.id,
+                    "userFName": user.first_name,
+                    "userLName": user.last_name,
                     "securityLevel": user.security_level,
                     'refreshToken': str(refresh_token),
                     'accessToken': str(access_token),
