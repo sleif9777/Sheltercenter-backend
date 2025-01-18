@@ -69,8 +69,11 @@ class Adopter(models.Model):
     def recently_uploaded(self):
         never_uploaded = self.last_uploaded is None
 
-        two_days_ago = timezone.now() - datetime.timedelta(hours=48)
-        uploaded_last_48 = self.last_uploaded > two_days_ago
+        if never_uploaded:
+            uploaded_last_48 = False
+        else:
+            two_days_ago = timezone.now() - datetime.timedelta(hours=48)
+            uploaded_last_48 = self.last_uploaded > two_days_ago
 
         return ((never_uploaded or uploaded_last_48) and not self.approval_emailed)
 

@@ -170,16 +170,29 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                         fileType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
             if fileType == "text/csv":
-                successes, updates, failures, aversions = UserProfile.import_csv_spreadsheet_batch(importFile)
-                return JsonResponse(
-                    {
-                        "successes": successes,
-                        "updates": updates,
-                        "failures": failures,
-                        "aversions": [AdopterSerializer(adopter).data for adopter in aversions],
-                    },
-                    status=status.HTTP_201_CREATED,
-                )
+                try:
+                    successes, updates, failures, aversions = UserProfile.import_csv_spreadsheet_batch(importFile)
+                    return JsonResponse(
+                        {
+                            "successes": successes,
+                            "updates": updates,
+                            "failures": failures,
+                            "aversions": [AdopterSerializer(adopter).data for adopter in aversions],
+                        },
+                        status=status.HTTP_201_CREATED,
+                    )
+                except Exception as e:
+                    print(e)
+                    traceback.print_exc()
+                    return JsonResponse(
+                        {
+                            "successes": successes,
+                            "updates": updates,
+                            "failures": failures,
+                            "aversions": [AdopterSerializer(adopter).data for adopter in aversions],
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
             elif fileType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
                 successes, updates, failures, aversions = UserProfile.import_xlsx_spreadsheet_batch(importFile)
                 return JsonResponse(

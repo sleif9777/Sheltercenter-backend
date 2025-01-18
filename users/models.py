@@ -3,6 +3,7 @@ import datetime
 import io
 import random
 import string
+import traceback
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.core.exceptions import ObjectDoesNotExist
@@ -197,7 +198,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
         successes, updates, failures = 0, 0, 0
         aversions = []
-        emails = []
 
         for row in all_rows:
             try:
@@ -218,6 +218,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                     adopter.approval_emailed = True
                     adopter.save()
             except Exception as e:
+                print(e)
+                traceback.print_exc()
                 failures += 1
 
         return successes, updates, failures, aversions
