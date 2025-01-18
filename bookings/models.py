@@ -16,10 +16,10 @@ class Booking(models.Model):
     modified = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return str(self.appointment.id) + str(self.status) + self.adopter.user_profile.full_name
+        return str(self.appointment.id) + str(self.status) + self.adopter.user_profile.disambiguated_name
 
     def __repr__(self):
-        return str(self.appointment.id) + str(self.status) + self.adopter.user_profile.full_name
+        return str(self.appointment.id) + str(self.status) + self.adopter.user_profile.disambiguated_name
     
     @property
     def previous_visits(self):

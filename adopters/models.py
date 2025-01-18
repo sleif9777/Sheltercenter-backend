@@ -3,6 +3,7 @@ import datetime
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 
+from appointments.enums import OutcomeTypes
 from bookings.enums import BookingStatus
 
 from .enums import *
@@ -53,6 +54,25 @@ class Adopter(models.Model):
     @property
     def has_current_booking(self):
         return self.bookings.filter(status=BookingStatus.ACTIVE).count() > 0
+    
+    @property
+    def booking_history(self):
+        # TODO: flesh this out, and compute the outcome of completed appointments
+        bookings = self.bookings
+        completed = bookings.filter(status=BookingStatus.COMPLETED)
+        no_show = bookings.filter(status=BookingStatus.NOSHOW)
+        no_decision = [b for b in completed if b.appointment.outcome == OutcomeTypes.NO_DECISION]
+        adopted = [b for b in completed 
+                   if b.appointment.outcome in [
+                       OutcomeTypes.ADOPTION, OutcomeTypes.CHOSEN, OutcomeTypes.FTA
+                   ]]
+
+        return {
+            "completed": completed.count(),
+            "noShow": no_show.count(),
+            "noDecision": len(no_decision),
+            "adopted": len(adopted)
+        }
     
     class Meta:
         ordering = ["user_profile", "primary_email"]
