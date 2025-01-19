@@ -41,11 +41,12 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
         id = request.data["id"]
         status = request.data["status"]
         heartworm = request.data["heartworm"]
+        message = request.data["message"]
         pending_adoption = PendingAdoption.objects.get(pk=id)
         pending_adoption.mark_status(status, heartworm)
 
         if status == PendingAdoptionStatus.READY_TO_ROLL:
-            EmailViewSet().ReadyToRoll(pending_adoption)
+            EmailViewSet().ReadyToRoll(pending_adoption, custom_message=message)
 
         return JsonResponse(
             PendingAdoptionsSerializer(pending_adoption).data,

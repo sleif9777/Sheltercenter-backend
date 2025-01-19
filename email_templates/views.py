@@ -132,7 +132,7 @@ class EmailViewSet(viewsets.ViewSet):
         )
         email.send()
 
-    def ReadyToRoll(self, adoption):
+    def ReadyToRoll(self, adoption, custom_message: str):
         subject = "{0} is ready to go home!".format(adoption.dog)
         attachments = []
 
@@ -164,16 +164,33 @@ class EmailViewSet(viewsets.ViewSet):
                 open_hour = "12:00pm" # MON
                 close_hour = "6:00pm" # MON
 
-        email = EmailService(
-            subject, 
-            "ready_to_roll", 
-            { 
+        if custom_message.strip(" ") == "":
+            template = "ready_to_roll"
+            context = { 
                 "adoption": adoption,
                 "next_bus_day": next_bus_day,
                 "today_close": today_close,
                 "open_hour": open_hour,
                 "close_hour": close_hour
-            }, 
+            }
+        else:
+            template = "generic"
+            context = {
+                "message": custom_message.replace("\n", "<br />")
+            }
+
+        email = EmailService(
+            subject, 
+            template,
+            context,
+            # "ready_to_roll", 
+            # { 
+            #     "adoption": adoption,
+            #     "next_bus_day": next_bus_day,
+            #     "today_close": today_close,
+            #     "open_hour": open_hour,
+            #     "close_hour": close_hour
+            # }, 
             adoption.adopter.user_profile.primary_email,
             attachments=attachments
         )

@@ -54,7 +54,6 @@ class EmailService():
         message['reply-to'] = 'adoptions@savinggracenc.org'
         
         html = MIMEText(self.content_html, 'html')
-        plain = MIMEText(self.content_plain, 'text')
 
         if len(self.attachments) > 0:
             for attachment in self.attachments:
@@ -64,12 +63,11 @@ class EmailService():
                         Name=basename(attachment)
                     )
                 part['Content-Disposition'] = 'attachment; filename="%s"' % basename(attachment)
-                self.message.attach(part)
+                message.attach(part)
 
         message.attach(html)
 
         return message
-        # self.message.attach(plain)
 
     def connect_to_gmail(self, message):
         context = ssl.create_default_context()
