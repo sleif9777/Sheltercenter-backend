@@ -56,7 +56,6 @@ class AdopterViewSet(viewsets.ModelViewSet):
             {
                 "adopter": AdopterSerializer(adopter).data,
                 "currentAppointment": AppointmentSerializer(appointment).data if appointment else None,
-                # "bookings": [BookingSerializer(booking).data for booking in adopter.bookings],
                 "bookingHistory": adopter.booking_history
             }
         )  
