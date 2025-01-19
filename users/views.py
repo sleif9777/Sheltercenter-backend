@@ -58,7 +58,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         ## CONFIRM A USER EXISTS
         # Find the user
         try:
-            user = UserProfile.objects.get(primary_email=request.data["email"])
+            user = UserProfile.objects.get(primary_email=request.data["email"].lower())
             password = request.data["otp"]
         # If no user
         except ObjectDoesNotExist:

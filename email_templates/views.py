@@ -183,14 +183,6 @@ class EmailViewSet(viewsets.ViewSet):
             subject, 
             template,
             context,
-            # "ready_to_roll", 
-            # { 
-            #     "adoption": adoption,
-            #     "next_bus_day": next_bus_day,
-            #     "today_close": today_close,
-            #     "open_hour": open_hour,
-            #     "close_hour": close_hour
-            # }, 
             adoption.adopter.user_profile.primary_email,
             attachments=attachments
         )
