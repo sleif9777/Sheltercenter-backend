@@ -46,7 +46,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
         pending_adoption.mark_status(status, heartworm)
 
         if status == PendingAdoptionStatus.READY_TO_ROLL:
-            EmailViewSet().ReadyToRoll(pending_adoption, custom_message=message)
+            EmailViewSet().ReadyToRoll(pending_adoption, message)
 
         return JsonResponse(
             PendingAdoptionsSerializer(pending_adoption).data,
