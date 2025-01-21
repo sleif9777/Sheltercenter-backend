@@ -200,7 +200,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def CheckInAppointment(self, request, *args, **kwargs):
         id = request.data["appointmentID"]
         clothing = request.data["clothingDescription"]
-        counselor = request.data["counselor"]
+        counselor = request.data["counselor"] if "counselor" in request.data else None
 
         appointment = Appointment.objects.get(pk=id)
         appointment.check_in(clothing, counselor)

@@ -77,7 +77,9 @@ class Appointment(models.Model):
         return None
     
     def check_in(self, clothing, counselor):
-        self.check_in_time = datetime.datetime.now()
+        if self.check_in_time is None:
+            self.check_in_time = datetime.datetime.now()
+    
         self.clothing_description = clothing
         self.counselor = counselor
         self.save()

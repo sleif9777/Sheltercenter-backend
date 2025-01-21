@@ -54,7 +54,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=["POST"], url_path="CreatePendingAdoption")
     def CreatePendingAdoption(self, request: HttpRequest, *args, **kwargs):
-        dog = request.data["dog"]
+        dog = request.data["dog"].title()
         adopter = Adopter.objects.get(pk=request.data["adopter"])
         circumstance = request.data["circumstance"]
         
