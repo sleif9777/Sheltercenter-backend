@@ -260,40 +260,44 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             }
         )
         
-        profile, profile_created = UserProfile.objects.update_or_create(
-            primary_email=row_data[27].lower(),
-            defaults={
-                "first_name": row_data[14].title(),
-                "last_name": row_data[15].title(),
-                "city": row_data[19],
-                "state": row_data[20],
-                "secondary_email": row_data[28],
-                "phone_number": row_data[23],
-            },
-            create_defaults={
-                "adopter_profile": adopter,
-                "first_name": row_data[14].title(),
-                "last_name": row_data[15].title(),
-                "city": row_data[19],
-                "password": None,
-                "state": row_data[20],
-                "secondary_email": row_data[28],
-                "phone_number": row_data[23],
-                "security_level": SecurityLevels.ADOPTER
-            }
-        )
+        try:
+            profile, profile_created = UserProfile.objects.update_or_create(
+                primary_email=row_data[27].lower(),
+                defaults={
+                    "first_name": row_data[14].title(),
+                    "last_name": row_data[15].title(),
+                    "city": row_data[19],
+                    "state": row_data[20],
+                    "secondary_email": row_data[28],
+                    "phone_number": row_data[23],
+                },
+                create_defaults={
+                    "adopter_profile": adopter,
+                    "first_name": row_data[14].title(),
+                    "last_name": row_data[15].title(),
+                    "city": row_data[19],
+                    "password": None,
+                    "state": row_data[20],
+                    "secondary_email": row_data[28],
+                    "phone_number": row_data[23],
+                    "security_level": SecurityLevels.ADOPTER
+                }
+            )
 
-        if profile_created:
-            profile.set_unusable_password()
-            profile.save()
+            if profile_created:
+                profile.set_unusable_password()
+                profile.save()
 
-        if adopter.send_approval_email():
-            email = EmailViewSet().ApplicationApproved(adopter, batch=True)
+            if adopter.send_approval_email():
+                email = EmailViewSet().ApplicationApproved(adopter, batch=True)
+                
+            adopter.last_uploaded = timezone.now()
+            adopter.save()
             
-        adopter.last_uploaded = timezone.now()
-        adopter.save()
-        
-        return adopter, (adopter_created and profile_created), approval_averted, email
+            return adopter, (adopter_created and profile_created), approval_averted, email
+        except:
+            adopter.delete()
+            return None, False, False, None
 
     ### CSV File Import Functions ###
     @staticmethod
