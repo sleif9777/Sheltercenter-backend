@@ -14,6 +14,7 @@ from closed_dates.models import ClosedDate
 from email_templates.views import EmailViewSet
 from pending_adoptions.enums import CircumstanceOptions, PendingAdoptionStatus
 from pending_adoptions.models import PendingAdoption
+from users.enums import SecurityLevels
 from users.models import UserProfile
 from utils.DateTimeUtils import DateTimeUtils
 
@@ -81,8 +82,22 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 appointment_dict[instant_str] = []
             appointment_dict[instant_str].append(serialized)
         
+        adopter_flags = []
+        if user.security_level > SecurityLevels.ADOPTER:
+            adopters = [a.get_current_booking().adopter for a in appointments if a.get_current_booking()]
+            
+            for adopter in adopters:
+                flags = adopter.get_flags()
+                if len(flags) > 0:
+                    adopter_flags.append({
+                        "name": adopter.user_profile.full_name,
+                        "summary": flags
+                    })
+                    # adopter_flags.append({adopter.user_profile.full_name, flags))
+            
         return JsonResponse(
             {
+                "adopterFlags": adopter_flags,
                 "closedDateID": closed_date,
                 "appointments": appointment_dict,
                 "emptyDates": self.GetDatesWithNoAppointments(),

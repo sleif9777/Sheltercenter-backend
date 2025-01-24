@@ -82,6 +82,17 @@ class Adopter(models.Model):
             return self.bookings.get(status=BookingStatus.ACTIVE).appointment
         except:
             return None
+        
+    def get_flags(self):
+        flags = []
+
+        if self.booking_history['noShow'] > 1:
+            flags.append("{0} no shows".format(self.booking_history['noShow']))
+        
+        if self.booking_history['noDecision'] > 1:
+            flags.append("{0} no decision".format(self.booking_history['noShow']))
+
+        return ", ".join(flags)
 
     def send_approval_email(self):
         return self.status == AdopterStatuses.APPROVED and self.recently_uploaded()
