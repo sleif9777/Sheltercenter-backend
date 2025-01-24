@@ -90,7 +90,7 @@ class Adopter(models.Model):
             flags.append("{0} no shows".format(self.booking_history['noShow']))
         
         if self.booking_history['noDecision'] > 1:
-            flags.append("{0} no decision".format(self.booking_history['noShow']))
+            flags.append("{0} no decision".format(self.booking_history['noDecision']))
 
         return ", ".join(flags)
 
