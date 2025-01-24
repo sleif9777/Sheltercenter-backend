@@ -33,6 +33,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def GetContextForDate(self, request: HttpRequest, *args, **kwargs):
         date = DateTimeUtils.Parse(request.query_params["forDate"], "JSON").date()
         exceptions = []
+        user = None
 
         # Get logged-in adopter's appointment or exceptions (if applicable)
         if "forUserID" in request.query_params:
@@ -83,7 +84,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment_dict[instant_str].append(serialized)
         
         adopter_flags = []
-        if user.security_level > SecurityLevels.ADOPTER:
+        if user and user.security_level > SecurityLevels.ADOPTER:
             adopters = [a.get_current_booking().adopter for a in appointments if a.get_current_booking()]
             
             for adopter in adopters:
