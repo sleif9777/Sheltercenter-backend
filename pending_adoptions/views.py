@@ -6,6 +6,7 @@ from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 
+from appointments.enums import OutcomeTypes
 from adopters.models import Adopter
 from email_templates.views import EmailViewSet
 from pending_adoption_updates.models import PendingAdoptionUpdate
@@ -48,6 +49,11 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
         if status == PendingAdoptionStatus.READY_TO_ROLL:
             EmailViewSet().ReadyToRoll(pending_adoption, message)
 
+        if status == PendingAdoptionStatus.CANCELED:
+            pending_adoption.source_appointment.outcome = OutcomeTypes.NO_DECISION
+            pending_adoption.source_appointment.chosen_dog = ""
+            pending_adoption.source_appointment.save()
+
         return JsonResponse(
             PendingAdoptionsSerializer(pending_adoption).data,
         )
@@ -70,6 +76,19 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
 
         return JsonResponse(
             PendingAdoptionsSerializer(pending_adoption).data,
+        )
+    
+    @action(detail=False, methods=["POST"], url_path="ChangeDog")
+    def ChangeDog(self, request: HttpRequest, *args, **kwargs):
+        adoption = PendingAdoption.objects.get(pk=request.data["adoptionID"])
+        adoption.dog = request.data["newDog"]
+        adoption.save()
+
+        adoption.source_appointment.chosen_dog = adoption.dog
+        adoption.source_appointment.save()
+
+        return JsonResponse(
+            PendingAdoptionsSerializer(adoption).data,
         )
     
     @action(detail=False, methods=["GET"], url_path="GetAllPendingAdoptionsAwaitingPaperwork")
