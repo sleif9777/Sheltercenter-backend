@@ -3,8 +3,8 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 
 from appointments.serializers import AppointmentSerializer
-from bookings.serializers import BookingSerializer
 from email_templates.views import EmailViewSet
+from users.models import UserProfile
 from utils.DateTimeUtils import DateTimeUtils
 
 from .models import Adopter, AdopterStatuses
@@ -21,6 +21,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=["GET"], url_path="GetAllAdopters")
     def GetAllAdopters(self, request: HttpRequest, *args, **kwargs):
+        UserProfile.remove_faulty()
         adopters = Adopter.objects.filter(approved_until__gte=DateTimeUtils.GetToday())
 
         serialized = [AdopterSerializer(adopter).data for adopter in adopters]
