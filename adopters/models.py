@@ -137,10 +137,10 @@ class Adopter(models.Model):
         match status:
             case "Accepted" | 0:
                 return_status = AdopterStatuses.APPROVED
-            case "Pending" | 1:
-                return_status = AdopterStatuses.PENDING
             case "Denied" | 2:
                 return_status = AdopterStatuses.DECLINED
+            case "Pending" | 1 | _:
+                return_status = AdopterStatuses.PENDING
             
         if get_from:
             try:
