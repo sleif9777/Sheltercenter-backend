@@ -139,7 +139,7 @@ class Adopter(models.Model):
                 return_status = AdopterStatuses.APPROVED
             case "Denied" | 2:
                 return_status = AdopterStatuses.DECLINED
-            case "Pending" | 1 | _:
+            case "Pending" | "Archived" | 1 | _:
                 return_status = AdopterStatuses.PENDING
             
         if get_from:
