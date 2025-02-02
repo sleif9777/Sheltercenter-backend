@@ -120,8 +120,8 @@ class Adopter(models.Model):
         self.approved_until = self.get_default_approval_date()
         self.save()
 
-    def complete_adoption(self):
-        self.user_profile.adoption_completed = True
+    def restrict_calendar(self, restrict=True):
+        self.user_profile.adoption_completed = restrict
         self.user_profile.save()
 
     @staticmethod

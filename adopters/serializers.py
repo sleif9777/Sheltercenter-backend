@@ -43,6 +43,8 @@ class AdopterSerializer(serializers.HyperlinkedModelSerializer):
     mobility = serializers.BooleanField()
     bringingDog = serializers.BooleanField(source="bringing_dog")
 
+    restrictedCalendar = serializers.BooleanField(source="user_profile.adoption_completed")
+
     class Meta:
         model = Adopter
         fields = [
@@ -84,4 +86,6 @@ class AdopterSerializer(serializers.HyperlinkedModelSerializer):
 
             'mobility',
             'bringingDog',
+
+            'restrictedCalendar'
         ]

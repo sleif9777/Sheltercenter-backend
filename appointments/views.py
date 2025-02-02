@@ -252,7 +252,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
             if created:
                 EmailViewSet().DogChosen(appointment)
-                appointment.get_current_booking().adopter.complete_adoption()
+                appointment.get_current_booking().adopter.restrict_calendar()
         elif outcome == OutcomeTypes.NO_DECISION:
             try:
                 pending_adoption = PendingAdoption.objects.get_or_create(
@@ -265,7 +265,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
             EmailViewSet().NoDecision(appointment, host_weekend)
         elif outcome in [OutcomeTypes.ADOPTION, OutcomeTypes.FTA]:
-            appointment.get_current_booking().adopter.complete_adoption()
+            appointment.get_current_booking().adopter.restrict_calendar()
 
         return JsonResponse(
             {

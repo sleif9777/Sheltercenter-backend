@@ -86,3 +86,14 @@ class AdopterViewSet(viewsets.ModelViewSet):
             {},
             status=status.HTTP_200_OK
         )
+    
+    @action(detail=False, methods=["POST"], url_path="RestoreCalendarAccess")
+    def RestoreCalendarAccess(self, request):
+        adopter_id = request.data["adopterID"]
+        adopter = Adopter.objects.get(pk=adopter_id)
+        adopter.restrict_calendar(restrict=False)
+
+        return JsonResponse(
+            {},
+            status=status.HTTP_200_OK
+        )

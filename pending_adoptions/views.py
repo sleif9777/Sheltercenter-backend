@@ -52,6 +52,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
         if status == PendingAdoptionStatus.CANCELED:
             pending_adoption.source_appointment.outcome = OutcomeTypes.NO_DECISION
             pending_adoption.source_appointment.chosen_dog = ""
+            pending_adoption.adopter.restrict_calendar(restrict=False)
             pending_adoption.source_appointment.save()
 
         return JsonResponse(
@@ -71,6 +72,8 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
             created_instant=timezone.now(),
             status=PendingAdoptionStatus.CHOSEN,
         )
+
+        adopter.restrict_calendar()
 
         EmailViewSet().AdoptionCreated(pending_adoption)
 
