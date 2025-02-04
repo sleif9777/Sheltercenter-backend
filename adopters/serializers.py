@@ -3,6 +3,34 @@ import json
 from rest_framework import serializers
 from .models import Adopter
 
+class AdopterBaseSerializer(serializers.HyperlinkedModelSerializer):
+    ID = serializers.IntegerField(source="id")
+    
+    primaryEmail = serializers.EmailField(source="user_profile.primary_email")
+    firstName = serializers.CharField(source="user_profile.first_name")
+    lastName = serializers.CharField(source="user_profile.last_name")
+    
+    fullName = serializers.CharField(source="user_profile.full_name")
+    disambiguatedName = serializers.CharField(source="user_profile.disambiguated_name")
+    
+    status = serializers.IntegerField()
+
+    class Meta:
+        model = Adopter
+        fields = [
+            'ID', 
+            
+            'primaryEmail', 
+            'firstName',
+            'lastName',
+            
+            'fullName',
+            'disambiguatedName',
+            
+            'status',
+        ]
+
+
 class AdopterSerializer(serializers.HyperlinkedModelSerializer):
     ID = serializers.IntegerField(source="id")
     

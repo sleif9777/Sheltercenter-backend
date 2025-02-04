@@ -9,29 +9,25 @@ from utils.DateTimeUtils import DateTimeUtils
 
 from .models import Adopter, AdopterStatuses
 from .serializers import *
-from .services import AdopterService
-
 
 # Create your views here.
 class AdopterViewSet(viewsets.ModelViewSet):
-    # permission_classes = [permissions.IsAuthenticated]
     queryset = Adopter.objects.all()
     serializer_class = AdopterSerializer
-    service = AdopterService()
-    
+
     @action(detail=False, methods=["GET"], url_path="GetAllAdopters")
-    def GetAllAdopters(self, request: HttpRequest, *args, **kwargs):
+    def GetAllAdopters(self, request: HttpRequest):
         UserProfile.remove_faulty()
         adopters = Adopter.objects.filter(approved_until__gte=DateTimeUtils.GetToday())
 
-        serialized = [AdopterSerializer(adopter).data for adopter in adopters]
+        serialized = [AdopterBaseSerializer(adopter).data for adopter in adopters]
         
         return JsonResponse(
             {"adopters": serialized}
         )  
 
     @action(detail=False, methods=["GET"], url_path="GetAdoptersForBooking")
-    def GetAdoptersForBooking(self, request: HttpRequest, *args, **kwargs):
+    def GetAdoptersForBooking(self, request: HttpRequest):
         adopters = Adopter.objects.filter(
             approved_until__gte=DateTimeUtils.GetToday(),
             status=AdopterStatuses.APPROVED,
@@ -48,7 +44,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
         ) 
 
     @action(detail=False, methods=["GET"], url_path="GetAdopterDetail")
-    def GetAdopterDetail(self, request: HttpRequest, *args, **kwargs):
+    def GetAdopterDetail(self, request: HttpRequest):
         adopter_id = int(request.query_params["forAdopter"])
         adopter = Adopter.objects.get(pk=adopter_id)
         appointment = adopter.get_current_appointment()
