@@ -1,3 +1,4 @@
+import traceback
 from django.http import HttpRequest, JsonResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -17,14 +18,18 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["GET"], url_path="GetAllAdopters")
     def GetAllAdopters(self, request: HttpRequest):
-        UserProfile.remove_faulty()
-        adopters = Adopter.objects.filter(approved_until__gte=DateTimeUtils.GetToday())
+        try:
+            UserProfile.remove_faulty()
+            adopters = Adopter.objects.filter(approved_until__gte=DateTimeUtils.GetToday())
 
-        serialized = [AdopterBaseSerializer(adopter).data for adopter in adopters]
-        
-        return JsonResponse(
-            {"adopters": serialized}
-        )  
+            serialized = [AdopterBaseSerializer(adopter).data for adopter in adopters]
+            
+            return JsonResponse(
+                {"adopters": serialized}
+            )  
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
 
     @action(detail=False, methods=["GET"], url_path="GetAdoptersForBooking")
     def GetAdoptersForBooking(self, request: HttpRequest):
