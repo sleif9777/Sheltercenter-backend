@@ -149,7 +149,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             first_name=self.first_name,
             last_name=self.last_name
         )
-        print(self.id, matches)
+        print(self.first_name, self.last_name)
 
         if matches.count() > 1:
             return self.full_name + " ({0})".format(self.primary_email)
