@@ -22,7 +22,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
             UserProfile.remove_faulty()
             adopters = Adopter.objects.filter(approved_until__gte=DateTimeUtils.GetToday())
 
-            serialized = [AdopterBaseSerializer(adopter).data for adopter in adopters]
+            serialized = [AdopterSerializer(adopter).data for adopter in adopters]
             
             return JsonResponse(
                 {"adopters": serialized}
