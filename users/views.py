@@ -39,10 +39,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 user.reset_otp()
 
                 return JsonResponse({
-                    "message": "New one-time passcode sent to your email."
+                    "message": "Your one-time passcode is: " + user.otp
                 }, status=status.HTTP_202_ACCEPTED)
             except Exception as e:
-                print(e)
                 traceback.print_exc()
                 return JsonResponse({
                     "message": "Your one-time passcode is: " + user.otp
