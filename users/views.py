@@ -36,7 +36,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 }, status=status.HTTP_200_OK)
             
             try:
-                user.reset_otp()
+                if user.otp is None or user.otp_expired:
+                    user.reset_otp()
 
                 return JsonResponse({
                     "message": "Your one-time passcode is: " + user.otp

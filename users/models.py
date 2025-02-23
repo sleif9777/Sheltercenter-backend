@@ -146,15 +146,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     @property
     def disambiguated_name(self):
         return self.full_name + " ({0})".format(self.primary_email)
-        # matches = UserProfile.objects.filter(
-        #     first_name=self.first_name,
-        #     last_name=self.last_name
-        # )
-        # print(self.first_name, self.last_name)
-
-        # if len(matches) > 1:
-        
-        # return self.full_name
     
     @property
     def all_emails(self):
