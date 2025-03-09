@@ -212,6 +212,22 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED    
         )
         
+    @action(detail=False, methods=["POST"], url_path="MarkTemplateSent")
+    def MarkTemplateSent(self, request, *args, **kwargs):
+        id = request.data["appointmentID"]
+        template_id = request.data["templateID"]
+        appointment = Appointment.objects.get(pk=id)
+        booking = appointment.get_current_booking()
+
+        booking.mark_template_sent(template_id)
+
+        return JsonResponse(
+            {
+                "appointment": AppointmentSerializer(appointment).data
+            },
+            status=status.HTTP_200_OK    
+        )
+    
     @action(detail=False, methods=["POST"], url_path="CheckInAppointment")
     def CheckInAppointment(self, request, *args, **kwargs):
         id = request.data["appointmentID"]
