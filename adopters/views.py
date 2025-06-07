@@ -22,7 +22,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
             UserProfile.remove_faulty()
             adopters = Adopter.objects.filter(approved_until__gte=DateTimeUtils.GetToday())
 
-            serialized = [AdopterSerializer(adopter).data for adopter in adopters]
+            serialized = [AdopterBaseSerializer(adopter).data for adopter in adopters]
             
             return JsonResponse(
                 {"adopters": serialized}
@@ -42,7 +42,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
             include_adopter = Adopter.objects.get(pk=request.data["includeAdopter"])
             adopters |= include_adopter
 
-        serialized = [AdopterSerializer(adopter).data for adopter in adopters if not adopter.has_current_booking]
+        serialized = [AdopterBaseSerializer(adopter).data for adopter in adopters if not adopter.has_current_booking]
         
         return JsonResponse(
             {"adopters": serialized}
