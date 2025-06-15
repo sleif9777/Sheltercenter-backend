@@ -353,10 +353,9 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             adopter.delete()    
 
         users = UserProfile.objects.all()
-        archivable = [user for user in users if user.due_for_archive and user.id > 2500]
+        archivable = [user for user in users if user.due_for_archive]
 
         for user in archivable:
-            print(user.disambiguated_name)
             user.archived = True
             user.save()
     
