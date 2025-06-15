@@ -56,6 +56,15 @@ class Adopter(models.Model):
         return self.bookings.filter(status=BookingStatus.ACTIVE).count() > 0
     
     @property
+    def last_booking_activity(self):
+        recent_booking = self.bookings.order_by('-modified').first()
+        
+        if recent_booking:
+            return recent_booking.modified if recent_booking.modified is not None else recent_booking.created
+        
+        return None
+    
+    @property
     def booking_history(self):
         # TODO: flesh this out, and compute the outcome of completed appointments
         bookings = self.bookings

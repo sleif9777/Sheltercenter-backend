@@ -6,7 +6,6 @@ import string
 import traceback
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
-from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import validate_email
 from django.db import models
 from django.utils import timezone
@@ -15,7 +14,7 @@ import pandas
 from backend import settings
 
 from adopters.models import Adopter
-from email_templates.services import EmailService
+from utils import DateTimeUtils
 from email_templates.views import EmailViewSet
 
 from .enums import SecurityLevels
@@ -138,7 +137,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         if self.security_level > SecurityLevels.ADOPTER:
             return False
                 
-        return self.adopter_profile.approved_until < datetime.date.today()
+        return self.adopter_profile.approved_until < DateTimeUtils.GetToday()
     
     def update_from_shelterluv_import(self, data):
         self.first_name = data['first_name'].title()
@@ -158,6 +157,43 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     @property
     def all_emails(self):
         return [email for email in [self.primary_email, self.secondary_email] if email is not None]
+    
+    @property
+    def due_for_archive(self):
+        if self.archived:
+            return False
+
+        now = timezone.now()
+        ninety_days_ago = now - datetime.timedelta(days=90)
+
+        # Fetch timestamps safely
+        last_uploaded = getattr(self.adopter_profile, 'last_uploaded', None)
+        last_login = self.last_login
+        last_booking = getattr(self.adopter_profile, 'last_booking_activity', None)
+
+        # Condition 1:
+        # Uploaded over 90 days ago, no bookings or logins
+        if last_uploaded and last_uploaded < ninety_days_ago and not last_login and not last_booking:
+            return True
+
+        # Condition 2:
+        # Last login over 90 days ago, no booking after login, and no re-upload after login
+        if last_login and last_login < ninety_days_ago:
+            booking_after_login = last_booking and last_booking > last_login
+            uploaded_after_login = last_uploaded and last_uploaded > last_login
+            if not booking_after_login and not uploaded_after_login:
+                return True
+
+        # Condition 3:
+        # Last booking over 90 days ago, and no login or upload after booking
+        if last_booking and last_booking < ninety_days_ago:
+            login_after_booking = last_login and last_login > last_booking
+            uploaded_after_booking = last_uploaded and last_uploaded > last_booking
+            if not login_after_booking and not uploaded_after_booking:
+                return True
+
+        # If none of the above, do not archive
+        return False
 
     @staticmethod
     def generate_otp():
@@ -270,6 +306,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                     "state": row_data[20],
                     "secondary_email": row_data[28],
                     "phone_number": row_data[23],
+                    "archived": False
                 },
                 create_defaults={
                     "adopter_profile": adopter,
@@ -313,7 +350,15 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         faulty = Adopter.objects.filter(user_profile=None)
 
         for adopter in faulty:
-            adopter.delete()             
+            adopter.delete()    
+
+        users = UserProfile.objects.all()
+        archivable = [user for user in users if user.due_for_archive and user.id > 2500]
+
+        for user in archivable:
+            print(user.disambiguated_name)
+            user.archived = True
+            user.save()
     
     ### XLSX File Import Functions ###
     @staticmethod
@@ -351,6 +396,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
             defaults={
                 "first_name": form_data["firstName"].title(),
                 "last_name": form_data["lastName"].title(),
+                "archived": False
             },
             create_defaults={
                 "adopter_profile": adopter,

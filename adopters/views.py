@@ -20,7 +20,10 @@ class AdopterViewSet(viewsets.ModelViewSet):
     def GetAllAdopters(self, request: HttpRequest):
         try:
             UserProfile.remove_faulty()
-            adopters = Adopter.objects.filter(approved_until__gte=DateTimeUtils.GetToday())
+            adopters = Adopter.objects.filter(
+                approved_until__gte=DateTimeUtils.GetToday(),
+                user_profile__archived=False
+            )
 
             serialized = [AdopterBaseSerializer(adopter).data for adopter in adopters]
             
@@ -36,6 +39,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
         adopters = Adopter.objects.filter(
             approved_until__gte=DateTimeUtils.GetToday(),
             status=AdopterStatuses.APPROVED,
+            user_profile__archived=False
         )
 
         if "includeAdopter" in request.data:
