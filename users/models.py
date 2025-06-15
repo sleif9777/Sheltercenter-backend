@@ -137,7 +137,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         if self.security_level > SecurityLevels.ADOPTER:
             return False
                 
-        return self.adopter_profile.approved_until < DateTimeUtils.GetToday()
+        return self.adopter_profile.approved_until < datetime.date.today()
     
     def update_from_shelterluv_import(self, data):
         self.first_name = data['first_name'].title()
