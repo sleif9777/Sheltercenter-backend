@@ -78,6 +78,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     otp_expiration = models.DateTimeField(null=True, blank=True)
     max_otp_try = models.IntegerField(default=settings.MAX_OTP_TRY)
     otp_max_out = models.DateTimeField(blank=True, null=True)
+    archived = models.BooleanField(default=False)
 
     # HISTORY-BASED SECURITY
     has_acknowledged_faq = models.BooleanField(default=False)
@@ -131,6 +132,13 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     @property
     def otp_expired(self):
         return timezone.now() > self.otp_expiration
+    
+    @property
+    def application_expired(self):
+        if self.security_level > SecurityLevels.ADOPTER:
+            return False
+                
+        return self.adopter_profile.approved_until < datetime.date.today()
     
     def update_from_shelterluv_import(self, data):
         self.first_name = data['first_name'].title()

@@ -1,3 +1,4 @@
+import datetime
 import mimetypes
 import traceback
 
@@ -11,6 +12,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, AccessToken, Blacklist
 
 from adopters.serializers import AdopterSerializer
 
+from .enums import SecurityLevels
 from .models import UserProfile
 
 # Create your views here.
@@ -29,6 +31,11 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                     "message": "No user exists with this email address. Email adoptions@savinggracenc.org for assistance."
                 }, status=status.HTTP_200_OK)
             
+            if user.application_expired:
+                return JsonResponse({
+                    "message": "Your application has expired. Complete a new one at: shelterluv.com/matchme/adopt/SGNC/Dog"
+                }, status=status.HTTP_200_OK)
+            
             # If still timed out, quit early
             if user.timed_out:
                 return JsonResponse({
@@ -44,6 +51,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 }, status=status.HTTP_202_ACCEPTED)
             except Exception as e:
                 traceback.print_exc()
+
                 return JsonResponse({
                     "message": "Your one-time passcode is: " + user.otp
                 }, status=status.HTTP_202_ACCEPTED)
