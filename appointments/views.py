@@ -249,7 +249,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         id = request.data["appointmentID"]
         outcome = request.data["outcome"]
         dog = request.data["dog"] if "dog" in request.data else ""
-        host_weekend = request.data["hostWeekend"] if "hostWeekend" in request.data else True
+        host_weekend = request.data["hostWeekend"] if "hostWeekend" in request.data else False
 
         appointment = Appointment.objects.get(pk=id)
         appointment.check_out(outcome, dog)
