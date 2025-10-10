@@ -36,6 +36,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["GET"], url_path="GetAdoptersForBooking")
     def GetAdoptersForBooking(self, request: HttpRequest):
+        UserProfile.remove_faulty()
         adopters = Adopter.objects.filter(
             approved_until__gte=DateTimeUtils.GetToday(),
             status=AdopterStatuses.APPROVED,
@@ -45,6 +46,10 @@ class AdopterViewSet(viewsets.ModelViewSet):
         if "includeAdopter" in request.data:
             include_adopter = Adopter.objects.get(pk=request.data["includeAdopter"])
             adopters |= include_adopter
+
+        for adopter in adopters:
+            if adopter.user_profile == None:
+                profile = UserProfile()
 
         serialized = [AdopterBaseSerializer(adopter).data for adopter in adopters if not adopter.has_current_booking]
         
