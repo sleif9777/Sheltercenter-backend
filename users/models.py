@@ -258,6 +258,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
                 traceback.print_exc()
                 failures += 1
 
+        UserProfile.remove_faulty()
+
         return successes, updates, failures, aversions
     
     @staticmethod
