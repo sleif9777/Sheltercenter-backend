@@ -110,12 +110,12 @@ class Adopter(models.Model):
         never_uploaded = self.last_uploaded is None
 
         if never_uploaded:
-            uploaded_last_48 = False
+            not_uploaded_last_48_hours = False
         else:
             two_days_ago = timezone.now() - datetime.timedelta(hours=48)
-            uploaded_last_48 = self.last_uploaded > two_days_ago
+            not_uploaded_last_48_hours = self.last_uploaded < two_days_ago
 
-        return ((never_uploaded or uploaded_last_48) and not self.approval_emailed)
+        return never_uploaded or not_uploaded_last_48_hours
 
     def __repr__(self):
         return self.user_profile.disambiguated_name
