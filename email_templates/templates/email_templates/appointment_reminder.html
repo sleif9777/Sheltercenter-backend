@@ -1,0 +1,37 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    A Tail-Wagging Appointment Awaits!
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{appointment.get_current_booking.adopter.user_profile.first_name}},
+        </p>
+    </div>
+    <div>
+        <p>
+            We're excited to see you soon! This is a friendly reminder that you have an appointment scheduled with one of our adoption counselors to help you find your perfect pup.
+        </p>
+        <div class="subsection">
+            <h2>Appointment Details</h2>
+            <p>
+                <strong>Date: </strong>{{appointment.get_time_string}}<br />
+                <strong>Location: </strong>Saving Grace Animals for Adoption<br />
+                <a href="https://www.google.com/maps/dir//13400+Old+Creedmoor+Rd,+Wake+Forest,+NC+27587/@43.0282071,-89.5214493,15z/data=!4m8!4m7!1m0!1m5!1m1!1s0x89acffc1ae310ab3:0x4ad8e8cd987f28cd!2m2!1d-78.693893!2d35.9920463?entry=ttu&g_ep=EgoyMDI1MTAyNy4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noreferrer"><i>Click here for directions</i></a>
+            </p>
+        </div>
+        <p>
+            Please plan to arrive a few minutes early to check in. If something comes up and you need to reschedule, please <a href="www.savinggracencscheduler.com" target="_blank" rel="noreferrer">click here</a> to cancel or reschedule so we can open your spot for another potential adopter.
+        </p>
+        <p>
+            We can't wait to help you meet some of our amazing dogs — your future best friend might be just a tail wag away!
+        </p>
+    </div>
+    <div>
+        <p>Warmly,</p>
+        <p class="pink signature">The Adoptions Team</p>
+        <p>Saving Grace Animals for Adoption</p>
+    </div>
+{% endblock %}

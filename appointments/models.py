@@ -48,6 +48,10 @@ class Appointment(models.Model):
             self.get_time_string(),
         )
     
+    @property
+    def has_current_booking(self):
+        return self.get_current_booking() is not None
+    
     def get_time_string(self):
         eastern_time = pytz.timezone("US/Eastern")
         localized = self.instant.astimezone(eastern_time)

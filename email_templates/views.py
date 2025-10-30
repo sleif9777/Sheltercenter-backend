@@ -50,6 +50,20 @@ class EmailViewSet(viewsets.ViewSet):
         )
         email.send()
 
+    def AppointmentReminder(self, appointment):
+        booking = appointment.get_current_booking()
+        subject = "Reminder: Your Upcoming Appointment with Saving Grace"
+
+        email = EmailService(
+            subject, 
+            "appointment_reminder", 
+            { 
+                "appointment": appointment,
+            }, 
+            booking.adopter.user_profile.primary_email
+        )
+        email.send()
+
     def AppointmentCanceled(self, appointment):
         booking = appointment.get_current_booking()
         subject = "Your appointment has been canceled: {0}".format(
