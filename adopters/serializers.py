@@ -14,6 +14,7 @@ class AdopterBaseSerializer(serializers.HyperlinkedModelSerializer):
     disambiguatedName = serializers.CharField(source="user_profile.disambiguated_name")
     
     status = serializers.IntegerField()
+    lastUploaded = serializers.DateTimeField(source="last_uploaded")
 
     class Meta:
         model = Adopter
@@ -28,6 +29,7 @@ class AdopterBaseSerializer(serializers.HyperlinkedModelSerializer):
             'disambiguatedName',
             
             'status',
+            'lastUploaded'
         ]
 
 
@@ -48,6 +50,7 @@ class AdopterSerializer(serializers.HyperlinkedModelSerializer):
     shelterluvAppID = serializers.CharField(source="shelterluv_app_id")
     shelterluvID = serializers.CharField(source="shelterluv_id")
     approvedUntil = serializers.DateField(source="approved_until")
+    lastUploaded = serializers.DateField(source="last_uploaded")
     
     applicationComments = serializers.CharField(source="application_comments")
     internalNotes = serializers.CharField(source="internal_notes")
@@ -92,6 +95,7 @@ class AdopterSerializer(serializers.HyperlinkedModelSerializer):
             'shelterluvAppID',   
             'shelterluvID',   
             'approvedUntil', 
+            'lastUploaded',
 
             'applicationComments',
             'internalNotes',

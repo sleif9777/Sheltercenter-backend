@@ -1,3 +1,4 @@
+import datetime
 import traceback
 from django.http import HttpRequest, JsonResponse
 from rest_framework import status, viewsets
@@ -69,7 +70,26 @@ class AdopterViewSet(viewsets.ModelViewSet):
                 "currentAppointment": AppointmentSerializer(appointment).data if appointment else None,
                 "bookingHistory": adopter.booking_history
             }
-        )  
+        ) 
+
+    
+    @action(detail=False, methods=["GET"], url_path="GetRecentlyUploadedAdopters")
+    def GetRecentlyUploadedAdopters(self, request: HttpRequest):
+        lookback_days = int(request.query_params["lookbackDays"])
+        lookback_cutoff = DateTimeUtils.GetToday() - datetime.timedelta(days=lookback_days)
+        print(lookback_cutoff)
+
+        adopters = Adopter.objects.filter(
+            last_uploaded__gte=lookback_cutoff,
+            user_profile__archived=False
+        )
+
+        serialized = [AdopterBaseSerializer(adopter).data for adopter in adopters if not adopter.has_current_booking]
+        print(serialized)
+        
+        return JsonResponse(
+            {"adopters": serialized}
+        )
 
     @action(detail=False, methods=["POST"], url_path="MessageAdopter")
     def MessageAdopter(self, request):
