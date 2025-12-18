@@ -1,0 +1,45 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    Hope to see you again soon!
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{appointment.get_current_booking.adopter.user_profile.first_name}},
+        </p>
+    </div>
+    <div>
+        <p>
+            We're sorry we couldn't find the perfect match for you today. However, we're always welcoming new dogs into our program, and your new best friend might be here soon! If you would like to schedule another appointment, you are welcome to do so using our scheduling portal (<a href="https://savinggracencscheduler.com/" target="_blank">www.savinggracencscheduler.com</a>).
+        </p>
+        <p>
+            If clicking on this link doesn't work, try typing this website into the browser searchbar. When logging into our portal, keep your email open! You'll need to check it again for a one-time passcode. If you don't see it come within 2 minutes, check your junk and spam folders and see if your passcode was sent there.
+        </p>
+        {% if host_weekend %}
+            <p>
+                We also talked about the possibility of participating in our Host Weekend Sleepover program. This program runs every weekend when we don’t have appointments, giving our long-time residents a much-needed break from the shelter. If you're interested, we’d ask for some basic information about your household (e.g., other pets, children, fenced yard, desired dog size), and we’ll match you with a dog who would be a great fit for your home. While you won’t be able to choose the specific dog yourself, you’d get first priority to adopt them if it’s a good match! Please note that participants must live within one hour of our Wake Forest location.
+            </p>
+            <p>
+                For more details about the Host Weekend program, visit our website at <a href="https://savinggracenc.org/host-a-dog/" target="_blank">https://savinggracenc.org/host-a-dog/</a>.
+            </p>
+        {% endif %}
+        <p>
+            If you would like to schedule a new appointment, please email us three times within our operating hours:
+        </p>
+        <p>
+            Mondays, Tuesdays, Wednesdays, Fridays - noon to 6pm<br />
+            Thursdays - 1pm to 6pm<br />
+            Saturdays - 12 to 3pm
+        </p>
+        <p>
+            We hope to see you back soon!
+        </p>
+    </div>
+    <div>
+        <p>Thank you,</p>
+        <p class="pink signature">The Adoptions Team</p>
+        <p>Saving Grace Animals for Adoption</p>
+    </div>
+{% endblock %}

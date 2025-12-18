@@ -1,0 +1,44 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    Congratulations on choosing {{adoption.dog}}!
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{adoption.adopter.user_profile.first_name}},
+        </p>
+    </div>
+    <div>
+        <!-- HOST WEEKEND CONTENT -->
+        {% if host_weekend %}
+            <p>
+                Congratulations! we are thrilled that {{adoption.dog}} is the one for you!
+            </p>
+            <p>
+                Thank you so much for hosting and for considering adoption. We're excited to hear that {{adoption.dog}} has made such a great impression. Our Adoptions team will be reaching out to you in the next few days to walk you through the next steps and share all the details about the adoption process. We can't wait to see you and your new furry friend officially start this next chapter together!
+            </p>
+        <!-- FOSTER CONTENT -->
+        {% elif foster %}
+            <p>
+                Congratulations! We're so excited to hear that you're planning to adopt your foster dog, {{adoption.dog}}! Thank you for giving {{adoption.dog}} a loving temporary home.
+            </p>
+            <p>
+                We've added you to the reservation list, and once all vetting is complete, we'll coordinate a time for you to come in and finalize the adoption paperwork. We're thrilled for you and {{adoption.dog}} as you get ready to start this amazing new chapter together!
+            </p>
+        <!-- FRIEND OF FOSTER/MOLLY/OTHER CONTENT -->
+        {% else %}
+            <p>
+                Great news! Your adoption request has been approved, and we're so excited that you've met {{adoption.dog}} and are ready to move forward with adopting this adorable pup!
+            </p>
+            <p>
+                Can you confirm that everything is good to go on your end? Once we have that confirmation, we'll add you to the reservation list and get the paperwork all set once {{adoption.dog}}'s vetting is complete.
+            </p>
+            <p>
+                We can’t wait for you and {{adoption.dog}} to start your journey together!
+            </p>
+        {% endif %}
+    </div>
+    {% include 'email_templates/signature.html' %}
+{% endblock %}

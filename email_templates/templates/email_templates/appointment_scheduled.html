@@ -1,0 +1,27 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    Your appointment is confirmed!
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{appointment.get_current_booking.adopter.user_profile.first_name}},
+        </p>
+    </div>
+    <div>
+        <p>
+            You have been added to our schedule for {{appointment.get_time_string}}.
+        </p>
+        <p>
+            We look forward to helping you find your next pet and are grateful that you have chosen Saving Grace and are opening your home to a dog in need. Please review the Visiting Instructions below before you arrive for your appointment, as they will help you make the most of your visit and allow us to assist you in the best way possible. We look forward to seeing you soon!
+        </p>
+        <p>
+            Our counselors are excited to meet you and have set aside time to be on-site volunteering. If you can no longer make your scheduled appointment, we kindly request that you cancel your appointment in our scheduling portal (<a href="www.savinggracencscheduler.com" target="_blank">www.savinggracencscheduler.com</a>). If clicking on this link doesn't work, try typing this website into the browser searchbar. Keep your email open! You'll need to check it again for a one-time passcode. If you don't see it come within 2 minutes, check your junk and spam folders and see if your passcode was sent there.
+        </p>
+    </div>
+    {% include 'email_templates/signature.html' %}
+    <hr />
+    {% include 'email_templates/visitor_instructions.html' %}
+{% endblock %}

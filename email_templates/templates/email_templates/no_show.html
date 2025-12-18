@@ -1,0 +1,22 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    We missed you!
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{appointment.get_current_booking.adopter.user_profile.first_name}},
+        </p>
+    </div>
+    <div>
+        <p>
+            We missed you at Saving Grace today. We would love to have you onsite to meet with our dogs soon and can make another appointment at <a href="www.savinggracencscheduler.com/" target="_blank">www.savinggracencscheduler.com</a> at your leisure. If you are unable to make your appointment, please kindly cancel so we can make your spot available for other adopters. We hope to see you soon.
+        </p>
+        <p>
+            When logging into the scheduling portal, keep your email open! You'll need to check it again for a one-time passcode. If you don't see it come within 2 minutes, check your junk and spam folders and see if your passcode was sent there.
+        </p>
+    </div>
+    {% include 'email_templates/signature.html' %}
+{% endblock %}

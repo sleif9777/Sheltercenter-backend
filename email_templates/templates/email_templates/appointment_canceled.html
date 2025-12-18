@@ -1,0 +1,29 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    Your appointment is canceled.
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{appointment.get_current_booking.adopter.user_profile.first_name}},
+        </p>
+    </div>
+    <div>
+        <p>
+            Your appointment for {{appointment.get_time_string}} has been cancelled. Your adoption request is valid for one year from its original approval.
+        </p>
+        <p>
+            If you would like to schedule a new appointment, visit our volunteer-managed scheduling portal at <a href="www.savinggracencscheduler.com" target="_blank">www.savinggracencscheduler.com</a>. If clicking on this link doesn't work, try typing this website into the browser searchbar. Keep your email open! You'll need to check it again for a one-time passcode. If you don't see it come within 2 minutes, check your junk and spam folders and see if your passcode was sent there.
+        </p>
+        <p>
+            If you need any further assistance, please feel free to email us directly at adoptions@savinggracenc.org. We hope to see you on the farm soon!
+        </p>
+    </div>
+    <div>
+        <p>Thank you,</p>
+        <p class="pink signature">The Adoptions Team</p>
+        <p>Saving Grace Animals for Adoption</p>
+    </div>
+{% endblock %}

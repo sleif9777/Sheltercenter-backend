@@ -1,0 +1,19 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    Here's your passcode!
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{user.first_name}},
+        </p>
+    </div>
+    <div>
+        <p>
+            Your one-time passcode for <a href="www.savinggracencscheduler.com" target="_blank">www.savinggracencscheduler.com</a> is <span class="otp">{{user.otp}}</span>.
+        </p>
+    </div>
+    {% include 'email_templates/signature.html' %}
+{% endblock %}

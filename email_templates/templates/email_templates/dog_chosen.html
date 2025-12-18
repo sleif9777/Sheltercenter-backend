@@ -1,0 +1,39 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    Congratulations on choosing {{appointment.source_adoption.dog}}!
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{appointment.get_current_booking.adopter.user_profile.first_name}},
+        </p>
+    </div>
+    <div>
+        <p>
+            We're so excited to hear that you've chosen to adopt {{appointment.source_adoption.dog}}! While they aren't quite ready to go home just yet, we've marked {{appointment.source_adoption.dog}} as “chosen” so they won't be available to other adopters. Rest assured, we're taking good care of them until they can join you!
+        </p>
+        <p>
+            {{appointment.source_adoption.dog}} will be spayed or neutered, up to date on vaccinations, microchipped, and will have received a heartworm test before adoption. We'll share the results of the heartworm test and any other medical details when you come on-site for adoption. We do recommend scheduling an appointment with your own vet within the first 72 hours to ensure they get the best start in their new home.
+        </p>
+        <p>
+            As much as we wish we could give you an exact timeline, <strong>we're unable to say exactly when {{appointment.source_adoption.dog}} will be ready to go home</strong>. Every dog goes through a 10-day healthy observation period, followed by a final vet check. Since our amazing vet works with us on a volunteer basis, the timeline can vary depending on the dog's recovery, and each dog takes a different amount of time to heal and get cleared.
+        </p>
+        <p>
+            If your dog is recovering from an Upper Respiratory Infection (which is pretty common in shelter environments), please know they may need a bit more time to recover—just like humans! While we welcome any suggestions for early release or private care, our policy is to ensure all dogs are fully cleared by our partner vets before they go home, so that you won't have to deal with any unnecessary costs right when you bring your new best friend home.
+        </p>
+        <p>
+            Your dog's health is our top priority, and we'll send you an update once they've been seen by the vet. <b>Since we're almost entirely volunteer-run, we ask for your patience and kindly request that you refrain from emailing for updates until at least one week has passed.</b> Our small team focuses on onsite care to keep everything running smoothly.
+        </p>
+        <p>
+            We're working hard to get your new dog home to you as quickly as possible, and we'll be in touch with updates as soon as we have them.
+        </p>
+    </div>
+    <div>
+        <p>Thank you,</p>
+        <p class="pink signature">The Adoptions Team</p>
+        <p>Saving Grace Animals for Adoption</p>
+    </div>
+    <hr />
+{% endblock %}

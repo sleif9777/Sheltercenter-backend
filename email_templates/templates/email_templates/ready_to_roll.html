@@ -1,0 +1,48 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    {{adoption.dog}} is ready to go home!
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{adoption.adopter.user_profile.first_name}},
+        </p>
+    </div>
+    <div>
+        <p>
+            Great news! {{adoption.dog}} has completed vetting and is ready to head home with you!
+        </p>
+        <!-- HW+ CONTENT -->
+        {% if adoption.heartworm_positive %}
+            <p>
+                We do want to let you know that {{adoption.dog}} has tested positive for heartworms. This is fairly common in the Carolinas and simply means that they were bitten by an infected mosquito. Don't worry—heartworms are not contagious to other pets or humans, and the good news is they're treatable!
+            </p>
+            <p>
+                We've attached two documents with details about our heartworm treatment program and your options. You can either work directly with your vet to provide the treatment, or we can take care of it through our foster-to-adopt (FTA) program. If you choose the FTA option, {{adoption.dog}} will come back to us for a series of two treatments, and will remain legally owned by us throughout the duration of the treatment period. However, they will go home with you as a foster for the time being and can start becoming acclimated to your home and routine.
+            </p>
+            <p>
+                Once you're ready to move forward, <b>we can schedule an appointment to complete the FTA agreement</b>, get you all the materials you'll need, and hand over your new best friend!
+            </p>
+        {% endif %}
+        <!-- SHARED -->
+        <p>
+            We're ready to complete the pickup anytime today up until {{today_close}}. We'll also be open {{next_bus_day}} from {{open_hour}} to {{close_hour}}. The earlier you can come, the better, as we have lots of adopters coming through. We want to make your adoption process as smooth and quick as possible, so </b>let us know what time works best for you!</b> Just a heads-up: please bring a collar and leash so you can take your new pet home right away!
+        </p>
+        <!-- END SHARED -->
+        <!-- HW- CONTENT -->
+        {% if not adoption.heartworm_positive %}
+            <p>
+                It's in {{adoption.dog}}'s best interest to go home as soon as possible, so please try to schedule your pickup within the next 48 hours. If we don't hear from you by then, we'll need to make {{adoption.dog}} available to other potential forever families.
+            </p>
+            <p>
+                When you come, please bring your driver's license (so we can make a copy) and a method of payment for the adoption fee of $395. You can pay by cash or credit/debit card, but we can't accept checks or split payments. If you're paying by card, you'll also need your cell phone.
+            </p>
+        {% endif %}
+        <p>
+            We can't wait to get {{adoption.dog}} settled into their new home with you. Thanks so much for your patience—it's totally worth the wait!
+        </p>
+    </div>
+    {% include 'email_templates/signature.html' %}
+{% endblock %}

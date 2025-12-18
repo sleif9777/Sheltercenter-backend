@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&display=swap" rel="stylesheet">
+        <style>
+            * {
+                font-family: 'Trebuchet MS', 'Geneva', sans-serif;
+            }
+
+            h2 {
+                color: #1e6c80;
+                font-size: 18pt;
+            }
+        
+            p {
+                font-size: 14pt;
+            }
+
+            .bold {
+                font-weight: 700;
+            }
+        
+            .center {
+                text-align: center;
+            }
+
+            .otp {
+                font-family: "Consolas", monospace;
+            }
+        
+            a, .pink {
+                color: #a7396e;
+            }
+        
+            .signature {
+                font-size: 16pt;
+            }
+
+            .subsection, .subsection p {
+                margin-bottom: 15px;
+            }
+        
+            .underline {
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    
+    <body>
+        <!-- IMAGE HEADER -->
+        <p class="center">
+            <img style="display: block; margin-left: auto; margin-right: auto;" src="https://savinggracenc.org/wp-content/uploads/2017/09/saving-grace-transparentlogo.png" alt="Saving Grace logo" width="213" height="192" />
+        </p>
+        <!-- TEXT HEADER -->
+        <h1 class="center pink">
+            {% block text_header %}
+            {% endblock %}
+        </h1>
+        {% block content %}
+        {% endblock %}
+        <footer>
+            <div class="center">
+                <img src="https://savinggracenc.org/wp-content/uploads/volunteer-6.jpg" alt="" width="300" height="200" />
+                <img src="https://savinggracenc.org/wp-content/uploads/puppies-1.jpg" alt="" width="324" height="200" />
+            </div>
+        </footer>
+    </body>
+</html>
