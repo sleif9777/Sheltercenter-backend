@@ -50,7 +50,7 @@ class AdopterSerializer(serializers.HyperlinkedModelSerializer):
     shelterluvAppID = serializers.CharField(source="shelterluv_app_id")
     shelterluvID = serializers.CharField(source="shelterluv_id")
     approvedUntil = serializers.DateField(source="approved_until")
-    lastUploaded = serializers.DateField(source="last_uploaded")
+    lastUploaded = serializers.DateTimeField(source="last_uploaded")
     
     applicationComments = serializers.CharField(source="application_comments")
     internalNotes = serializers.CharField(source="internal_notes")
