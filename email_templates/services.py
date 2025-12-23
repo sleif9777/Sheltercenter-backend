@@ -37,9 +37,9 @@ class EmailService:
     # TODO: deprecate always_send
     def send(self, always_send=False, cc_adoptions=True):
         environment = EnvironmentSettings.objects.get(pk=1)
-        sender = (os.environ.get("MAILGUN_PRD_SENDER")
+        sender = (os.environ.get("MAILGUN_SENDER")
                   if environment.use_production_email
-                  else os.environ.get("MAILGUN_TST_SENDER"))
+                  else os.environ.get("MAILGUN_SENDER"))
         
         msg = EmailMultiAlternatives(
             subject=self.subject,
