@@ -24,27 +24,23 @@ class EmailService:
         self.content_plain = strip_tags(self.content_html)
 
         environment = EnvironmentSettings.objects.get(pk=1)
+        
+        if isinstance(recipients, str):
+            recipients = [recipients]
 
-        if environment.environment_type not in (
-            EnvironmentType.PRODUCTION,
-            EnvironmentType.STAGING,
-        ):
-            self.recipients = [environment.test_recipient_email]
-        else:
+        if environment.use_production_email:
             self.recipients = recipients
-
-        if environment.environment_type != EnvironmentType.PRODUCTION:
+        else:
+            self.recipients = [environment.test_recipient_email]
             self.subject = f"[TEST EMAIL] {self.subject}"
 
+    # TODO: deprecate always_send
     def send(self, always_send=False, cc_adoptions=True):
         environment = EnvironmentSettings.objects.get(pk=1)
         sender = (os.environ.get("MAILGUN_PRD_SENDER")
-                  if environment.environment_type == EnvironmentType.PRODUCTION
+                  if environment.use_production_email
                   else os.environ.get("MAILGUN_TST_SENDER"))
-
-        if environment.environment_type == EnvironmentType.STAGING and not always_send:
-            return
-
+        
         msg = EmailMultiAlternatives(
             subject=self.subject,
             body=self.content_plain,

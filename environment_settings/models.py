@@ -14,3 +14,7 @@ class EnvironmentSettings(models.Model):
     # FOSTER-TO-ADOPT FILES
     fta_doc_1_path = models.CharField(max_length=1000, null=True, blank=True)
     fta_doc_2_path = models.CharField(max_length=1000, null=True, blank=True)
+    
+    @property
+    def use_production_email(self):
+        return self.environment_type in [EnvironmentType.STAGING, EnvironmentType.PRODUCTION]
