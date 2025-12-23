@@ -1,6 +1,7 @@
 asgiref==3.8.1
 dj-database-url==2.3.0
 Django==5.1.4
+django-anymail[mailgun]>=10.0,<11.0
 django-cors-headers==4.6.0
 django-on-heroku==1.1.2
 django-rest-framework==0.1.0
