@@ -1,13 +1,14 @@
 from django.utils import timezone
 from rest_framework import viewsets
 
+from adopters.models import Adopter
 from environment_settings.models import EnvironmentSettings
 from pending_adoptions.enums import CircumstanceOptions
 
 from.services import EmailService
 
 class EmailViewSet(viewsets.ViewSet):
-    def ApplicationApproved(self, adopter, batch=False):
+    def ApplicationApproved(self, adopter: Adopter, batch=False):
         subject = "Your application has been reviewed: {0}".format(
             adopter.user_profile.full_name.upper()
         )
@@ -20,6 +21,7 @@ class EmailViewSet(viewsets.ViewSet):
             "application_approved", 
             { 
                 "adopter": adopter,
+                "approved_until_display": adopter.approved_until.strftime("%b %d, %Y")
             }, 
             adopter.user_profile.primary_email
         )
