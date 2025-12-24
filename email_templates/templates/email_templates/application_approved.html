@@ -7,149 +7,163 @@
 {% block content %}
     <div>
         <p>
-            Hi {{adopter.user_profile.first_name}},
+            Hi {{ adopter.user_profile.first_name }},
         </p>
-    </div>
-    <div>
+
         <p>
-            We're excited to let you know that your Saving Grace adoption request has been reviewed and approved! Now it's time to book your appointment. Please take a moment to read through the following information to ensure a smooth and positive experience for both you and the dog.
+            Great news! Your Saving Grace adoption request has been reviewed and approved.
+            Please read the information below carefully before scheduling your appointment.
         </p>
+
         <!-- LIVES WITH PARENTS BLOCK -->
         {% if adopter.lives_with_parents %}
             <p>
-                You mentioned in your application that you live with your parents or guardians. As part of our policy, at least one parent must attend the appointment with you. While you have the final say in choosing the dog, we want to ensure that the homeowner is on board with the decision. This requirement does not apply if you own your home. We also recommend, though it's not mandatory, that you bring all household members to the appointment. Since the dog will be living with them, it's important they feel comfortable with the choice.
+                Because you indicated that you live with your parents or guardians:
             </p>
+            <ul>
+                <li>At least one parent or guardian must attend your appointment.</li>
+                <li>This requirement does not apply if you own your home.</li>
+            </ul>
         {% endif %}
+
         <!-- OUT OF STATE BLOCK -->
         {% if adopter.user_profile.out_of_state %}
             <p>
-                You've indicated that you're located outside of North Carolina, South Carolina, or Virginia. We are happy to assist out-of-state adopters, and we'd like to clarify the process for long-distance adoptions.
+                We welcome out-of-state adopters. Please note:
             </p>
-            <p>
-                We do not offer shipping or transport for adopted dogs. Each adopter <strong>must</strong> meet the dog in person before finalizing the adoption. To ensure that as many dogs as possible find their forever homes, <strong>we do not place dogs on hold.</strong> This means that a dog you're interested in may be adopted by someone else before your visit. It's best to come with an open mind and choose a dog in person that feels like the right match for you.
-            </p>
-            <p>
-                If a dog has not yet completed their veterinary care, you may need to return for a second visit to finalize the adoption. We suggest you check with a local veterinarian in your state about the health certificate or licensing requirements for bringing a new dog into your area. It's your responsibility to obtain the health certificate from a North Carolina veterinarian, though we are happy to recommend veterinarians if needed.
-            </p>
-        <!-- FOSTER/HOST BLOCK: All adopters would be within 1 hr of Wake Forest, hence within NC -->
+            <ul>
+                <li>All adopters must meet dogs in person.</li>
+                <li>We do not offer transport or shipping.</li>
+                <li>We do not place dogs on hold.</li>
+                <li>Heartworm-positive dogs cannot be adopted out of state.</li>
+                <li>You are responsible for researching your state or county's licensing and health certification requirements for new dogs.</li>
+            </ul>
         {% else %}
-            <p class="underline">
-                If you are applying to adopt a Host Weekend or foster dog currently in your care, please let us know so we can guide you with more specific steps.
+            <p>
+                If you are applying to adopt a Host Weekend or foster dog currently in your care,
+                please let us know so we can provide next steps.
             </p>
         {% endif %}
     </div>
+
     {% include 'email_templates/signature.html' %}
     <hr />
-    <!-- MAKING AN APPOINTMENT -->
+
+    <!-- SCHEDULING -->
     <div class="subsection">
-        <h2>Making an Appointment</h2>
+        <h2>Scheduling Your Appointment</h2>
+    
+        <ul>
+            <li>
+                Appointments may be scheduled <strong>up to two weeks in advance</strong>.
+            </li>
+            <li>
+                Approved applications remain on file for one year
+                <strong>(your application will expire on {{ approved_until_display }})</strong>.
+            </li>
+            <li>
+                Schedule online at
+                <a href="https://www.savinggracencscheduler.com" target="_blank"><strong>www.savinggracencscheduler.com</strong></a>.
+            </li>
+            <li>
+                You will receive a <strong>one-time passcode by email</strong> (check Spam/Junk if it does not arrive within two minutes).
+            </li>
+            <li>
+                <strong>Email is our primary method of communication</strong>; phone support is not available.
+            </li>
+        </ul>
+    
         <p>
-            Appointments can be scheduled up to two weeks in advance. We ask that all adopters be fully prepared to take a dog home immediately after the appointment. Please note that <strong>we do not hold dogs</strong> unless they require further veterinary care.
-        </p>
-        <p class="bold">
-            <strong>If you have upcoming travel and are concerned about disrupting your new pet's adjustment period, please schedule your appointment for after your return.</strong>
-        </p>
-        <p>
-            If you don't find a match on your first visit, you are welcome to schedule follow-up appointments until you do.
-        </p>
-        <p>
-            Adopting a dog is a significant decision. To ensure the best possible outcome for both you and the dog, we require that adopters personally attend the appointment and make the selection themselves, rather than allowing friends or neighbors to make such a decision. <b>We also do not allow pre-paying for a dog you have not yet met in-person.</b>
-        </p>
-        <p>
-            <strong>To make your appointment, visit our volunteer-managed scheduling portal at <a href="www.savinggracencscheduler.com" target="_blank">www.savinggracencscheduler.com</a>. If clicking on this link doesn't work, try typing this website into the browser searchbar. Keep your email open! You'll need to check it again for a one-time passcode. If you don't see it come within 2 minutes, check your junk and spam folders and see if your passcode was sent there.</strong>
-        </p>
-        <p>
-            If you experience any issues with the scheduling portal, please don't hesitate to reach out to us at adoptions@savinggracenc.org, but please provide specific details about what went wrong. Simply saying "it's not working" really doesn't give us enough information to start looking into what might be going wrong. (If possible, including a screenshot would be especially helpful!)
-        </p>
-        <p>
-            We schedule appointments up to two weeks in advance. If you're planning ahead, your application will remain on file for up to one year after approval. The only follow-up action required is to schedule your appointment through our portal as instructed above.
+            If you experience technical issues, email
+            <a href="mailto:adoptions@savinggracenc.org"><strong>adoptions@savinggracenc.org</strong></a> with specific details. Screenshots are especially helpful.
         </p>
     </div>
-    <!-- AVAILABILITY OF DOGS -->
+    
+    <!-- AVAILABILITY -->
     <div class="subsection">
-        <h2>Availability of Dogs</h2>
+        <h2>Dog Availability & Selection</h2>
+    
+        <ul>
+            <li>Applications are <strong>general interest</strong>, not for a specific dog.</li>
+            <li>Dogs are adopted on a <strong>first-come, first-served basis</strong>.</li>
+            <li>We <strong>do not hold dogs</strong> for appointments or future dates.</li>
+            <li>We do not recommend <strong>getting attached to a specific dog ahead of your appointment</strong>.</li>
+            <li>Appointments last about one hour and include <strong>meeting multiple dogs</strong>.</li>
+            <li>Any dog listed on our website is <strong>currently available</strong>.</li>
+            <li>Dogs removed from the website are <strong>no longer available</strong>.</li>
+        </ul>
+    
         <p>
-            Appointments typically last about an hour, during which you will meet several dogs available at that time. Any dog listed on our website is currently available, and if a dog is no longer listed, they have already found their new home.
-        </p>
-        <p>
-            <strong>Our dogs are available on a first-come, first-served basis. We do not hold dogs for specific appointments. Having an appointment does not guarantee that any specific dog will be available for you to meet.</strong> Unfortunately, due to volunteer capacity, we are unable to track requests or wishlists by email.
-        </p>
-        <p>
-            The more flexible you are during your visit, the more opportunities you'll have to find the right match. You're welcome to monitor our website before your visit, as we try to update it daily. Keep in mind that we often have more dogs available than are listed online, so a visit is always a good idea.
-        </p>
-        <p>
-            While email is our preferred method for communicating policies, the best way to inquire about specific dogs is to speak directly with the counselor you meet during your appointment. We generally do not recommend dogs ahead of your visit.
-        </p>
-        <p>
-            If you're interested in PUPPIES (up to around 5 months old), they typically arrive on Wednesdays. If a puppy's bio lists a specific date, that's the day they become available. They must be adopted the same day they are made available and cannot be picked up at a later date. Please note, we cannot guarantee the size of puppies as we do not know their father's identity.
-        </p>
-        <p>
-            If you're looking for SMALL ADULTS (under 20 lbs), please plan to schedule your visit on a Friday or Saturday, as these dogs are cared for in foster homes and only available for appointments on these days.
-        </p>
-        <p>
-            We do not offer trial adoptions. You may have heard of our Host Weekend program, which allows some of our long-term residents to enjoy a break from the shelter. While it's not a trial adoption, Host Weekend is a great way to see if dog ownership is the right fit for you. Please note, requests for specific dogs cannot be honored for Host Weekend.
+            We are unable to track wishlists or confirm future availability by email. <strong>Flexibility is encouraged</strong>, as we often have more dogs available than are listed online.
         </p>
     </div>
-    <!-- OUR LOCATION -->
+    
+    <!-- PUPPIES & FUN SIZE -->
     <div class="subsection">
-        <h2>Our Location</h2>
-        <p>
-            Saving Grace is located at 13400 Old Creedmoor Rd, Wake Forest, NC. All adoption appointments are held at this location. Please note that we **do not** offer transportation or shipping of dogs.
-        </p>
-        <p>
-            We are happy to accommodate guests with accessibility needs. Please inform us of any special requirements when scheduling your appointment, so we can ensure the best experience for you and your future pet.
-        </p>
+        <h2>Puppies & “Fun Size” Dogs</h2>
+    
+        <p><strong>Puppies</strong></p>
+        <ul>
+            <li>Puppies typically <strong>arrive on Wednesdays</strong>.</li>
+            <li>Once they arrive, they are <strong>available every day until adopted</strong>.</li>
+            <li>We <strong>do not hold puppies</strong> for future appointments.</li>
+            <li>For the best chance of meeting a specific puppy, <strong>schedule the earliest available appointment</strong> on their arrival date.</li>
+            <li>Any <strong>exceptions</strong> will be clearly noted in the puppy’s bio.</li>
+            <li><strong>Adult size cannot be guaranteed</strong>.</li>
+        </ul>
+    
+        <p><strong>Fun Size Dogs</strong></p>
+        <ul>
+            <li>Dogs labeled <strong>“Fun Size”</strong> (most, but not all under 20 lbs, as noted in the bio) are housed in <strong>off-site foster care</strong>.</li>
+            <li>Fun Size dogs are available for adoption appointments <strong>Fridays and Saturdays only</strong>.</li>
+        </ul>
     </div>
-    <!-- CONTACTING US -->
+    
+    <!-- IMPORTANT POLICIES -->
     <div class="subsection">
-        <h2>Contacting Us</h2>
-        <p>
-            Our Adoptions Team is busy interacting with dogs and adopters during operating hours. Email is the best way to stay in touch with us, as our phone line is not actively monitored. Several volunteers assist in managing email communication, which helps ensure that we are all on the same page and can provide timely responses.
-        </p>
+        <h2>Important Policies</h2>
+    
+        <ul>
+            <li><strong>Additional donations</strong> listed in a dog's bio are mandatory.</li>
+            <li><strong>We don't offer trial adoptions</strong>. <a href="https://savinggracenc.org/sleepover/" target="_blank">Our Sleepover program</a> is not designed or intended for this.</li>
+            <li><strong>We do not transport or ship dogs.</strong></li>
+            <li>Adoptions must be completed <strong>in person by the approved applicant</strong>.</li>
+            <li>Friends or family members <strong>should not adopt on someone else's behalf</strong>.</li>
+            <li>We strongly encourage <strong>young children to attend appointments</strong> to ensure a kid-friendly fit.</li>
+            <li>Please let us know <strong>in advance if you need mobility or accessibility accommodations</strong>.</li>
+        </ul>
     </div>
-    <!-- OPERATING HOURS -->
+    
+    <!-- LOCATION & HOURS -->
     <div class="subsection">
-        <h2>Operating Hours</h2>
-        <p>
-            Saving Grace is located on a private property. Adoption appointments are only available during our operating hours:
-        </p>
-        <p>
-            Mondays, Tuesdays, Wednesdays, Fridays - noon to 6pm<br />
-            Thursdays - 1pm to 6pm<br />
-            Saturdays - 12 to 3pm
-        </p>
+        <h2>Location & Hours</h2>
+    
+        <ul>
+            <li>All adoption appointments are held on-site at <strong>13400 Old Creedmoor Rd, Wake Forest, NC</strong>.</li>
+            <li><strong>Hours:</strong>
+                <ul>
+                    <li>Mon, Tue, Wed, Fri: <strong>12-6pm</strong></li>
+                    <li>Thu: <strong>1-6pm</strong></li>
+                    <li>Sat: <strong>12-3pm</strong></li>
+                </ul>
+            </li>
+        </ul>
     </div>
-    <!-- GETTING READY FOR YOUR APPOINTMENT -->
+    
+    <!-- FEES & OUTCOMES -->
     <div class="subsection">
-        <h2>Getting Ready for Your Appointment</h2>
-        <p>
-            We encourage you to bring all members of your household who will be involved in the dog's care, including children, roommates, or spouses. It's particularly important that children attend, as they can be unpredictable, and the dog should feel comfortable with everyone in the household. Some dogs may not be compatible with young children, so it's best to make this a family decision.
-        </p>
-        <p>
-            You're welcome to bring your current dog, but please note that we do not have off-leash areas for meet-and-greets. All introductions will take place on leash in the parking lot. During warmer weather, your dog will need to wait in the parking lot with a family member. If it's cool enough, your dog may wait in your car while you meet potential new pets. Please let us know in advance if you plan to bring your dog so we can make preparations.
-        </p>
-    </div>
-    <!-- OUTCOMES AND FEES -->
-    <div class="subsection">
-        <h2>Adoption Outcomes and Fees</h2>
-        <p>
-            The adoption fee is $395, and we accept cash or credit/debit cards (we do not accept checks or split payments). Please bring a valid ID. We recommend bringing exact cash unless you wish to make a donation, as we do not keep change on-site.
-        </p>
-        <p>
-            You are under no obligation to adopt during your visit, but if you decide to proceed, here are the three possible outcomes:
-            <ol>
-                <li>
-                    <strong>ADOPTABLE: </strong>If the dog is ready for adoption, you may take them home the same day.
-                </li>
-                <li>
-                    <strong>FOSTER TO ADOPT (FTA Program): </strong>If the dog is heartworm-positive, they will go home with you as a foster until treatment is completed. Final adoption will take place after the third treatment, usually within 8-10 weeks.
-                </li>
-                <li>
-                    <strong>RESERVED/CHOSEN: </strong>Some dogs may require additional veterinary care before they are ready for adoption. These dogs are "chosen" and will not be available for other adopters until they are cleared.
-                </li>
-            </ol>
-        </p>
-    </div>
+        <h2>Adoption Fees & Outcomes</h2>
+    
+        <ul>
+            <li>Adoption fee: <strong>$395</strong>, plus any additional donation listed on bio</li>
+            <li>Payment accepted: <strong>cash or credit/debit only</strong></li>
+            <li><strong>Valid ID required</strong></li>
+            <li><strong>Adoptable:</strong> Dog goes home the same day</li>
+            <li><strong>Foster-to-Adopt:</strong> Heartworm-positive dogs, you foster until treatment is complete</li>
+            <li><strong>Chosen/Reserved:</strong> Dog requires additional veterinary care before adoption or foster-to-adopt</li>
+        </ul>
+    </div>    
+
     <!-- PARTNERSHIPS -->
     <div class="subsection">
         <h2>Partnerships</h2>
