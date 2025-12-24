@@ -1,90 +1,75 @@
-{% extends 'email_templates/base.html' %}
-
-{% block text_header %}
+<h1 class="center pink">
     Visit Instructions
-{% endblock %}
+</h1>
 
 {% block content %}
-    <!-- AVAILABILITY OF DOGS -->
     <div class="subsection">
-        <h2>Availability of Dogs</h2>
-        <p>
-            Dogs are available on a first-come, first-served basis. Appointments are not dog-specific, and having an appointment does not guarantee you the opportunity to meet any specific dog.
-        </p>
-        <p>
-            The more flexible you are, the more potential matches you'll have for a successful adoption. If you see a dog of interest removed from our website, it likely means they have been adopted. All dogs listed online remain available until they are marked as adopted. You may keep an eye on our website prior to your visit, as it is automatically updated, but please note that we always have more dogs available to meet in person than are posted online. Your perfect match might be in that group.
-        </p>
+        <h2>Dog Availability</h2>
+        <ul>
+            <li><strong>Dogs are first-come, first-served.</strong> Appointments are not dog-specific, and availability is never guaranteed.</li>
+            <li><strong>Our website updates automatically;</strong> dogs removed are likely adopted.</li>
+            <li><strong>More dogs are available in person than listed online.</strong> Flexibility increases your chance of a successful adoption.</li>
+        </ul>
     </div>
-    <!-- DIRECTIONS -->
+
     <div class="subsection">
         <h2>Directions</h2>
-        <p>
-            Our address is 13400 Old Creedmoor Rd, Wake Forest, NC, located behind Harris Teeter at the intersection of NC-98 and Old Creedmoor Rd. We are just under a mile west of the NC-98 and NC-50 intersection. Look for a teal shed with butterflies at the end of our driveway.
-        </p>
-        <p>
-            Once parked, please enter through the gate located at the far back left corner of the parking lot and check in with the greeter. Please do not pull into the driveway with the closed wooden gate, nor use the neighbor's driveway to turn around. We kindly ask that you make a U-turn at the next street. We appreciate your cooperation in respecting our neighbor's privacy and property.
-        </p>
+        <ul>
+            <li><strong>Address:</strong> 13400 Old Creedmoor Rd, Wake Forest, NC (behind Harris Teeter, NC-98 & Old Creedmoor).</li>
+            <li><strong>Entry:</strong> Enter through the far back left gate and check in with the greeter.</li>
+            <li><strong>Respect neighbors:</strong> Do <strong>not</strong> use the closed wooden gate or neighbors' driveways.</li>
+        </ul>
     </div>
-    <!-- DRESS FOR THE OCCASION -->
+
     <div class="subsection">
-        <h2>Dress for the Occasion</h2>
-        <p>
-            Be prepared to meet a friendly, furry welcoming committee! All of our dogs are well-behaved but tend to get very excited and may jump on you. All meeting areas are outdoors, so please dress for comfort according to the weather. We continue with appointments even if it is raining, so dress accordingly.
-        </p>
+        <h2>Dress & Comfort</h2>
+        <ul>
+            <li><strong>Dress for outdoor appointments</strong> according to the weather; dogs may jump in excitement.</li>
+            <li><strong>Bring water</strong> to stay hydrated, especially on hot days.</li>
+        </ul>
     </div>
-    <!-- HYDRATION -->
+
     <div class="subsection">
-        <h2>Hydration</h2>
-        <p>
-            It can get quite hot on the farm, so please be sure to bring water with you. Staying hydrated will help you enjoy your time while meeting dogs.
-        </p>
+        <h2>Restrooms & Supplies</h2>
+        <ul>
+            <li><strong>Restrooms:</strong> A port-a-potty is on-site, and public restrooms are available at Harris Teeter.</li>
+            <li><strong>Supplies:</strong> Bring a collar and leash.</li>
+            <li><strong>Kibble:</strong> Our dogs are fed from a variety of donated kibble. We recommend a protein-focused, grain-inclusive kibble at home.</li>
+            <li><strong>Saving Grace Supply Co.:</strong> Located at NC-98 & Six Forks Rd for essential items.</li>
+        </ul>
     </div>
-    <!-- RESTROOMS -->
-    <div class="subsection">
-        <h2>Restrooms</h2>
-        <p>
-            A port-a-potty is available for use at the farm, and there are also public restrooms at Harris Teeter.
-        </p>
-    </div>
-    <!-- SUPPLIES -->
-    <div class="subsection">
-        <h2>Supplies</h2>
-        <p>
-            Please bring a collar and leash to your appointment if you plan to take your new dog home immediately.
-        </p>
-        <p>
-            Many new owners find it helpful to take their new dog shopping to find the right-sized items. Our Saving Grace Supply Co. store, located at the intersection of NC-98 and Six Forks Rd (about two miles east of our farm), carries many essential supplies.
-        </p>
-        <p>
-            In terms of food, we are fortunate to be able to feed our dogs entirely through donations. Our dogs are accustomed to a varied diet and are not on a single specific kibble. We recommend starting with a protein-focused kibble of your choice from day one.
-        </p>
-    </div>
-    <!-- ADOPTION FEE -->
+
     <div class="subsection">
         <h2>Adoption Fee</h2>
-        <p>
-            We accept credit/debit cards or cash. We do not accept checks or split payments. Our adoption fee is $395. If paying by cash, please bring the exact amount as we do not keep change on-site. Any extra cash will be gratefully accepted as a donation. This fee covers medical costs and ensures that your dog comes to you altered, microchipped, up to date on all vaccinations, on preventatives for fleas, ticks, and heartworms, and has received a baseline wellness exam.
-        </p>
+        <ul>
+            <li><strong>Fee:</strong> $395 (cash or credit/debit), plus any additional donation listed on their bio. Exact cash preferred; extra donations are welcome.</li>
+            <li><strong>Includes:</strong> Spay/neuter, microchip, vaccinations, preventatives, and baseline wellness exam.</li>
+        </ul>
     </div>
-    <!-- TRAINING -->
+
     <div class="subsection">
-        <h2>Training</h2>
-        <p>
-            Many of our dogs have crate experience, but please have realistic expectations. We cannot guarantee that any dog will be fully housetrained. A transition period is expected as any new dog adjusts to your home. Keep in mind that your lifestyle and routine will be new to your dog, and it will be your responsibility to help them adjust.
-        </p>
+        <h2>Training & Adjustment</h2>
+        <ul>
+            <li><strong>Crate experience:</strong> Many dogs have crate training, but housetraining is not guaranteed.</li>
+            <li><strong>Transition period:</strong> Expect your dog to need time to adjust to your routine.</li>
+            <li><strong>Rule of 3s:</strong> Use the Rule of 3s for introducing a dog to your home and family. See our guide to the <a href="https://savinggracenc.org/wp-content/uploads/3-3-3-Rule8218-1.pdf" target="_blank">Rule of 3s</a> for more information.</li>
+        </ul>
     </div>
-    <!-- BRINGING YOUR DOG -->
+
     <div class="subsection">
         <h2>Bringing Your Dog</h2>
-        <p>
-            You are welcome to bring your dog, but please note that we do not have any off-leash meet-and-greet areas. All meetings take place on-leash in the parking lot. For health and safety reasons, your dog cannot enter the premises. In warmer weather, your dog will need to wait in the parking lot with a family member. If it is cool enough, they may wait in the car while you meet potential buddies. Please make sure to indicate when making your appointment if you will be bringing your dog.
-        </p>
+        <ul>
+            <li><strong>On-leash only:</strong> All introductions occur on-leash in the parking lot.</li>
+            <li><strong>Car or parking lot waiting:</strong> If bringing your dog, ensure the weather is cool (Nov-Mar) for car waiting; otherwise, dogs must wait in the parking lot with a family member.</li>
+            <li><strong>Notify us:</strong> Let us know in advance if you plan to bring a dog.</li>
+        </ul>
     </div>
-    <!-- A SPECIAL NOTE FOR RENTERS -->
+
     <div class="subsection">
-        <h2>A Special Note for Renters</h2>
-        <p>
-            Unless you provide a written statement from your landlord or property manager indicating otherwise, we assume you have standard breed restrictions (Pit Bulls, German Shepherds, Chows, Akitas, Staffies, Dobermans). As the adopter, it is your responsibility to verify with your landlord or property manager whether there are any restrictions regarding size, weight, age, breed, or the number of pets allowed before your visit.
-        </p>
+        <h2>Renters</h2>
+        <ul>
+            <li><strong>Breed restrictions:</strong> Standard breed restrictions apply unless your landlord provides a written exception.</li>
+            <li><strong>Responsibility:</strong> Verify any restrictions on size, weight, age, breed, or number of pets before your visit.</li>
+        </ul>
     </div>
 {% endblock %}
