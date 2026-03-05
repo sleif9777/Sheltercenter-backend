@@ -1,70 +1,120 @@
-
-import datetime
-from multiprocessing.managers import BaseManager
-from django.http import HttpRequest, JsonResponse
+from adopters.models import Adopter
+from appointments.enums import OutcomeTypes
+from django.http import JsonResponse
 from django.utils import timezone
+from adopters.views import AdopterViewSet
+from email_templates.views import EmailViewSet
+from pending_adoption_updates.models import PendingAdoptionUpdate
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 
-from appointments.enums import OutcomeTypes
-from adopters.models import Adopter
-from email_templates.views import EmailViewSet
-from pending_adoption_updates.models import PendingAdoptionUpdate
-
 from .enums import PendingAdoptionStatus
 from .models import PendingAdoption
-from .serializers import PendingAdoptionsSerializer
+from .serializers import (
+    AdoptionIDRequestSerializer,
+    ChangeDogRequestSerializer,
+    CreatePendingAdoptionRequestSerializer,
+    CreatePendingAdoptionUpdateRequestSerializer,
+    MarkStatusRequestSerializer,
+    PendingAdoptionValueLabelPairSerializer,
+    PendingAdoptionsSerializer,
+)
+
 
 # Create your views here.
 class PendingAdoptionViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows users to be viewed or edited.
     """
+
     queryset = PendingAdoption.objects.all()
     serializer_class = PendingAdoptionsSerializer
 
-    @action(detail=False, methods=["GET"], url_path="GetAllPendingAdoptions")
-    def GetAllPendingAdoptions(self, request: HttpRequest, *args, **kwargs):
+    # Static methods
+    @staticmethod
+    def UnpackAdopterFromAdopterIDRequest(request) -> Adopter:
+        query = AdoptionIDRequestSerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+
+        adoption_id: int = int(query.validated_data["adoptionID"])
+        adoption = Adopter.objects.get(pk=adoption_id)
+
+        return adoption
+
+    # GET commands
+    @action(detail=False, methods=["GET"], url_path="GetActivePendingAdoptions")
+    def GetActivePendingAdoptions(self, request):
         adoptions = PendingAdoption.objects.exclude(
-            status=PendingAdoptionStatus.COMPLETED
+            status=PendingAdoptionStatus.CANCELED,
         ).exclude(
-            status=PendingAdoptionStatus.CANCELED
+            status=PendingAdoptionStatus.COMPLETED,
         )
 
         serialized = [PendingAdoptionsSerializer(adoption).data for adoption in adoptions]
 
-        return JsonResponse({
-            "adoptions": serialized
-        })
-    
-    @action(detail=False, methods=["POST"], url_path="MarkStatus")
-    def MarkStatus(self, request: HttpRequest, *args, **kwargs):
-        id = request.data["id"]
-        status = request.data["status"]
-        heartworm = request.data["heartworm"]
-        message = request.data["message"]
-        pending_adoption = PendingAdoption.objects.get(pk=id)
-        pending_adoption.mark_status(status, heartworm)
+        return JsonResponse({"adoptions": serialized})
 
-        if status == PendingAdoptionStatus.READY_TO_ROLL:
-            EmailViewSet().ReadyToRoll(pending_adoption, message)
+    @action(detail=False, methods=["GET"], url_path="GetPendingAdoptionSelectFieldOptions")
+    def GetPendingAdoptionSelectFieldOptions(self, request):
+        adoptions = (
+            PendingAdoption.objects.filter(
+                paperwork_appointment=None,
+            )
+            .exclude(
+                status=PendingAdoptionStatus.CANCELED,
+            )
+            .exclude(
+                status=PendingAdoptionStatus.COMPLETED,
+            )
+        )
 
-        if status == PendingAdoptionStatus.CANCELED:
-            pending_adoption.source_appointment.outcome = OutcomeTypes.NO_DECISION
-            pending_adoption.source_appointment.chosen_dog = ""
-            pending_adoption.adopter.restrict_calendar(restrict=False)
-            pending_adoption.source_appointment.save()
+        options = [PendingAdoptionValueLabelPairSerializer(adoption).data for adoption in adoptions]
+
+        return JsonResponse({"adoptions": options}, status=status.HTTP_200_OK)
+
+    # POST commands
+    @action(detail=False, methods=["POST"], url_path="AddUpdate")
+    def AddUpdate(self, request):
+        query = CreatePendingAdoptionUpdateRequestSerializer(data=request.data)
+        query.is_valid(raise_exception=True)
+
+        subject = query.validated_data["subject"]
+        message = query.validated_data["message"]
+
+        adoption = query.get_adoption()
+        PendingAdoptionUpdate.objects.create(adoption=adoption)
+
+        EmailViewSet().GenericMessage(adoption.adopter.user_profile, subject, message)
+
+        return JsonResponse(status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["POST"], url_path="ChangeDog")
+    def ChangeDog(self, request):
+        query = ChangeDogRequestSerializer(data=request.data)
+        query.is_valid(raise_exception=True)
+        adoption = query.get_adoption()
+
+        adoption.dog = query.validated_data["newDog"]
+        adoption.save()
+
+        adoption.source_appointment.chosen_dog = adoption.dog
+        adoption.source_appointment.save()
 
         return JsonResponse(
-            PendingAdoptionsSerializer(pending_adoption).data,
+            PendingAdoptionsSerializer(adoption).data,
         )
-    
+
     @action(detail=False, methods=["POST"], url_path="CreatePendingAdoption")
-    def CreatePendingAdoption(self, request: HttpRequest, *args, **kwargs):
-        dog = request.data["dog"].title()
-        adopter = Adopter.objects.get(pk=request.data["adopter"])
-        circumstance = request.data["circumstance"]
-        
+    def CreatePendingAdoption(self, request):
+        adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.data)
+
+        query = CreatePendingAdoptionRequestSerializer(data=request.data)
+        query.is_valid(raise_exception=True)
+
+        dog = query.validated_data["dog"].title()
+
+        circumstance = query.validated_data["circumstance"]
+
         pending_adoption = PendingAdoption.objects.create(
             dog=dog,
             adopter=adopter,
@@ -77,50 +127,28 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
 
         EmailViewSet().AdoptionCreated(pending_adoption)
 
-        return JsonResponse(
-            PendingAdoptionsSerializer(pending_adoption).data,
-        )
-    
-    @action(detail=False, methods=["POST"], url_path="ChangeDog")
-    def ChangeDog(self, request: HttpRequest, *args, **kwargs):
-        adoption = PendingAdoption.objects.get(pk=request.data["adoptionID"])
-        adoption.dog = request.data["newDog"]
-        adoption.save()
+        return JsonResponse({}, status=status.HTTP_201_CREATED)
 
-        adoption.source_appointment.chosen_dog = adoption.dog
-        adoption.source_appointment.save()
+    @action(detail=False, methods=["POST"], url_path="MarkStatus")
+    def MarkStatus(self, request):
+        query = MarkStatusRequestSerializer(data=request.data)
+        query.is_valid(raise_exception=True)
 
-        return JsonResponse(
-            PendingAdoptionsSerializer(adoption).data,
-        )
-    
-    @action(detail=False, methods=["GET"], url_path="GetAllPendingAdoptionsAwaitingPaperwork")
-    def GetAllPendingAdoptionsAwaitingPaperwork(self, request: HttpRequest, *args, **kwargs):
-        adoptions = PendingAdoption.objects.filter(
-            paperwork_appointment=None,
-        )
+        new_status = query.validated_data["status"]
+        heartworm = query.validated_data["heartworm"]
+        message = query.validated_data.get("message", "")
 
-        serialized = [PendingAdoptionsSerializer(adoption).data for adoption in adoptions]
+        adoption = query.get_adoption()
+        adoption.mark_status(new_status, heartworm)
 
-        return JsonResponse({
-            "adoptions": serialized
-        })
-    
-    @action(detail=False, methods=["POST"], url_path="CreateUpdate")
-    def CreateUpdate(self, request: HttpRequest, *args, **kwargs):
-        adoption_id = request.data["adoptionID"]
-        subject = request.data["subject"]
-        message = request.data["message"]
-        adoption = PendingAdoption.objects.get(pk=adoption_id)
+        if new_status == PendingAdoptionStatus.READY_TO_ROLL:
+            EmailViewSet().ReadyToRoll(adoption, message)
 
-        PendingAdoptionUpdate.objects.create(
-            adoption=adoption
-        )
+        if new_status == PendingAdoptionStatus.CANCELED and adoption.source_appointment:
+            adoption.source_appointment.outcome = OutcomeTypes.NO_DECISION
+            adoption.source_appointment.chosen_dog = ""
+            adoption.adopter.restrict_calendar(restrict=False)
+            adoption.source_appointment.save()
+            # TODO, email adopter about cancellation and restored calendar access
 
-        EmailViewSet().GenericMessage(adoption.adopter.user_profile, subject, message)
-
-        return JsonResponse({
-            "adoptions": PendingAdoptionsSerializer(adoption).data
-        })
-        
-    
+        return JsonResponse({}, status=status.HTTP_200_OK)

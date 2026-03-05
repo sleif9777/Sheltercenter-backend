@@ -14,24 +14,26 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from adopters.views import AdopterViewSet
+from appointment_bases.views import AppointmentBaseViewSet
+from appointments.views import AppointmentViewSet
+from closed_dates.views import ClosedDateViewSet
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-from rest_framework import routers
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
-
-from adopters.views import AdopterViewSet
-from appointment_bases.views import AppointmentBaseViewSet
-from appointments.views import AppointmentViewSet
+from dogs.views import DogsViewSet
 from pending_adoptions.views import PendingAdoptionViewSet
-from closed_dates.views import ClosedDateViewSet
+from rest_framework import routers
+from rest_framework_simplejwt.views import (TokenObtainPairView,
+                                            TokenRefreshView, TokenVerifyView)
 from users.views import UserProfileViewSet
 
 router = routers.DefaultRouter()
 router.register(r'Adopters', AdopterViewSet)
 router.register(r'Appointments', AppointmentViewSet)
 router.register(r'ClosedDates', ClosedDateViewSet)
+router.register(r'Dogs', DogsViewSet)
 router.register(r'PendingAdoptions', PendingAdoptionViewSet)
 router.register(r'TemplateAppointments', AppointmentBaseViewSet)
 router.register(r'UserProfiles', UserProfileViewSet)

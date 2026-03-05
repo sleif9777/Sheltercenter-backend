@@ -1,7 +1,8 @@
 from enum import Enum
-from django.db import models
 
 from appointment_bases.models import DaysOfWeek
+from django.db import models
+
 
 class AdminAppointmentTypes(models.IntegerChoices, Enum):
     PAPERWORK = 3

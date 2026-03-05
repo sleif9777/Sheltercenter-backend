@@ -1,7 +1,9 @@
 from enum import Enum
+
+from admin_appointment_bases.models import (AdminAppointmentTypes,
+                                            PaperworkTypes)
 from django.db import models
 
-from admin_appointment_bases.models import AdminAppointmentTypes, PaperworkTypes
 
 # Create your models here.
 class AdminAppointment(models.Model):

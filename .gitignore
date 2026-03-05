@@ -20,11 +20,14 @@ newenv/
 *.swp
 *.swo
 *.idea/
+.flake8
 .vscode/
 .DS_Store
 *.egg-info/
 dist/
 build/
+vscode/
+pyproject.toml
 
 # Logs
 *.log

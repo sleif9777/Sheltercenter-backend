@@ -1,5 +1,7 @@
 from enum import Enum
+
 from django.db import models
+
 
 class AnnouncementTypes(models.IntegerChoices, Enum):
     DAILY = 0

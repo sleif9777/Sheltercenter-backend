@@ -1,5 +1,7 @@
-from django.db import models
 from enum import Enum
+
+from django.db import models
+
 
 class CircumstanceOptions(models.IntegerChoices, Enum):
         HOST_WEEKEND = 0, "Host Weekend"
@@ -14,6 +16,6 @@ class PendingAdoptionStatus(models.IntegerChoices, Enum):
         CHOSEN = 0, "Chosen"
         NEEDS_VETTING = 1, "Needs Vetting"
         NEEDS_WELL_CHECK = 2, "Needs Well Check"
-        READY_TO_ROLL = 3, "Ready"
+        READY_TO_ROLL = 3, "Ready to Roll"
         COMPLETED = 4, "Completed"
         CANCELED = 5, "Canceled"

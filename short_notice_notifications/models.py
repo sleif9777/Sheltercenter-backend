@@ -1,9 +1,10 @@
 import datetime
 from enum import Enum
+
+from bookings.models import Booking
 from django.db import models
 from django.utils import timezone
 
-from bookings.models import Booking
 # from messages.models import Message
 
 class ShortNoticeNotificationTypes(models.IntegerChoices, Enum):

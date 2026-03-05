@@ -1,0 +1,36 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+A message from Saving Grace
+{% endblock %}
+
+{% block content %}
+<div>
+    <p>
+        Hi {{adopter.user_profile.first_name}},
+    </p>
+</div>
+<div>
+    <p>
+        We wanted to check in and let you know that we saw you've requested to meet {{dog_name}}. We wanted to let you
+        know that {{dog_name}} has found a home and is no longer available for adoption.
+    </p>
+    <p>
+        If you have an upcoming appointment, we encourage you to still come — there are always wonderful dogs waiting to
+        meet you. We find that keeping an open mind can lead to some amazing connections, and we often have dogs who
+        haven't had a chance to have their photos taken yet, so you may meet someone unexpected!
+    </p>
+    <p>
+        If you have an appointment and want to cancel, <b>please do so through our scheduling platform</b> (<a
+            href="https://www.savinggracencscheduler.com"
+            target="_blank"><strong>www.savinggracencscheduler.com</strong></a>). Otherwise, we look forward to seeing
+        you soon!
+    </p>
+</div>
+<div>
+    <p>Thank you,</p>
+    <p class="pink signature">The Adoptions Team</p>
+    <p>Saving Grace Animals for Adoption</p>
+</div>
+<hr />
+{% endblock %}

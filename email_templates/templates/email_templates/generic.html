@@ -1,7 +1,7 @@
 {% extends 'email_templates/base.html' %}
 
 {% block text_header %}
-    A message from Saving Grace
+    {% if to_adoptions %}{{adopter_name}} sent a message{% else %}A message from Saving Grace{% endif %}    
 {% endblock %}
 
 {% block content %}

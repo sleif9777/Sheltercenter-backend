@@ -1,6 +1,6 @@
+from bookings.models import Booking
 from django.db import models
 
-from bookings.models import Booking
 
 # Create your models here.
 class OpenHouseAppointment(models.Model):

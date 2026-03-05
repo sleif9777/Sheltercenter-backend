@@ -1,6 +1,8 @@
 from adopters.models import Adopter
 from appointments.models import Appointment
+
 from .models import Booking, BookingStatus
+
 
 class BookingService():
     def get_booking_history_for_adopter(self, adopter_id: int):

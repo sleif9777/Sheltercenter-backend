@@ -1,6 +1,8 @@
-from messaging.services import MessagingService
-from .models import ShortNoticeNotification, ShortNoticeNotificationTypes
 from bookings.models import Booking
+from messaging.services import MessagingService
+
+from .models import ShortNoticeNotification, ShortNoticeNotificationTypes
+
 
 class ShortNoticeNotificationsService:
     def ShortNoticeSchedule(newBooking: Booking):

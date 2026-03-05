@@ -1,5 +1,7 @@
-from django.db import models
 from enum import Enum
+
+from django.db import models
+
 
 class EnvironmentType(models.IntegerChoices, Enum):
     PRODUCTION = 0,

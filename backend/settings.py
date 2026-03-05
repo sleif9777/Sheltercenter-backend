@@ -10,12 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-import django_on_heroku
 import os
-
 from datetime import timedelta
-from django.utils.log import DEFAULT_LOGGING as LOGGING
 from pathlib import Path
+
+import django_on_heroku
+from django.utils.log import DEFAULT_LOGGING as LOGGING
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # THIRD PARTY IMPORTS
+    'anymail',
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -209,7 +210,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # EMAIL CONFIGURATION
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
 EMAIL_HOST = os.environ.get('EMAIL_HOST')
 EMAIL_USE_SSL = False
 EMAIL_USE_TLS = True
@@ -217,6 +218,11 @@ EMAIL_PORT = 587
 EMAIL_HOST_USER = os.environ.get('EMAIL_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD')
 LOGGING['handlers']['mail_admins']['include_html'] = True
+
+ANYMAIL = {
+    "MAILGUN_API_KEY": os.environ.get("MAILGUN_API_KEY"),
+    "MAILGUN_SENDER_DOMAIN": os.environ.get("MAILGUN_SENDER_DOMAIN"), 
+}
 
 # MEDIA CONFIGURATION
 

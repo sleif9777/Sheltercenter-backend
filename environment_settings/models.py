@@ -2,6 +2,7 @@ from django.db import models
 
 from .enums import EnvironmentType
 
+
 # Create your models here.
 class EnvironmentSettings(models.Model):
     environment_type = models.IntegerField(choices=EnvironmentType.choices)
@@ -14,3 +15,13 @@ class EnvironmentSettings(models.Model):
     # FOSTER-TO-ADOPT FILES
     fta_doc_1_path = models.CharField(max_length=1000, null=True, blank=True)
     fta_doc_2_path = models.CharField(max_length=1000, null=True, blank=True)
+
+    last_dog_import = models.DateTimeField(null=True, blank=True)
+    
+    @property
+    def use_production_email(self):
+        return self.environment_type in [EnvironmentType.STAGING, EnvironmentType.PRODUCTION]
+
+    @property
+    def last_dog_import_iso(self):
+        return self.last_dog_import.isoformat()

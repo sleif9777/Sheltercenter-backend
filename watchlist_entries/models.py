@@ -1,7 +1,7 @@
-from django.db import models
-
 from adopters.models import Adopter
+from django.db import models
 from dogs.models import Dog
+
 
 # Create your models here.
 class WatchlistEntry(models.Model):

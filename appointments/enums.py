@@ -1,5 +1,12 @@
 from enum import Enum
+
 from django.db import models
+
+
+class AppointmentCategories(models.IntegerChoices):
+    ADOPTION = 0, "Adoption"
+    ADMIN = 1, "Admin"
+
 
 class OutcomeTypes(models.IntegerChoices, Enum):
     ADOPTION = 0

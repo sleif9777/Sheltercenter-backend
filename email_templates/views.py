@@ -1,13 +1,14 @@
+from adopters.models import Adopter
 from django.utils import timezone
-from rest_framework import viewsets
-
 from environment_settings.models import EnvironmentSettings
 from pending_adoptions.enums import CircumstanceOptions
+from rest_framework import viewsets
 
 from.services import EmailService
 
 class EmailViewSet(viewsets.ViewSet):
-    def ApplicationApproved(self, adopter, batch=False):
+    def ApplicationApproved(self, adopter: Adopter):
+        recipients = [e for e in [adopter.user_profile.primary_email, adopter.user_profile.secondary_email] if e]
         subject = "Your application has been reviewed: {0}".format(
             adopter.user_profile.full_name.upper()
         )
@@ -20,16 +21,14 @@ class EmailViewSet(viewsets.ViewSet):
             "application_approved", 
             { 
                 "adopter": adopter,
+                "approved_until_display": adopter.approved_until.strftime("%b %d, %Y")
             }, 
-            adopter.user_profile.primary_email
+            recipients
         )
 
-        if batch:
-            return email
-        else:
-            email.send()
-            adopter.approval_emailed = True
-            adopter.save()
+        email.send()
+        adopter.approval_emailed = True
+        adopter.save()
 
     def AppointmentScheduled(self, appointment):
         booking = appointment.get_current_booking()
@@ -86,7 +85,7 @@ class EmailViewSet(viewsets.ViewSet):
     def DogChosen(self, appointment):
         booking = appointment.get_current_booking()
         subject = "Congratulations on choosing {0}! ({1})".format(
-            appointment.source_adoption.dog,
+            appointment.source_adoption.dog.title(),
             booking.adopter.user_profile.full_name
         )
 
@@ -100,7 +99,20 @@ class EmailViewSet(viewsets.ViewSet):
         )
         email.send()
 
-    def NoDecision(self, appointment, host_weekend):
+    def DogNoLongerAvailable(self, adopter: Adopter, dog_name: str):
+        recipients = [e for e in [adopter.user_profile.primary_email, adopter.user_profile.secondary_email] if e]
+        email = EmailService(
+            "An update from your watchlist", 
+            "dog_no_longer_available", 
+            { 
+                "adopter": adopter,
+                "dog_name": dog_name,
+            }, 
+            recipients
+        )
+        email.send()
+
+    def NoDecision(self, appointment, send_sleepover_info: bool):
         booking = appointment.get_current_booking()
         subject = "Hope to see you again soon! ({0})".format(
             booking.adopter.user_profile.full_name
@@ -111,7 +123,7 @@ class EmailViewSet(viewsets.ViewSet):
             "no_decision", 
             { 
                 "appointment": appointment,
-                "host_weekend": host_weekend
+                "host_weekend": send_sleepover_info
             }, 
             booking.adopter.user_profile.primary_email
         )
@@ -132,7 +144,7 @@ class EmailViewSet(viewsets.ViewSet):
         email.send()
 
     def AdoptionCreated(self, adoption):
-        subject = "Congratulations on choosing {0}!".format(adoption.dog)
+        subject = "Congratulations on choosing {0}!".format(adoption.dog.title())
 
         email = EmailService(
             subject, 
@@ -147,7 +159,7 @@ class EmailViewSet(viewsets.ViewSet):
         email.send()
 
     def ReadyToRoll(self, adoption, custom_message: str):
-        subject = "{0} is ready to go home!".format(adoption.dog)
+        subject = "{0} is ready to go home!".format(adoption.dog.title())
         attachments = []
 
         if adoption.heartworm_positive:
@@ -232,13 +244,18 @@ class EmailViewSet(viewsets.ViewSet):
         )
         email.send(always_send=True, cc_adoptions=False) 
 
-    def GenericMessage(self, user, subject, message):
+    def GenericMessage(self, user, subject, message, to_adoptions=False):
+        if subject == "":
+            subject = "A message from Saving Grace NC"
+        
         email = EmailService(
             subject,
             "generic",
             {
-                "message": message.replace("\n", "<br />")
+                "adopter_name": user.disambiguated_name,
+                "message": message,
+                "to_adoptions": to_adoptions,
             },
-            user.primary_email
+            "adoptions@savinggracenc.org" if to_adoptions else user.primary_email
         )
         email.send()

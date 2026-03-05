@@ -1,8 +1,6 @@
 from django.db import models
-
 from pending_adoptions.models import PendingAdoption
 
-from .enums import PendingAdoptionUpdateType
 
 # Create your models here.
 class PendingAdoptionUpdate(models.Model):
@@ -14,3 +12,7 @@ class PendingAdoptionUpdate(models.Model):
         on_delete=models.PROTECT,
         related_name="updates"
     )
+
+    @property
+    def instant_iso(self):
+        return self.instant.isoformat()
