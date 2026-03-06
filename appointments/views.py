@@ -291,14 +291,23 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         if outcome == OutcomeTypes.CHOSEN:
             # create pending adoption
-            pending_adoption, created = PendingAdoption.objects.get_or_create(
+            pending_adoption, created = PendingAdoption.objects.update_or_create(
                 source_appointment=appt,
-                adopter=appt.get_current_booking().adopter,
-                dog=dog,
-                circumstance=CircumstanceOptions.APPOINTMENT,
-                status=PendingAdoptionStatus.CHOSEN,
                 defaults={
+                    "adopter": appt.get_current_booking().adopter,
+                    "circumstance": CircumstanceOptions.APPOINTMENT,
                     "created_instant": timezone.now(),
+                    "dog": dog,
+                    "source_appointment": appt,
+                    "status": PendingAdoptionStatus.CHOSEN
+                },
+                create_defaults={
+                    "adopter": appt.get_current_booking().adopter,
+                    "circumstance": CircumstanceOptions.APPOINTMENT,
+                    "created_instant": timezone.now(),
+                    "dog": dog,
+                    "source_appointment": appt,
+                    "status": PendingAdoptionStatus.CHOSEN
                 },
             )
 

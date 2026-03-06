@@ -150,6 +150,7 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
 
     outcomeDisplay = serializers.CharField(source="outcome_value_display")
     outcome = serializers.IntegerField(read_only=True, allow_null=True)
+    chosenDog = serializers.CharField(source="chosen_dog", allow_null=True)
 
     checkInTime = serializers.CharField(read_only=True, allow_null=True)
     clothingDescription = serializers.CharField(read_only=True, allow_null=True)
@@ -175,6 +176,7 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
             "checkOutTime",
             "outcomeDisplay",
             "outcome",
+            "chosenDog"
         ]
 
     def to_representation(self, instance: Appointment):
