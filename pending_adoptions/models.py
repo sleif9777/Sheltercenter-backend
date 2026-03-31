@@ -64,9 +64,12 @@ class PendingAdoption(models.Model):
         return "Positive" if self.heartworm_positive else "Negative"
 
     # ADMINISTRATIVE METHODS
-    def mark_status(self, new_status: PendingAdoptionStatus, heartworm: bool = False):
+    def mark_status(self, new_status: PendingAdoptionStatus):
         self.status = new_status
-        self.heartworm_positive = heartworm
+        self.save()
+
+    def mark_hw(self, new_hw):
+        self.heartworm_positive = new_hw
         self.save()
 
     def __str__(self):

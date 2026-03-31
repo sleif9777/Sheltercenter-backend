@@ -10,15 +10,7 @@ from rest_framework.decorators import action
 
 from .enums import PendingAdoptionStatus
 from .models import PendingAdoption
-from .serializers import (
-    AdoptionIDRequestSerializer,
-    ChangeDogRequestSerializer,
-    CreatePendingAdoptionRequestSerializer,
-    CreatePendingAdoptionUpdateRequestSerializer,
-    MarkStatusRequestSerializer,
-    PendingAdoptionValueLabelPairSerializer,
-    PendingAdoptionsSerializer,
-)
+from .serializers import *
 
 
 # Create your views here.
@@ -129,17 +121,28 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=["POST"], url_path="MarkHeartworm")
+    def MarkHeartworm(self, request):
+        query = MarkHeartwormRequestSerializer(data=request.data)
+        query.is_valid(raise_exception=True)
+
+        new_hw = query.validated_data["heartworm"]
+
+        adoption = query.get_adoption()
+        adoption.mark_hw(new_hw)
+
+        return JsonResponse({}, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=["POST"], url_path="MarkStatus")
     def MarkStatus(self, request):
         query = MarkStatusRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
 
         new_status = query.validated_data["status"]
-        heartworm = query.validated_data["heartworm"]
         message = query.validated_data.get("message", "")
 
         adoption = query.get_adoption()
-        adoption.mark_status(new_status, heartworm)
+        adoption.mark_status(new_status)
 
         if new_status == PendingAdoptionStatus.READY_TO_ROLL:
             EmailViewSet().ReadyToRoll(adoption, message)
