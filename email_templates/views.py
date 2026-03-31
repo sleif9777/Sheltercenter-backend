@@ -231,19 +231,6 @@ class EmailViewSet(viewsets.ViewSet):
         )
         email.send()
 
-    def NewOTP(self, user):
-        subject = "Your one-time passcode"
-
-        email = EmailService(
-            subject, 
-            "new_otp", 
-            { 
-                "user": user    
-            }, 
-            user.primary_email
-        )
-        email.send(always_send=True, cc_adoptions=False) 
-
     def GenericMessage(self, user, subject, message, to_adoptions=False):
         if subject == "":
             subject = "A message from Saving Grace NC"
@@ -256,6 +243,7 @@ class EmailViewSet(viewsets.ViewSet):
                 "message": message,
                 "to_adoptions": to_adoptions,
             },
-            "adoptions@savinggracenc.org" if to_adoptions else user.primary_email
+            "adoptions@savinggracenc.org" if to_adoptions else user.primary_email,
+            user.adopter_profile
         )
         email.send()

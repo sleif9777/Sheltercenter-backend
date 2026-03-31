@@ -1,5 +1,6 @@
 import os
 
+from adopters.models import Adopter
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -7,11 +8,12 @@ from environment_settings.models import EnvironmentSettings
 
 
 class EmailService:
-    def __init__(self, title, template_path, context, recipients: str | list[str], attachments=None):
+    def __init__(self, title, template_path, context, recipients: str | list[str], attachments=None, adopter: Adopter=None):
         attachments = attachments or []
 
         self.subject = title
         self.attachments = attachments
+        self.adopter = adopter
 
         self.content_html = render_to_string(
             f"email_templates/{template_path}.html",
@@ -32,6 +34,14 @@ class EmailService:
 
     # TODO: deprecate always_send
     def send(self, always_send=False, cc_adoptions=True):
+        cc_list = []
+
+        if cc_adoptions:
+            cc_list.append("adoptions@savinggracenc.org")
+
+        if self.adopter:
+            cc_list.append(self.adopter.primary_email)
+        
         try:
             sender = os.environ.get("MAILGUN_SENDER")
             
@@ -40,8 +50,8 @@ class EmailService:
                 body=self.content_plain,
                 from_email=sender,
                 to=self.recipients,
-                cc=["adoptions@savinggracenc.org"] if cc_adoptions else None,
-                reply_to=["adoptions@savinggracenc.org"],
+                cc=cc_list if len(cc_list) > 0 else None,
+                reply_to=[self.adopter.primary_email] if self.adopter else ["adoptions@savinggracenc.org"],
             )
 
             msg.attach_alternative(self.content_html, "text/html")
