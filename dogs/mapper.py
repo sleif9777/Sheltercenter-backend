@@ -69,9 +69,9 @@ def map_dog(animal: dict, is_first_run: bool = False) -> dict | None:
 
         return {
             "shelterluv_id": int(animal["ID"]),
-            "name": animal["Name"],
-            "description": description,
-            "photo_url": animal.get("CoverPhoto", ""),
+            "name": animal["Name"][:255],
+            "description": description[:5000],
+            "photo_url": animal.get("CoverPhoto", "")[:500],
             "age_months": animal.get("Age"),
             "weight": int(float(weight_raw)) if weight_raw else None,
             "sex": DogSex.MALE if animal.get("Sex") == "Male" else DogSex.FEMALE,

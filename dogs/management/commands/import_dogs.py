@@ -31,13 +31,13 @@ class Command(BaseCommand):
 
         publishable_ids = self._fetch_all_ids(status_type="publishable")
 
-        min_shelterluv_id = None if is_first_run else self._get_min_shelterluv_id()
-        if not is_first_run and min_shelterluv_id is None:
+        max_shelterluv_id = None if is_first_run else self._get_max_shelterluv_id()
+        if not is_first_run and max_shelterluv_id is None:
             self.stdout.write(self.style.WARNING("No dogs in DB, treating as first run."))
             is_first_run = True
 
         imported_ids, total_imported, total_reactivated = self._import_all_animals(
-            publishable_ids, is_first_run, min_shelterluv_id
+            publishable_ids, is_first_run, max_shelterluv_id
         )
         deactivated = self._deactivate_missing_dogs(imported_ids)
         self._update_last_import_timestamp(environment)
@@ -52,9 +52,9 @@ class Command(BaseCommand):
     def _get_api_key(self):
         return os.environ.get("SHELTERLUV_API_KEY")
 
-    def _get_min_shelterluv_id(self):
-        result = Dog.objects.aggregate(models.Min("shelterluv_id"))
-        return result.get("shelterluv_id__min")
+    def _get_max_shelterluv_id(self):
+        result = Dog.objects.aggregate(models.Max("shelterluv_id"))
+        return result.get("shelterluv_id__max")
 
     def _fetch_page(self, offset, status_type=None):
         params = {"offset": offset}
@@ -84,7 +84,7 @@ class Command(BaseCommand):
             offset += 100
         return ids
 
-    def _import_all_animals(self, publishable_ids, is_first_run, min_shelterluv_id):
+    def _import_all_animals(self, publishable_ids, is_first_run, max_shelterluv_id):
         imported_ids = set()
         total_imported = 0
         total_reactivated = 0
@@ -118,7 +118,11 @@ class Command(BaseCommand):
             if is_first_run:
                 animals = [a for a in animals if parse_status(a) not in [DogStatus.UNAVAILABLE, DogStatus.HEALTHY_IN_HOME]]
             else:
-                animals = [a for a in animals if int(a.get("ID", 0)) >= min_shelterluv_id]
+                animals = [
+                    a for a in animals
+                    if int(a.get("ID", 0)) >= max_shelterluv_id
+                    or int(a.get("ID", 0)) in publishable_ids
+                ]
 
             page_imported, page_reactivated = self._process_animals(animals, imported_ids, publishable_ids, is_first_run)
             total_imported += page_imported

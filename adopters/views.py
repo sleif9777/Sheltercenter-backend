@@ -50,13 +50,13 @@ class AdopterViewSet(viewsets.ModelViewSet):
                 continue
 
             adopter: Adopter = appt.get_current_booking().adopter
-            
+
             # Skip if we've already processed this adopter
             if adopter.id in seen_adopter_ids:
                 continue
-            
+
             seen_adopter_ids.add(adopter.id)
-            
+
             history = adopter.booking_history
             alerts = []
 
@@ -67,7 +67,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
                 alerts.append("{0} no decisions".format(history["noDecision"]))
 
             if len(alerts) > 0:
-                alert_dict.append({ "name": adopter.user_profile.full_name, "alerts": alerts })
+                alert_dict.append({"name": adopter.user_profile.full_name, "alerts": alerts})
 
         return JsonResponse(
             {
@@ -75,7 +75,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
-        
+
     @action(detail=False, methods=["GET"], url_path="GetAdopterDemographics")
     def GetAdopterDemographics(self, request):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)
@@ -133,8 +133,9 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["GET"], url_path="GetAdopterSelectFieldOptions")
     def GetAdopterSelectFieldOptions(self, request):
-        include_scheduled = bool(request.query_params["includeScheduled"]) or False
-        include_archived = bool(request.query_params["includeArchived"]) or False
+        print(request.query_params)
+        include_scheduled = request.query_params["includeScheduled"].lower() == "true"
+        include_archived = request.query_params["includeArchived"].lower() == "true"
 
         adopters = Adopter.objects.filter(
             approved_until__gte=DateTimeUtils.get_today(),
@@ -147,8 +148,22 @@ class AdopterViewSet(viewsets.ModelViewSet):
             if (
                 (include_scheduled or not adopter.has_current_booking)
                 and (include_archived or not adopter.user_profile.archived)
+                and not adopter.user_profile.adoption_completed
             )
         ]
+
+        print(
+            include_archived, include_scheduled,
+            [
+                adopter
+                for adopter in adopters
+                if (
+                    (include_scheduled or not adopter.has_current_booking)
+                    and (include_archived or not adopter.user_profile.archived)
+                    and not adopter.user_profile.adoption_completed
+                )
+            ]
+        )
 
         return JsonResponse({"options": options}, status=status.HTTP_200_OK)
 

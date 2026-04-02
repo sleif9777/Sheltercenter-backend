@@ -165,41 +165,30 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             outcome__in=[OutcomeTypes.ADOPTION, OutcomeTypes.FTA],
             soft_deleted=False,
         )
-        serialized_adoption_adoptions = [
-            {
-                "instant": appt.iso_instant,
-                "adopter": AdopterContactInfoSerializer(appt.get_current_booking().adopter).data,
-                "dog": appt.chosen_dog,
-            }
-            for appt in adoption_outcome_appts
-        ]
 
         paperwork_appts = Appointment.objects.filter(
             instant__range=DateTimeUtils.get_range_for_date(timezone.now(), backdate_days=10),
             type=AppointmentTypes.PAPERWORK,
             soft_deleted=False,
         )
-        serialized_paperwork_adoptions = [
-            {
-                "instant": appt.iso_instant,
-                "adopter": AdopterContactInfoSerializer(appt.paperwork_adoption.adopter).data,
-                "dog": appt.paperwork_adoption.dog,
-            }
-            for appt in paperwork_appts
-        ]
 
         all_serialized_adoptions = [
             {
-                "instant": appt.iso_instant,
+                "instant": appt.iso_date,
                 "adopter": (
                     AdopterContactInfoSerializer(appt.get_current_booking().adopter).data
                     if appt.is_adoption_appointment
                     else AdopterContactInfoSerializer(appt.paperwork_adoption.adopter).data
                 ),
-                "dog": appt.chosen_dog if appt.is_adoption_appointment else appt.paperwork_adoption.dog,
+                "dog": (
+                    appt.chosen_dog if appt.is_adoption_appointment else appt.paperwork_adoption.dog
+                ),
             }
             for appt in (adoption_outcome_appts | paperwork_appts)
         ]
+
+        all_serialized_adoptions = sorted(all_serialized_adoptions, key=lambda a: a["instant"])
+        all_serialized_adoptions.reverse()
 
         return JsonResponse({"adoptions": all_serialized_adoptions}, status=status.HTTP_200_OK)
 
@@ -286,6 +275,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         dog = query.validated_data["dog"]
         send_sleepover_info = query.validated_data["sendSleepoverInfo"]
 
+        if dog.isupper() or dog.islower():
+            dog = (
+                dog.title()
+            )  # if dog is all upper or lower case, convert to title case for consistency
+
         appt = Appointment.objects.get(pk=id)
         appt.check_out(outcome, dog)
 
@@ -299,7 +293,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     "created_instant": timezone.now(),
                     "dog": dog,
                     "source_appointment": appt,
-                    "status": PendingAdoptionStatus.CHOSEN
+                    "status": PendingAdoptionStatus.CHOSEN,
                 },
                 create_defaults={
                     "adopter": appt.get_current_booking().adopter,
@@ -307,7 +301,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     "created_instant": timezone.now(),
                     "dog": dog,
                     "source_appointment": appt,
-                    "status": PendingAdoptionStatus.CHOSEN
+                    "status": PendingAdoptionStatus.CHOSEN,
                 },
             )
 
