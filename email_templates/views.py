@@ -236,7 +236,7 @@ class EmailViewSet(viewsets.ViewSet):
 
     def GenericMessage(self, user, subject, message, to_adoptions=False):
         if subject == "":
-            subject = "A message from Saving Grace NC"
+            subject = "Notification from Saving Grace"
 
         email = EmailService(
             subject,
