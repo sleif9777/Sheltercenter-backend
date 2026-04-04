@@ -65,7 +65,7 @@ class Adopter(models.Model):
 
         two_days_ago = timezone.now() - datetime.timedelta(hours=48)
         is_old_enough = self.last_uploaded < two_days_ago
-        
+
         return is_old_enough
 
     # HOUSING ENVIRONMENT ITEMS
@@ -90,7 +90,11 @@ class Adopter(models.Model):
 
     @property
     def gender_preference_display(self):
-        return GenderPreference(self.gender_preference).label if self.gender_preference else "No Preference"
+        return (
+            GenderPreference(self.gender_preference).label
+            if self.gender_preference
+            else "No Preference"
+        )
 
     age_preference = models.IntegerField(choices=AgePreference.choices, null=True, blank=True)
 
@@ -134,11 +138,7 @@ class Adopter(models.Model):
         completed = bookings.filter(status=BookingStatus.COMPLETED)
         no_show = bookings.filter(status=BookingStatus.NOSHOW)
         no_decision = [b for b in completed if b.appointment.outcome == OutcomeTypes.NO_DECISION]
-        adopted = [
-            b
-            for b in completed
-            if b.appointment.has_adoption_outcome
-        ]
+        adopted = [b for b in completed if b.appointment.has_adoption_outcome]
 
         return {
             "completed": completed.count(),
@@ -163,11 +163,28 @@ class Adopter(models.Model):
 
     def current_booking_in_future(self) -> bool:
         current_appt = self.get_current_appointment()
+        today = DateTimeUtils.get_today()
 
         if not current_appt:
             return False
 
-        return current_appt.instant > timezone.now()
+        appt_date: datetime.date = current_appt.instant.date()
+
+        if appt_date < today:
+            return False
+
+        if appt_date() == today:
+            return (
+                # Only consider same-day appointments as "in the future" 
+                # if they haven't been checked in yet, to avoid sending 
+                # irrelevant notifications to adopters who have already 
+                # come in for their appointment
+                not current_appt.is_checked_in 
+                and not current_appt.is_checked_out
+                and not current_appt.is_no_show
+            )
+
+        return True
 
     def get_flags(self) -> str:
         flags = []

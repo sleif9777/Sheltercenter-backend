@@ -151,6 +151,10 @@ class Appointment(models.Model):
         local_dt = timezone.localtime(self.check_out_time)
         return local_dt.strftime("%I:%M %p")
 
+    @property
+    def is_no_show(self):
+        return self.outcome == OutcomeTypes.NO_SHOW
+
     clothing_description = models.CharField(default="", max_length=1000, null=True, blank=True)
     counselor = models.CharField(default="", max_length=100, null=True, blank=True)
 
