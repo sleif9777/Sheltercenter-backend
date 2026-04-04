@@ -17,7 +17,9 @@ SHELTERLUV_STATUS_MAP = {
     "Deceased": DogStatus.UNAVAILABLE,
 }
 
-STATUSES_WITH_UNAVAILABLE_DATE_FIRST_RUN = {
+STATUSES_REQUIRING_UNAVAILABLE_DATE = {
+    DogStatus.UNAVAILABLE,
+    DogStatus.HEALTHY_IN_HOME,
     DogStatus.CHOSEN_WC,
     DogStatus.CHOSEN_SN,
     DogStatus.FTA,
@@ -29,15 +31,21 @@ def parse_status(animal: dict) -> DogStatus:
     return SHELTERLUV_STATUS_MAP.get(raw_status, DogStatus.UNAVAILABLE)
 
 
-def parse_unavailable_date(animal: dict, status: DogStatus, is_first_run: bool) -> date | None:
-    if not is_first_run:
+def parse_timestamp(value) -> datetime | None:
+    if not value:
         return None
-    if status not in STATUSES_WITH_UNAVAILABLE_DATE_FIRST_RUN:
+    try:
+        return datetime.fromtimestamp(int(value), tz=dt_timezone.utc)
+    except (ValueError, OSError):
         return None
-    raw = animal.get("LastUpdatedUnixTime")
-    if not raw:
+
+
+def parse_unavailable_date(status: DogStatus, last_updated: datetime | None) -> date | None:
+    if status not in STATUSES_REQUIRING_UNAVAILABLE_DATE:
         return None
-    return datetime.fromtimestamp(int(raw), tz=dt_timezone.utc).date()
+    if last_updated:
+        return last_updated.date()
+    return date.today()
 
 
 def parse_fun_size(description: str) -> bool:
@@ -61,11 +69,15 @@ def parse_available_date(description: str) -> date | None:
     return this_year if delta_this <= delta_next else next_year
 
 
-def map_dog(animal: dict, is_first_run: bool = False) -> dict | None:
+def map_dog(animal: dict) -> dict | None:
+    if animal.get("Type") != "Dog":
+        return None
     try:
         description = animal.get("Description", "")
         weight_raw = animal.get("CurrentWeightPounds", "")
         status = parse_status(animal)
+        last_updated = parse_timestamp(animal.get("LastUpdatedUnixTime"))
+        last_intake = parse_timestamp(animal.get("LastIntakeUnixTime"))
 
         return {
             "shelterluv_id": int(animal["ID"]),
@@ -78,7 +90,9 @@ def map_dog(animal: dict, is_first_run: bool = False) -> dict | None:
             "breed": animal.get("Breed", ""),
             "fun_size": parse_fun_size(description),
             "available_date": parse_available_date(description),
-            "unavailable_date": parse_unavailable_date(animal, status, is_first_run),
+            "unavailable_date": parse_unavailable_date(status, last_updated),
+            "last_updated": last_updated,
+            "last_intake": last_intake,
             "status": status,
         }
     except (KeyError, ValueError):

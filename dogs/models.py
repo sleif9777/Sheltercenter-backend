@@ -17,6 +17,8 @@ class Dog(models.Model):
     publishable = models.BooleanField(default=False)
     available_date = models.DateField(null=True, blank=True)
     unavailable_date = models.DateField(null=True, blank=True)
+    last_intake = models.DateField(null=True, blank=True)
+    last_updated = models.DateField(null=True, blank=True)
     status = models.IntegerField(choices=DogStatus.choices, null=False, blank=False)
     interest_adopters = models.ManyToManyField(Adopter, blank=True)
 

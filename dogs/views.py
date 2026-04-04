@@ -38,29 +38,11 @@ class DogsViewSet(viewsets.ModelViewSet):
         today = timezone.localdate()
         monday = today - timedelta(days=today.weekday())
 
-        # Get dog names from adoption and paperwork appointments since Monday
-        adoption_appts_this_week = Appointment.objects.filter(
-            instant__date__gte=monday,
-            outcome=OutcomeTypes.ADOPTION,
-            soft_deleted=False,
-        )
-        paperwork_appts_this_week = Appointment.objects.filter(
-            instant__date__gte=monday,
-            type=AppointmentTypes.PAPERWORK,
-            soft_deleted=False,
-        )
-
-        adopted_dog_names = set(adoption_appts_this_week.values_list("chosen_dog", flat=True))
-        paperwork_dog_names = set(
-            PendingAdoption.objects.filter(
-                paperwork_appointment__in=paperwork_appts_this_week
-            ).values_list("dog", flat=True)
-        )
-
         newly_in_home = Dog.objects.filter(
-            status=DogStatus.HEALTHY_IN_HOME,
-            name__in=adopted_dog_names | paperwork_dog_names,
+            status=DogStatus.HEALTHY_IN_HOME, 
+            last_updated__gte=monday
         )
+
         fta = Dog.objects.filter(status=DogStatus.FTA)
 
         # Get dogs whose name matches a PendingAdoption with READY_TO_ROLL status

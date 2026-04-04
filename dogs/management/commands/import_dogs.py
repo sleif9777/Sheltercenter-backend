@@ -3,7 +3,6 @@ import os
 import time
 
 from django.core.management.base import BaseCommand
-from django.db import models
 from django.utils import timezone
 from adopters.models import Adopter
 from dogs.enums import DogStatus
@@ -31,14 +30,8 @@ class Command(BaseCommand):
         is_first_run = environment.last_dog_import is None
 
         publishable_ids = self._fetch_all_ids(status_type="publishable")
-
-        max_shelterluv_id = None if is_first_run else self._get_max_shelterluv_id()
-        if not is_first_run and max_shelterluv_id is None:
-            self.stdout.write(self.style.WARNING("No dogs in DB, treating as first run."))
-            is_first_run = True
-
-        imported_ids, total_imported, total_reactivated = self._import_all_animals(
-            publishable_ids, is_first_run, max_shelterluv_id
+        imported_ids, total_imported, total_reactivated, total_created = self._import_all_animals(
+            publishable_ids, is_first_run
         )
         deactivated = self._deactivate_missing_dogs(imported_ids)
         self._update_last_import_timestamp(environment)
@@ -46,16 +39,13 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"Done! Imported: {total_imported - total_reactivated}, "
-                f"Reactivated: {total_reactivated}, Deactivated: {deactivated}"
+                f"Reactivated: {total_reactivated}, Deactivated: {deactivated} "
+                f"Created: {total_created}"
             )
         )
 
     def _get_api_key(self):
         return os.environ.get("SHELTERLUV_API_KEY")
-
-    def _get_max_shelterluv_id(self):
-        result = Dog.objects.aggregate(models.Max("shelterluv_id"))
-        return result.get("shelterluv_id__max")
 
     def _fetch_page(self, offset, status_type=None):
         params = {"offset": offset}
@@ -85,10 +75,11 @@ class Command(BaseCommand):
             offset += 100
         return ids
 
-    def _import_all_animals(self, publishable_ids, is_first_run, max_shelterluv_id):
+    def _import_all_animals(self, publishable_ids, is_first_run):
         imported_ids = set()
         total_imported = 0
         total_reactivated = 0
+        total_created = 0
 
         first_page = self._fetch_page(0)
         if first_page is None:
@@ -117,43 +108,49 @@ class Command(BaseCommand):
             animals = data.get("animals", [])
 
             if is_first_run:
-                animals = [a for a in animals if parse_status(a) not in [DogStatus.UNAVAILABLE, DogStatus.HEALTHY_IN_HOME]]
-            else:
                 animals = [
                     a for a in animals
-                    if int(a.get("ID", 0)) >= max_shelterluv_id
-                    or int(a.get("ID", 0)) in publishable_ids
+                    if parse_status(a) not in [DogStatus.UNAVAILABLE, DogStatus.HEALTHY_IN_HOME]
                 ]
 
-            page_imported, page_reactivated = self._process_animals(animals, imported_ids, publishable_ids, is_first_run)
+            page_imported, page_reactivated, page_created = self._process_animals(
+                animals, imported_ids, publishable_ids
+            )
             total_imported += page_imported
             total_reactivated += page_reactivated
+            total_created += page_created
             self.stdout.write(f"  Processed {len(animals)} animals.")
 
-        return imported_ids, total_imported, total_reactivated
+        return imported_ids, total_imported, total_reactivated, total_created
 
-    def _process_animals(self, animals, imported_ids, publishable_ids, is_first_run):
+    def _process_animals(self, animals, imported_ids, publishable_ids):
         total_imported = 0
         total_reactivated = 0
+        total_created = 0
 
         for animal_data in animals:
-            parsed = map_dog(animal_data, is_first_run)
+            if animal_data.get("Type") != "Dog":
+                continue
+
+            parsed = map_dog(animal_data)
             if not parsed:
                 self.stdout.write(
                     self.style.WARNING(f"Failed to parse animal {animal_data.get('ID')}")
                 )
                 continue
 
-            parsed["publishable"] = parsed["shelterluv_id"] in publishable_ids
             shelterluv_id = parsed["shelterluv_id"]
-            reactivated = self._upsert_dog(parsed)
+            parsed["publishable"] = shelterluv_id in publishable_ids
+            created, reactivated = self._upsert_dog(parsed)
             imported_ids.add(shelterluv_id)
             total_imported += 1
             if reactivated:
                 total_reactivated += 1
+            if created:
+                total_created += 1
 
-        return total_imported, total_reactivated
-
+        return total_imported, total_reactivated, total_created
+    
     def _upsert_dog(self, parsed):
         shelterluv_id = parsed.pop("shelterluv_id")
         previous = Dog.objects.filter(shelterluv_id=shelterluv_id).first()
@@ -168,7 +165,7 @@ class Command(BaseCommand):
         if reactivated:
             self._handle_reactivation(dog, unavailable_date)
 
-        return reactivated
+        return created, reactivated
 
     def _handle_reactivation(self, dog, unavailable_date):
         if unavailable_date and (timezone.now().date() - unavailable_date).days > 90:
@@ -183,26 +180,28 @@ class Command(BaseCommand):
             .prefetch_related("interest_adopters")
         )
 
-        # Save these first - avoid emailing folks ad-nauseum 
-        # if the email service breaks from something faulty in the loop
         deactivated_count = dogs_to_deactivate.update(
             publishable=False, unavailable_date=timezone.localdate()
         )
 
-        for dog in dogs_to_deactivate:
-            self._notify_interested_adopters(dog)
+        # for dog in dogs_to_deactivate:
+        #     self._notify_interested_adopters(dog)
 
         return deactivated_count
 
     def _notify_interested_adopters(self, dog):
-        # Notify adopters with a booked appointment
         email_list: list[Adopter] = [
             adopter for adopter in dog.interest_adopters.all()
             if adopter.current_booking_in_future()
         ]
-        
+
         for adopter in email_list:
-            EmailViewSet().DogNoLongerAvailable(adopter, dog.name)
+            try:
+                EmailViewSet().DogNoLongerAvailable(adopter, dog.name)
+            except Exception as e:
+                self.stdout.write(
+                    self.style.WARNING(f"Failed to email adopter {adopter.pk} for {dog.name}: {e}")
+                )
 
     def _update_last_import_timestamp(self, environment):
         environment.last_dog_import = timezone.now()
