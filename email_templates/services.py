@@ -1,4 +1,5 @@
 import os
+import sys
 
 from adopters.models import Adopter
 from django.core.mail import EmailMultiAlternatives
@@ -61,6 +62,7 @@ class EmailService:
 
             msg.send()
         except Exception as e:
-                if hasattr(e, 'response'):
-                    print("Mailgun response body:", e.response.text)
-                raise
+            if hasattr(e, 'response'):
+                print("Mailgun response body:", e.response.text)
+            sys.stdout.write(self.style.ERROR(f"Failed to send email: {e}"))
+            raise

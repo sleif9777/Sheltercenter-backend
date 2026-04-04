@@ -5,6 +5,7 @@ import time
 from django.core.management.base import BaseCommand
 from django.db import models
 from django.utils import timezone
+from adopters.models import Adopter
 from dogs.enums import DogStatus
 from dogs.models import Dog
 from dogs.mapper import map_dog, parse_status
@@ -182,15 +183,25 @@ class Command(BaseCommand):
             .prefetch_related("interest_adopters")
         )
 
-        for dog in dogs_to_deactivate:
-            self._notify_interested_adopters(dog)
-
-        return dogs_to_deactivate.update(
+        # Save these first - avoid emailing folks ad-nauseum 
+        # if the email service breaks from something faulty in the loop
+        deactivated_count = dogs_to_deactivate.update(
             publishable=False, unavailable_date=timezone.localdate()
         )
 
+        for dog in dogs_to_deactivate:
+            self._notify_interested_adopters(dog)
+
+        return deactivated_count
+
     def _notify_interested_adopters(self, dog):
-        for adopter in dog.interest_adopters.all():
+        # Notify adopters with a booked appointment
+        email_list: list[Adopter] = [
+            adopter for adopter in dog.interest_adopters.all()
+            if adopter.current_booking_in_future()
+        ]
+        
+        for adopter in email_list:
             EmailViewSet().DogNoLongerAvailable(adopter, dog.name)
 
     def _update_last_import_timestamp(self, environment):

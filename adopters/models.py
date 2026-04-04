@@ -161,6 +161,14 @@ class Adopter(models.Model):
         except:
             return None
 
+    def current_booking_in_future(self) -> bool:
+        current_appt = self.get_current_appointment()
+
+        if not current_appt:
+            return False
+
+        return current_appt.instant > timezone.now()
+
     def get_flags(self) -> str:
         flags = []
 
