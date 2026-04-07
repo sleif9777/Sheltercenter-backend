@@ -1,18 +1,13 @@
-import csv
 import datetime
-import io
 import random
 import string
-import traceback
 
-import pandas
 from adopters.models import Adopter
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.core.validators import validate_email
 from django.db import models
 from django.utils import timezone
 from email_templates.views import EmailViewSet
-from utils import DateTimeUtils
 
 from backend import settings
 

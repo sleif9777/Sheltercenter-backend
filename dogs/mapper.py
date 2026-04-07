@@ -49,7 +49,7 @@ def parse_unavailable_date(status: DogStatus, last_updated: datetime | None) -> 
 
 
 def parse_fun_size(description: str) -> bool:
-    return bool(re.search(r"fridays and saturdays", description, re.IGNORECASE))
+    return bool(re.search(r"fridays\s*(and|&)\s*saturdays", description, re.IGNORECASE))
 
 
 def parse_available_date(description: str) -> date | None:

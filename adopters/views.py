@@ -1,7 +1,8 @@
 import datetime
 import traceback
 
-from django.db import models
+from django.db.models import CharField, Value
+from django.db.models.functions import Concat
 from django.http import JsonResponse
 from django.utils import timezone
 from appointments.models import Appointment
@@ -92,8 +93,6 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["GET"], url_path="GetAdopterDirectoryListing")
     def GetAdopterDirectoryListing(self, request):
-        UserProfile.remove_faulty()  # TODO: Deprecate
-
         query = AdopterDirectoryListingRequestSerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
 
@@ -108,11 +107,18 @@ class AdopterViewSet(viewsets.ModelViewSet):
             adopters = (
                 Adopter.objects.filter(approved_until__gte=DateTimeUtils.get_today())
                 .select_related("user_profile")
-                .filter(
-                    models.Q(user_profile__first_name__icontains=filter_text)
-                    | models.Q(user_profile__last_name__icontains=filter_text)
-                    | models.Q(user_profile__primary_email__icontains=filter_text)
+                .annotate(
+                    disambiguated_name=Concat(
+                        "user_profile__first_name",
+                        Value(" "),
+                        "user_profile__last_name",
+                        Value(" ("),
+                        "user_profile__primary_email",
+                        Value(")"),
+                        output_field=CharField(),
+                    )
                 )
+                .filter(disambiguated_name__icontains=filter_text)
             )
 
             if not include_archived:
@@ -153,7 +159,8 @@ class AdopterViewSet(viewsets.ModelViewSet):
         ]
 
         print(
-            include_archived, include_scheduled,
+            include_archived,
+            include_scheduled,
             [
                 adopter
                 for adopter in adopters
@@ -162,7 +169,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
                     and (include_archived or not adopter.user_profile.archived)
                     and not adopter.user_profile.adoption_completed
                 )
-            ]
+            ],
         )
 
         return JsonResponse({"options": options}, status=status.HTTP_200_OK)
@@ -244,40 +251,3 @@ class AdopterViewSet(viewsets.ModelViewSet):
         adopter.update_preferences(query.validated_data)
 
         return JsonResponse({}, status=status.HTTP_200_OK)
-
-
-# @action(detail=False, methods=["GET"], url_path="GetAdoptersForBooking")
-# def GetAdoptersForBooking(self, request: HttpRequest):
-#     UserProfile.remove_faulty()
-#     adopters = Adopter.objects.filter(
-#         approved_until__gte=DateTimeUtils.GetToday(),
-#         status=ApprovalStatus.APPROVED,
-#         user_profile__archived=False
-#     )
-
-#     if "includeAdopter" in request.data:
-#         include_adopter = Adopter.objects.get(pk=request.data["includeAdopter"])
-#         adopters |= include_adopter
-
-#     for adopter in adopters:
-#         if adopter.user_profile == None:
-#             profile = UserProfile()
-
-#     serialized = [AdopterBaseSerializer(adopter).data for adopter in adopters if not adopter.has_current_booking]
-
-#     return JsonResponse(
-#         {"adopters": serialized}
-#     )
-# @action(detail=False, methods=["GET"], url_path="GetAdopterDetail")
-# def GetAdopterDetail(self, request: HttpRequest):
-#     adopter_id = int(request.query_params["forAdopter"])
-#     adopter = Adopter.objects.get(pk=adopter_id)
-#     appointment = adopter.get_current_appointment()
-
-#     return JsonResponse(
-#         {
-#             "adopter": AdopterSerializer(adopter).data,
-#             "currentAppointment": AppointmentSerializer(appointment).data if appointment else None,
-#             "bookingHistory": adopter.booking_history
-#         }
-#     )
