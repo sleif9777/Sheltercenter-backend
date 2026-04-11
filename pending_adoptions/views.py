@@ -6,7 +6,9 @@ from adopters.views import AdopterViewSet
 from email_templates.views import EmailViewSet
 from pending_adoption_updates.models import PendingAdoptionUpdate
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
+
+from auth.security import IsStaffUser
 
 from .enums import PendingAdoptionStatus
 from .models import PendingAdoption
@@ -34,7 +36,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
         return adoption
 
     # GET commands
-    @action(detail=False, methods=["GET"], url_path="GetActivePendingAdoptions")
+    @action(detail=False, methods=["GET"], url_path="GetActivePendingAdoptions", permission_classes=[IsStaffUser])
     def GetActivePendingAdoptions(self, request):
         adoptions = PendingAdoption.objects.exclude(
             status=PendingAdoptionStatus.CANCELED,
@@ -46,7 +48,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({"adoptions": serialized})
 
-    @action(detail=False, methods=["GET"], url_path="GetPendingAdoptionSelectFieldOptions")
+    @action(detail=False, methods=["GET"], url_path="GetPendingAdoptionSelectFieldOptions", permission_classes=[IsStaffUser])
     def GetPendingAdoptionSelectFieldOptions(self, request):
         adoptions = (
             PendingAdoption.objects.filter(
@@ -65,7 +67,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
         return JsonResponse({"adoptions": options}, status=status.HTTP_200_OK)
 
     # POST commands
-    @action(detail=False, methods=["POST"], url_path="AddUpdate")
+    @action(detail=False, methods=["POST"], url_path="AddUpdate", permission_classes=[IsStaffUser])
     def AddUpdate(self, request):
         query = CreatePendingAdoptionUpdateRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -80,7 +82,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
 
         return JsonResponse(status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=["POST"], url_path="ChangeDog")
+    @action(detail=False, methods=["POST"], url_path="ChangeDog", permission_classes=[IsStaffUser])
     def ChangeDog(self, request):
         query = ChangeDogRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -96,7 +98,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
             PendingAdoptionsSerializer(adoption).data,
         )
 
-    @action(detail=False, methods=["POST"], url_path="CreatePendingAdoption")
+    @action(detail=False, methods=["POST"], url_path="CreatePendingAdoption", permission_classes=[IsStaffUser])
     def CreatePendingAdoption(self, request):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.data)
 
@@ -121,7 +123,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=["POST"], url_path="MarkHeartworm")
+    @action(detail=False, methods=["POST"], url_path="MarkHeartworm", permission_classes=[IsStaffUser])
     def MarkHeartworm(self, request):
         query = MarkHeartwormRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -133,7 +135,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="MarkStatus")
+    @action(detail=False, methods=["POST"], url_path="MarkStatus", permission_classes=[IsStaffUser])
     def MarkStatus(self, request):
         query = MarkStatusRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)

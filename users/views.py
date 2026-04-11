@@ -2,8 +2,11 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpRequest, JsonResponse
 from django.utils import timezone
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+
+from auth.security import IsAdminUser
 
 from appointments.models import Appointment
 from users.factories import UserFormFactory, UserSpreadsheetFactory
@@ -17,7 +20,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
 
     # GET methods
-    @action(detail=False, methods=["GET"], url_path="LogIn")
+    @action(detail=False, methods=["GET"], url_path="LogIn", permission_classes=[AllowAny])
     def LogIn(self, request: HttpRequest):
         try:
             query = PrimaryEmailRequestSerializer(data=request.query_params)
@@ -71,7 +74,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             )
 
     # POST methods
-    @action(detail=False, methods=["POST"], url_path="ImportSpreadsheetBatch")
+    @action(detail=False, methods=["POST"], url_path="ImportSpreadsheetBatch", permission_classes=[IsAdminUser])
     def ImportSpreadsheetBatch(self, request):
         query = ImportSpreadsheetBatchRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -82,7 +85,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
         return JsonResponse(upload_result, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="SaveUserForm")
+    @action(detail=False, methods=["POST"], url_path="SaveUserForm", permission_classes=[IsAuthenticated])
     def SaveUserForm(self, request):
         query = SaveUserFormRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -98,7 +101,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=respStatus)
 
-    @action(detail=False, methods=["POST"], url_path="UpdatePrimaryEmail")
+    @action(detail=False, methods=["POST"], url_path="UpdatePrimaryEmail", permission_classes=[IsAuthenticated])
     def UpdatePrimaryEmail(self, request):
         query = UpdatePrimaryEmailRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)

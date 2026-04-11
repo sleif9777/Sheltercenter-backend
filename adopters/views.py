@@ -9,8 +9,11 @@ from appointments.models import Appointment
 from appointments.views import AppointmentViewSet
 from email_templates.views import EmailViewSet
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from users.models import UserProfile
+
+from auth.security import IsStaffUser
 from utils import DateTimeUtils
 
 from .enums import ApprovalStatus
@@ -35,7 +38,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     # GET commands
 
-    @action(detail=False, methods=["GET"], url_path="GetAdopterAlerts")
+    @action(detail=False, methods=["GET"], url_path="GetAdopterAlerts", permission_classes=[IsStaffUser])
     def GetAdopterAlerts(self, request):
         date, _ = AppointmentViewSet.GetISODateFromISODateRequest(request.query_params)
 
@@ -77,7 +80,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=False, methods=["GET"], url_path="GetAdopterDemographics")
+    @action(detail=False, methods=["GET"], url_path="GetAdopterDemographics", permission_classes=[IsAuthenticated])
     def GetAdopterDemographics(self, request):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)
         appt = adopter.get_current_appointment()
@@ -91,7 +94,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
             }
         )
 
-    @action(detail=False, methods=["GET"], url_path="GetAdopterDirectoryListing")
+    @action(detail=False, methods=["GET"], url_path="GetAdopterDirectoryListing", permission_classes=[IsStaffUser])
     def GetAdopterDirectoryListing(self, request):
         query = AdopterDirectoryListingRequestSerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
@@ -130,14 +133,14 @@ class AdopterViewSet(viewsets.ModelViewSet):
         except:
             traceback.print_exc()
 
-    @action(detail=False, methods=["GET"], url_path="GetAdopterPreferences")
+    @action(detail=False, methods=["GET"], url_path="GetAdopterPreferences", permission_classes=[IsAuthenticated])
     def GetAdopterPreferences(self, request):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)
         serializer = AdopterPreferencesResponseSerializer(adopter)
 
         return JsonResponse({"pref": serializer.data}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["GET"], url_path="GetAdopterSelectFieldOptions")
+    @action(detail=False, methods=["GET"], url_path="GetAdopterSelectFieldOptions", permission_classes=[IsStaffUser])
     def GetAdopterSelectFieldOptions(self, request):
         print(request.query_params)
         include_scheduled = request.query_params["includeScheduled"].lower() == "true"
@@ -174,7 +177,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({"options": options}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["GET"], url_path="GetRecentlyUploadedAdopters")
+    @action(detail=False, methods=["GET"], url_path="GetRecentlyUploadedAdopters", permission_classes=[IsStaffUser])
     def GetRecentlyUploadedAdopters(self, request):
         query = RecentlyUploadedAdoptersRequestSerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
@@ -194,7 +197,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     # POST commands
 
-    @action(detail=False, methods=["POST"], url_path="MessageAdopter")
+    @action(detail=False, methods=["POST"], url_path="MessageAdopter", permission_classes=[IsStaffUser])
     def MessageAdopter(self, request):
         query = SendMessageRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -209,7 +212,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=False, methods=["POST"], url_path="MessageAdoptions")
+    @action(detail=False, methods=["POST"], url_path="MessageAdoptions", permission_classes=[IsStaffUser])
     def MessageAdoptions(self, request):
         query = SendMessageRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -224,7 +227,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=False, methods=["POST"], url_path="ResendApproval")
+    @action(detail=False, methods=["POST"], url_path="ResendApproval", permission_classes=[IsStaffUser])
     def ResendApproval(self, request):
         adopter = self.UnpackAdopterFromAdopterIDRequest(request.data)
 
@@ -232,7 +235,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=False, methods=["POST"], url_path="RestoreCalendarAccess")
+    @action(detail=False, methods=["POST"], url_path="RestoreCalendarAccess", permission_classes=[IsStaffUser])
     def RestoreCalendarAccess(self, request):
         adopter = self.UnpackAdopterFromAdopterIDRequest(request.data)
 
@@ -240,7 +243,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=False, methods=["POST"], url_path="UpdateAdopterPreferences")
+    @action(detail=False, methods=["POST"], url_path="UpdateAdopterPreferences", permission_classes=[IsAuthenticated])
     def UpdateAdopterPreferences(self, request):
         query = AdopterPreferencesRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)

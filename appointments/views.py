@@ -20,8 +20,11 @@ from email_templates.views import EmailViewSet
 from pending_adoptions.enums import CircumstanceOptions, PendingAdoptionStatus
 from pending_adoptions.models import PendingAdoption
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from utils import DateTimeUtils
+
+from auth.security import IsAdminUser, IsStaffUser
 from users.enums import SecurityLevel
 from users.models import UserProfile
 
@@ -58,7 +61,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     # GET commands
 
-    @action(detail=False, methods=["GET"], url_path="GetAppointmentCardData")
+    @action(detail=False, methods=["GET"], url_path="GetAppointmentCardData", permission_classes=[IsStaffUser])
     def GetAppointmentCardData(self, request):
         appointment = self.GetAppointmentFromAppointmentIDRequest(request.query_params)
 
@@ -66,7 +69,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({"cardData": serializer.data}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["GET"], url_path="GetAppointmentsMissingOutcomes")
+    @action(detail=False, methods=["GET"], url_path="GetAppointmentsMissingOutcomes", permission_classes=[IsStaffUser, IsAdminUser])
     def GetAppointmentsMissingOutcomes(self, request):
 
         appts = Appointment.objects.filter(
@@ -87,7 +90,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=False, methods=["GET"], url_path="GetContextForDate")
+    @action(detail=False, methods=["GET"], url_path="GetContextForDate", permission_classes=[AllowAny])
     def GetContextForDate(self, request):
         date, date_key = AppointmentViewSet.GetISODateFromISODateRequest(request.query_params)
 
@@ -118,7 +121,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=False, methods=["GET"], url_path="GetContinuityAccessSpreadsheet")
+    @action(detail=False, methods=["GET"], url_path="GetContinuityAccessSpreadsheet", permission_classes=[IsStaffUser])
     def GetContinuityAccessSpreadsheet(self, request):
         date, _ = AppointmentViewSet.GetISODateFromISODateRequest(request.query_params)
         service = ContinuityAccessSpreadsheetService(date)
@@ -135,7 +138,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return response
 
-    @action(detail=False, methods=["GET"], url_path="GetEmptyDates")
+    @action(detail=False, methods=["GET"], url_path="GetEmptyDates", permission_classes=[AllowAny])
     def GetEmptyDates(self, request):
         emptyDates: list[str] = []
         today = DateTimeUtils.get_today()
@@ -158,7 +161,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=False, methods=["GET"], url_path="GetRecentAdoptions")
+    @action(detail=False, methods=["GET"], url_path="GetRecentAdoptions", permission_classes=[AllowAny])
     def GetRecentAdoptions(self, request):
         adoption_outcome_appts = Appointment.objects.filter(
             instant__range=DateTimeUtils.get_range_for_date(timezone.now(), backdate_days=10),
@@ -192,7 +195,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({"adoptions": all_serialized_adoptions}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["GET"], url_path="GetReportingAppointment")
+    @action(detail=False, methods=["GET"], url_path="GetReportingAppointment", permission_classes=[IsStaffUser])
     def GetReportingAppointment(self, request):
         appt = self.GetAppointmentFromAppointmentIDRequest(request.query_params)
 
@@ -210,7 +213,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     # POST commands
 
-    @action(detail=False, methods=["POST"], url_path="CancelAllAndClose")
+    @action(detail=False, methods=["POST"], url_path="CancelAllAndClose", permission_classes=[IsStaffUser])
     def CancelAllAndClose(self, request):
         date, _ = AppointmentViewSet.GetISODateFromISODateRequest(request.data)
         dateRange = DateTimeUtils.get_range_for_date(date)
@@ -231,7 +234,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="CancelAppointment")
+    @action(detail=False, methods=["POST"], url_path="CancelAppointment", permission_classes=[IsStaffUser])
     def CancelAppointment(self, request):
         appt = self.GetAppointmentFromAppointmentIDRequest(request.data)
         booking = Booking.objects.get(appointment=appt, status=BookingStatus.ACTIVE)
@@ -246,7 +249,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="CheckInAppointment")
+    @action(detail=False, methods=["POST"], url_path="CheckInAppointment", permission_classes=[IsStaffUser])
     def CheckInAppointment(self, request):
         query = CheckInAppointmentRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -265,7 +268,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="CheckOutAppointment")
+    @action(detail=False, methods=["POST"], url_path="CheckOutAppointment", permission_classes=[IsStaffUser])
     def CheckOutAppointment(self, request):
         query = CheckOutAppointmentRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -327,7 +330,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="CreateAppointment")
+    @action(detail=False, methods=["POST"], url_path="CreateAppointment", permission_classes=[IsStaffUser])
     def CreateAppointment(self, request):
         query = CreateAppointmentRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -380,7 +383,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=["POST"], url_path="CreateBatchForDate")
+    @action(detail=False, methods=["POST"], url_path="CreateBatchForDate", permission_classes=[IsStaffUser])
     def CreateBatchForDate(self, request):
         isoDate = request.data["isoDate"]
         [year, month, day] = [int(i) for i in isoDate.split("-")]
@@ -417,7 +420,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=["POST"], url_path="CreateWalkIn")
+    @action(detail=False, methods=["POST"], url_path="CreateWalkIn", permission_classes=[IsStaffUser])
     def CreateWalkIn(self, request):
         query = CreateWalkInRequestSerializer(data=request.data)
         try:
@@ -485,14 +488,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=["POST"], url_path="MarkNoShow")
+    @action(detail=False, methods=["POST"], url_path="MarkNoShow", permission_classes=[IsStaffUser])
     def MarkNoShow(self, request):
         appt = self.GetAppointmentFromAppointmentIDRequest(request.data)
         appt.no_show()
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="MarkTemplateSent")
+    @action(detail=False, methods=["POST"], url_path="MarkTemplateSent", permission_classes=[IsStaffUser])
     def MarkTemplateSent(self, request):
         appt = self.GetAppointmentFromAppointmentIDRequest(request.data)
         template_id: BookingMessageTemplate = request.data["templateID"]
@@ -502,7 +505,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="ScheduleAppointment")
+    @action(detail=False, methods=["POST"], url_path="ScheduleAppointment", permission_classes=[IsAuthenticated])
     def ScheduleAppointment(self, request):
         query = ScheduleAppointmentRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -540,7 +543,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Return success status.
         return JsonResponse({}, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=["POST"], url_path="SoftDeleteAppointment")
+    @action(detail=False, methods=["POST"], url_path="SoftDeleteAppointment", permission_classes=[IsStaffUser])
     def SoftDeleteAppointment(self, request):
         appt = self.GetAppointmentFromAppointmentIDRequest(request.data)
         appt.soft_delete()
@@ -555,7 +558,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="ToggleLockForDate")
+    @action(detail=False, methods=["POST"], url_path="ToggleLockForDate", permission_classes=[IsStaffUser])
     def ToggleLockForDate(self, request):
         date_obj, _ = self.GetISODateFromISODateRequest(request.data)
         is_unlock: bool = request.data["isUnlock"]
@@ -569,7 +572,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="ToggleLockForSingleAppt")
+    @action(detail=False, methods=["POST"], url_path="ToggleLockForSingleAppt", permission_classes=[IsStaffUser])
     def ToggleLockForSingleAppt(self, request):
         appt = self.GetAppointmentFromAppointmentIDRequest(request.data)
         appt.toggle_lock()

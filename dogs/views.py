@@ -9,7 +9,10 @@ from environment_settings.models import EnvironmentSettings
 from pending_adoptions.enums import PendingAdoptionStatus
 from pending_adoptions.models import PendingAdoption
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+
+from auth.security import IsStaffUser
 
 from .enums import DogStatus
 from .models import Dog
@@ -32,7 +35,7 @@ class DogsViewSet(viewsets.ModelViewSet):
         return dog
 
     # GET commands
-    @action(detail=False, methods=["GET"], url_path="GetDashboardDogHash")
+    @action(detail=False, methods=["GET"], url_path="GetDashboardDogHash", permission_classes=[IsStaffUser])
     def GetDashboardDogHash(self, request):
         # Get start of current week (Monday)
         today = timezone.localdate()
@@ -69,13 +72,13 @@ class DogsViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=False, methods=["GET"], url_path="GetDogDemographics")
+    @action(detail=False, methods=["GET"], url_path="GetDogDemographics", permission_classes=[AllowAny])
     def GetDogDemographics(self, request):
         dog = DogsViewSet.UnpackDogFromDogIDRequest(request.query_params)
 
         return JsonResponse({"dog": DogDemographicsSerializer(dog).data}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["GET"], url_path="GetPublishableDogs")
+    @action(detail=False, methods=["GET"], url_path="GetPublishableDogs", permission_classes=[AllowAny])
     def GetPublishableDogs(self, request):
         environment = EnvironmentSettings.objects.get(pk=1)
         publishable_dogs = Dog.objects.filter(publishable=True)
@@ -93,7 +96,7 @@ class DogsViewSet(viewsets.ModelViewSet):
             {"hash": hash, "lastImport": environment.last_dog_import_iso}, status=status.HTTP_200_OK
         )
 
-    @action(detail=False, methods=["GET"], url_path="GetWatchlistForAdopter")
+    @action(detail=False, methods=["GET"], url_path="GetWatchlistForAdopter", permission_classes=[IsAuthenticated])
     def GetWatchlistForAdopter(self, request):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)
         environment = EnvironmentSettings.objects.get(pk=1)
@@ -112,7 +115,7 @@ class DogsViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=False, methods=["GET"], url_path="GetWatchlistHashForAdopter")
+    @action(detail=False, methods=["GET"], url_path="GetWatchlistHashForAdopter", permission_classes=[IsAuthenticated])
     def GetWatchlistHashForAdopter(self, request):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)
         environment = EnvironmentSettings.objects.get(pk=1)
@@ -140,7 +143,7 @@ class DogsViewSet(viewsets.ModelViewSet):
         )
 
     # POST commands
-    @action(detail=False, methods=["POST"], url_path="AddDogToList")
+    @action(detail=False, methods=["POST"], url_path="AddDogToList", permission_classes=[IsAuthenticated])
     def AddDogToList(self, request: ListModificationRequest):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.data)
         dog = DogsViewSet.UnpackDogFromDogIDRequest(request.data)
@@ -151,7 +154,7 @@ class DogsViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="RemoveDogFromList")
+    @action(detail=False, methods=["POST"], url_path="RemoveDogFromList", permission_classes=[IsAuthenticated])
     def RemoveDogFromList(self, request: ListModificationRequest):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.data)
         dog = DogsViewSet.UnpackDogFromDogIDRequest(request.data)

@@ -2,7 +2,9 @@ import datetime
 
 from django.http import JsonResponse
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
+
+from auth.security import IsStaffUser
 
 from .mapper import TemplateHashMapper
 from .models import AppointmentBase
@@ -15,7 +17,7 @@ class AppointmentBaseViewSet(viewsets.ModelViewSet):
     serializer_class = AppointmentBaseSerializer
 
     # GET commands
-    @action(detail=False, methods=["GET"], url_path="GetTemplatesForWeekday")
+    @action(detail=False, methods=["GET"], url_path="GetTemplatesForWeekday", permission_classes=[IsStaffUser])
     def GetTemplatesForWeekday(self, request):
         query = WeekdayRequestSerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
@@ -30,7 +32,7 @@ class AppointmentBaseViewSet(viewsets.ModelViewSet):
         return JsonResponse({"templateHash": template_hash}, status=status.HTTP_200_OK)
 
     # POST commands
-    @action(detail=False, methods=["POST"], url_path="CreateTemplateAppointment")
+    @action(detail=False, methods=["POST"], url_path="CreateTemplateAppointment", permission_classes=[IsStaffUser])
     def CreateTemplateAppointment(self, request):
         query = CreateTemplateAppointmentRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
