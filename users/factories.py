@@ -60,13 +60,13 @@ class UserSpreadsheetFactory(UserFactory):
 
     def get_file_type(self, file_name) -> ImportFileTypes:
         mime_type, _ = guess_type(file_name) or (None, None)
-        
+
         # Check MIME type
         if mime_type == "text/csv":
             return ImportFileTypes.CSV
         elif mime_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
             return ImportFileTypes.EXCEL
-        
+
         # Fallback to extension
         extension = file_name.split(".")[-1].lower()
         match extension:
@@ -86,14 +86,14 @@ class UserSpreadsheetFactory(UserFactory):
                 if not self.validate_single_row(i):
                     failures += 1
                     continue
-                    
+
                 user, created, approval_averted = self.process_single_row(i)
-                
+
                 # Skip if user is None (foster app or error)
                 if user is None:
                     failures += 1
                     continue
-                
+
                 # Update batch counts
                 if created:
                     successes += 1
@@ -105,7 +105,7 @@ class UserSpreadsheetFactory(UserFactory):
                     aversions.append(averted_adopter)
                 else:
                     updates += 1
-                    
+
             except Exception as e:
                 print(f"Error processing row {i}: {e}")
                 traceback.print_exc()
@@ -119,7 +119,7 @@ class UserSpreadsheetFactory(UserFactory):
             "failures": failures,
             "aversions": aversions,
         }
-        
+
     def validate_single_row(self, index):
         row_data = self.rows[index]
         validate_length = [27, 14, 15, 4]
@@ -133,11 +133,11 @@ class UserSpreadsheetFactory(UserFactory):
         email_value = row_data[27]
         parsed = email.utils.parseaddr(email_value)[1]
         print(f"Row {index} email validation: {email_value} -> {parsed}")
-        
+
         if parsed == "":
             print(f"Row {index} email validation FAILED")
             return False
-        
+
         return True
 
     def process_single_row(self, index) -> tuple[UserProfile, bool, bool]:
@@ -160,7 +160,7 @@ class UserSpreadsheetFactory(UserFactory):
 
             return user, (adopter_created and user_created), approval_averted
         except:
-            if not adopter or not user: # if either is missing, since you need both
+            if not adopter or not user:  # if either is missing, since you need both
                 self.clean_records(adopter, user)
             return None, False, False
 
@@ -169,6 +169,7 @@ class UserSpreadsheetFactory(UserFactory):
 
     def create_new_adopter(self, index: int, new_status: ApprovalStatus) -> tuple[Adopter, bool]:
         row_data = self.rows[index]
+        application_comments = row_data[12] if len(row_data) < 1000 else row_data[12][:997] + "..."
 
         adopter, adopter_created = Adopter.objects.update_or_create(
             primary_email=row_data[27].lower(),
@@ -177,14 +178,14 @@ class UserSpreadsheetFactory(UserFactory):
                 "shelterluv_id": row_data[13],
                 "shelterluv_app_id": row_data[0],
                 "approved_until": Adopter.get_default_approval_date(),
-                "application_comments": row_data[12],
+                "application_comments": application_comments,
             },
             create_defaults={
                 "status": new_status,
                 "shelterluv_id": row_data[13],
                 "shelterluv_app_id": row_data[0],
                 "approved_until": Adopter.get_default_approval_date(),
-                "application_comments": row_data[12],
+                "application_comments": application_comments,
             },
         )
 
@@ -227,7 +228,7 @@ class UserSpreadsheetFactory(UserFactory):
             user.save()
 
         return user, user_created
-    
+
 
 class UserFormFactory(UserFactory):
     context: FormContexts
@@ -251,9 +252,13 @@ class UserFormFactory(UserFactory):
                 self.form_data["status"], self.form_data["primaryEmail"]
             )
         else:
-            current_status = Adopter.objects.get(primary_email=self.form_data["primaryEmail"]).status
+            current_status = Adopter.objects.get(
+                primary_email=self.form_data["primaryEmail"]
+            ).status
             new_status, approval_averted = self.form_data["status"], False
-            newly_approved = new_status == ApprovalStatus.APPROVED and (current_status != new_status)
+            newly_approved = new_status == ApprovalStatus.APPROVED and (
+                current_status != new_status
+            )
 
         adopter: Adopter
         user: UserProfile
