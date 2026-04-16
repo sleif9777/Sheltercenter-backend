@@ -161,7 +161,7 @@ class Adopter(models.Model):
         except:
             return None
 
-    def current_booking_in_future(self) -> bool:
+    def should_email_watchlist_updates(self) -> bool:
         current_appt = self.get_current_appointment()
         today = DateTimeUtils.get_today()
 

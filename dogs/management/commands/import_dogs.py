@@ -192,7 +192,7 @@ class Command(BaseCommand):
     def _notify_interested_adopters(self, dog):
         email_list: list[Adopter] = [
             adopter for adopter in dog.interest_adopters.all()
-            if adopter.current_booking_in_future()
+            if not adopter.user_profile.adoption_completed
         ]
 
         for adopter in email_list:
