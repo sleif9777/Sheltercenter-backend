@@ -180,12 +180,12 @@ class Command(BaseCommand):
             .prefetch_related("interest_adopters")
         )
 
+        for dog in dogs_to_deactivate:
+            self._notify_interested_adopters(dog)
+
         deactivated_count = dogs_to_deactivate.update(
             publishable=False, unavailable_date=timezone.localdate()
         )
-
-        for dog in dogs_to_deactivate:
-            self._notify_interested_adopters(dog)
 
         return deactivated_count
 
