@@ -17,8 +17,20 @@ class Command(BaseCommand):
     help = "Import dogs from Shelterluv API"
     base_url = "https://new.shelterluv.com/api/v1/animals"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--dog-id",
+            type=int,
+            help="Only process a single dog by Shelterluv ID (for testing)",
+        )
+
     def handle(self, *args, **kwargs):
         load_dotenv()
+        self.test_dog_id = kwargs.get("dog_id")
+
+        if self.test_dog_id:
+            self.stdout.write(self.style.WARNING(f"--- TEST MODE: only processing dog ID {self.test_dog_id} ---"))
+
         api_key = self._get_api_key()
         if not api_key:
             self.stdout.write(self.style.ERROR("API key not found!"))
@@ -28,8 +40,13 @@ class Command(BaseCommand):
 
         environment = EnvironmentSettings.objects.get(pk=1)
         is_first_run = environment.last_dog_import is None
+        self.stdout.write(f"is_first_run={is_first_run}, last_dog_import={environment.last_dog_import}")
 
         publishable_ids = self._fetch_all_ids(status_type="publishable")
+        self.stdout.write(f"Fetched {len(publishable_ids)} publishable IDs from API")
+        if self.test_dog_id:
+            self.stdout.write(f"Test dog {self.test_dog_id} in publishable_ids: {self.test_dog_id in publishable_ids}")
+
         imported_ids, total_imported, total_reactivated, total_created = self._import_all_animals(
             publishable_ids, is_first_run
         )
@@ -83,10 +100,11 @@ class Command(BaseCommand):
 
         first_page = self._fetch_page(0)
         if first_page is None:
-            return imported_ids, total_imported, total_reactivated
+            return imported_ids, total_imported, total_reactivated, total_created
 
         total_count = first_page.get("total_count", 0)
         offsets = [0] + list(range(100, total_count, 100))
+        self.stdout.write(f"Total animals from API: {total_count}, pages to fetch: {len(offsets)}")
 
         requests_this_minute = 1
         minute_start = time.time()
@@ -107,6 +125,11 @@ class Command(BaseCommand):
 
             animals = data.get("animals", [])
 
+            if self.test_dog_id:
+                animals = [a for a in animals if a.get("ID") == str(self.test_dog_id)]
+                if animals:
+                    self.stdout.write(f"Found test dog {self.test_dog_id} in page at offset={offset}")
+
             if is_first_run:
                 animals = [
                     a for a in animals
@@ -119,7 +142,9 @@ class Command(BaseCommand):
             total_imported += page_imported
             total_reactivated += page_reactivated
             total_created += page_created
-            self.stdout.write(f"  Processed {len(animals)} animals.")
+
+            if animals:
+                self.stdout.write(f"  Processed {len(animals)} animals at offset={offset}.")
 
         return imported_ids, total_imported, total_reactivated, total_created
 
@@ -141,6 +166,13 @@ class Command(BaseCommand):
 
             shelterluv_id = parsed["shelterluv_id"]
             parsed["publishable"] = shelterluv_id in publishable_ids
+
+            self.stdout.write(
+                f"  Processing dog shelterluv_id={shelterluv_id}, "
+                f"parsed publishable={parsed['publishable']}, "
+                f"parsed status={parsed.get('status')}"
+            )
+
             created, reactivated = self._upsert_dog(parsed)
             imported_ids.add(shelterluv_id)
             total_imported += 1
@@ -150,20 +182,51 @@ class Command(BaseCommand):
                 total_created += 1
 
         return total_imported, total_reactivated, total_created
-    
+
     def _upsert_dog(self, parsed):
         shelterluv_id = parsed.pop("shelterluv_id")
         previous = Dog.objects.filter(shelterluv_id=shelterluv_id).first()
         was_inactive = previous and not previous.publishable
+        was_active = previous and previous.publishable
         unavailable_date = previous.unavailable_date if previous else None
+
+        self.stdout.write(
+            f"  DB state before upsert: exists={previous is not None}, "
+            f"was_active={was_active}, was_inactive={was_inactive}, "
+            f"unavailable_date={unavailable_date}"
+        )
 
         dog, created = Dog.objects.update_or_create(
             shelterluv_id=shelterluv_id, defaults=parsed
         )
 
+        self.stdout.write(
+            f"  DB state after upsert: created={created}, "
+            f"publishable={dog.publishable}, status={dog.status}"
+        )
+
         reactivated = not created and was_inactive and dog.publishable
         if reactivated:
+            self.stdout.write(self.style.SUCCESS(f"  Dog {dog.name} ({shelterluv_id}) reactivated"))
             self._handle_reactivation(dog, unavailable_date)
+
+        just_deactivated = not created and was_active and not dog.publishable
+        self.stdout.write(f"  just_deactivated={just_deactivated} (not created={not created}, was_active={was_active}, not publishable={not dog.publishable})")
+
+        if just_deactivated:
+            dog.unavailable_date = timezone.localdate()
+            dog.save()
+            dog = Dog.objects.prefetch_related("interest_adopters").get(pk=dog.pk)
+            adopters = list(dog.interest_adopters.all())
+            self.stdout.write(
+                self.style.WARNING(
+                    f"  Dog {dog.name} ({shelterluv_id}) just deactivated, "
+                    f"found {len(adopters)} interested adopters"
+                )
+            )
+            for adopter in adopters:
+                self.stdout.write(f"    Adopter pk={adopter.pk}, adoption_completed={adopter.user_profile.adoption_completed}")
+            self._notify_interested_adopters(dog)
 
         return created, reactivated
 
@@ -174,18 +237,24 @@ class Command(BaseCommand):
         dog.save()
 
     def _deactivate_missing_dogs(self, imported_ids):
-        dogs_to_deactivate = (
-            Dog.objects.filter(publishable=True)
+        if self.test_dog_id:
+            self.stdout.write(self.style.WARNING("TEST MODE: skipping deactivate_missing_dogs"))
+            return 0
+
+        dogs_to_deactivate = list(
+            Dog.objects.filter(publishable=True, unavailable_date__isnull=True)
             .exclude(shelterluv_id__in=imported_ids)
             .prefetch_related("interest_adopters")
         )
 
+        self.stdout.write(f"Dogs newly missing from API (to deactivate): {len(dogs_to_deactivate)}")
         for dog in dogs_to_deactivate:
+            self.stdout.write(f"  Deactivating dog {dog.name} (shelterluv_id={dog.shelterluv_id})")
             self._notify_interested_adopters(dog)
 
-        deactivated_count = dogs_to_deactivate.update(
-            publishable=False, unavailable_date=timezone.localdate()
-        )
+        deactivated_count = Dog.objects.filter(publishable=True).exclude(
+            shelterluv_id__in=imported_ids
+        ).update(publishable=False, unavailable_date=timezone.localdate())
 
         return deactivated_count
 
@@ -195,9 +264,13 @@ class Command(BaseCommand):
             if not adopter.user_profile.adoption_completed
         ]
 
+        self.stdout.write(f"  Notifying {len(email_list)} adopters for dog {dog.name}")
+
         for adopter in email_list:
             try:
+                self.stdout.write(f"    Sending email to adopter pk={adopter.pk}...")
                 EmailViewSet().DogNoLongerAvailable(adopter, dog.name)
+                self.stdout.write(self.style.SUCCESS(f"    Email sent to adopter pk={adopter.pk}"))
             except Exception as e:
                 self.stdout.write(
                     self.style.WARNING(f"Failed to email adopter {adopter.pk} for {dog.name}: {e}")
