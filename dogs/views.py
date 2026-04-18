@@ -49,8 +49,12 @@ class DogsViewSet(viewsets.ModelViewSet):
         ready_to_roll_dog_names = PendingAdoption.objects.filter(
             status=PendingAdoptionStatus.READY_TO_ROLL
         ).values_list("dog", flat=True)
-        ready_to_roll = Dog.objects.filter(name__in=ready_to_roll_dog_names)
-        
+
+        ready_to_roll = Dog.objects.filter(
+            name__in=ready_to_roll_dog_names,
+            status__in=[DogStatus.CHOSEN_SN, DogStatus.CHOSEN_WC]
+        )
+
         needs_sn = Dog.objects.filter(status=DogStatus.CHOSEN_SN).difference(ready_to_roll)
         needs_wc = Dog.objects.filter(status=DogStatus.CHOSEN_WC).difference(ready_to_roll)
 
