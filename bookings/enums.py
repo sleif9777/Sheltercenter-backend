@@ -12,10 +12,10 @@ class BookingStatus(models.IntegerChoices, Enum):
 
 
 class BookingMessageTemplate(models.IntegerChoices, Enum):
-    LIMITED_PUPPIES = 0, "Limited Puppies"
-    LIMITED_SMALL_PUPPIES = 1, "Limited Small Puppies"
-    LIMITED_HYPO = 2, "Limited Hypo"
-    LIMITED_FUN_SIZE = 3, "Limited Fun Size"
-    DOGS_WERE_ADOPTED = 4, "Dogs Were Adopted"
-    DOGS_NOT_HERE_YET = 5, "Dogs Not Here Yet"
-    X_IN_QUEUE = 6, "X In Queue"
+    LIMITED_PUPPIES = 1, "Limited Puppies"
+    LIMITED_SMALL_PUPPIES = 2, "Limited Small Puppies"
+    LIMITED_HYPO = 3, "Limited Hypo"
+    LIMITED_FUN_SIZE = 4, "Limited Fun Size"
+    DOGS_WERE_ADOPTED = 5, "Dogs Were Adopted"
+    DOGS_NOT_HERE_YET = 6, "Dogs Not Here Yet"
+    X_IN_QUEUE = 7, "X In Queue"
