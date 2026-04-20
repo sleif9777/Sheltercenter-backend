@@ -139,7 +139,6 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["GET"], url_path="GetAdopterSelectFieldOptions")
     def GetAdopterSelectFieldOptions(self, request):
-        print(request.query_params)
         include_scheduled = request.query_params["includeScheduled"].lower() == "true"
         include_archived = request.query_params["includeArchived"].lower() == "true"
 

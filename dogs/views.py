@@ -1,7 +1,4 @@
 from adopters.views import AdopterViewSet
-from appointments.enums import OutcomeTypes
-from appointments.models import Appointment
-from appointment_bases.enums import AppointmentTypes
 from datetime import timedelta
 from django.http import JsonResponse
 from django.utils import timezone
