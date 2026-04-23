@@ -1,5 +1,5 @@
 from adopters.views import AdopterViewSet
-from datetime import timedelta
+from datetime import datetime, timedelta
 from django.http import JsonResponse
 from django.utils import timezone
 from environment_settings.models import EnvironmentSettings
@@ -31,13 +31,17 @@ class DogsViewSet(viewsets.ModelViewSet):
     # GET commands
     @action(detail=False, methods=["GET"], url_path="GetDashboardDogHash")
     def GetDashboardDogHash(self, request):
-        # Get start of current week (Monday)
         today = timezone.localdate()
         monday = today - timedelta(days=today.weekday())
 
+        # Convert monday to an aware datetime at midnight in the current timezone
+        monday_aware = timezone.make_aware(
+            datetime.combine(monday, datetime.min.time())
+        )
+
         newly_in_home = Dog.objects.filter(
-            status=DogStatus.HEALTHY_IN_HOME, 
-            last_updated__gte=monday
+            status=DogStatus.HEALTHY_IN_HOME,
+            last_updated__gte=monday_aware
         )
 
         fta = Dog.objects.filter(status=DogStatus.FTA)
