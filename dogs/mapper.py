@@ -48,9 +48,17 @@ def parse_unavailable_date(status: DogStatus, last_updated: datetime | None) -> 
     return date.today()
 
 
-def parse_fun_size(description: str) -> bool:
-    return bool(re.search(r"fridays\s*(and|&)\s*saturdays", description, re.IGNORECASE))
+def parse_fun_size(animal: dict) -> bool:
+    description = animal.get("Description", "")
+    if re.search(r"fridays\s*(and|&)\s*saturdays", description, re.IGNORECASE):
+        return True
 
+    attributes = animal.get("Attributes", [])
+    return any(
+        attr.get("AttributeName") == "Fun Size" and attr.get("Publish") == "Yes"
+        for attr in attributes
+    )
+    
 
 def parse_available_date(description: str) -> date | None:
     match = re.search(r"\*\*.*?(\d{1,2}/\d{1,2}).*?\*\*", description)
@@ -89,7 +97,7 @@ def map_dog(animal: dict) -> dict | None:
             "weight": int(float(weight_raw)) if weight_raw else None,
             "sex": DogSex.MALE if animal.get("Sex") == "Male" else DogSex.FEMALE,
             "breed": animal.get("Breed", ""),
-            "fun_size": parse_fun_size(description),
+            "fun_size": parse_fun_size(animal),
             "available_date": parse_available_date(description),
             "unavailable_date": parse_unavailable_date(status, last_updated),
             "last_updated": last_updated,
