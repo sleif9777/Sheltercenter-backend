@@ -16,6 +16,7 @@ from bookings.models import Booking, BookingStatus
 from closed_dates.models import ClosedDate
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from dogs.models import Dog
 from email_templates.views import EmailViewSet
 from pending_adoptions.enums import CircumstanceOptions, PendingAdoptionStatus
 from pending_adoptions.models import PendingAdoption
@@ -272,13 +273,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         id = query.validated_data["apptID"]
         outcome = query.validated_data["outcome"]
-        dog = query.validated_data["dog"]
+        dogID = int(query.validated_data["dogID"])
         send_sleepover_info = query.validated_data["sendSleepoverInfo"]
 
-        if dog.isupper() or dog.islower():
-            dog = (
-                dog.title()
-            )  # if dog is all upper or lower case, convert to title case for consistency
+        dog = Dog.objects.get(pk=dogID).name if dogID else ""
 
         appt = Appointment.objects.get(pk=id)
         appt.check_out(outcome, dog)
@@ -292,6 +290,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     "circumstance": CircumstanceOptions.APPOINTMENT,
                     "created_instant": timezone.now(),
                     "dog": dog,
+                    "dogID": dogID,
                     "source_appointment": appt,
                     "status": PendingAdoptionStatus.CHOSEN,
                 },
@@ -300,6 +299,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     "circumstance": CircumstanceOptions.APPOINTMENT,
                     "created_instant": timezone.now(),
                     "dog": dog,
+                    "dogID": dogID,
                     "source_appointment": appt,
                     "status": PendingAdoptionStatus.CHOSEN,
                 },

@@ -157,20 +157,6 @@ class AdopterViewSet(viewsets.ModelViewSet):
             )
         ]
 
-        print(
-            include_archived,
-            include_scheduled,
-            [
-                adopter
-                for adopter in adopters
-                if (
-                    (include_scheduled or not adopter.has_current_booking)
-                    and (include_archived or not adopter.user_profile.archived)
-                    and not adopter.user_profile.adoption_completed
-                )
-            ],
-        )
-
         return JsonResponse({"options": options}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["GET"], url_path="GetRecentlyUploadedAdopters")

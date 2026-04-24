@@ -39,13 +39,13 @@ class CheckInAppointmentRequestSerializer(AppointmentIDRequestSerializer):
 class CheckOutAppointmentRequestSerializer(AppointmentIDRequestSerializer):
     outcome = serializers.IntegerField()
     sendSleepoverInfo = serializers.BooleanField()
-    dog = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    dogID = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     def validate(self, data):
         outcome = data["outcome"]
-        dog = data.get("dog")
+        dogID = data.get("dogID")
 
-        if outcome < OutcomeTypes.NO_DECISION and not dog:
+        if outcome < OutcomeTypes.NO_DECISION and not dogID:
             raise serializers.ValidationError({"dog": "This field is required."})
 
         return data

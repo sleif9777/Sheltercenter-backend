@@ -93,11 +93,21 @@ class EmailViewSet(viewsets.ViewSet):
             appointment.source_adoption.dog.title(), booking.adopter.user_profile.full_name
         )
 
+        adoption = appointment.source_adoption
+        dog = None
+        if adoption.dogID:
+            from dogs.models import Dog
+            try:
+                dog = Dog.objects.get(pk=adoption.dogID)
+            except Dog.DoesNotExist:
+                pass
+
         email = EmailService(
             subject,
             "dog_chosen",
             {
                 "appointment": appointment,
+                "dog": dog,
             },
             booking.adopter.user_profile.primary_email,
         )
@@ -149,6 +159,14 @@ class EmailViewSet(viewsets.ViewSet):
     def AdoptionCreated(self, adoption):
         subject = "Congratulations on choosing {0}!".format(adoption.dog.title())
 
+        dog = None
+        if adoption.dogID:
+            from dogs.models import Dog
+            try:
+                dog = Dog.objects.get(pk=adoption.dogID)
+            except Dog.DoesNotExist:
+                pass
+
         email = EmailService(
             subject,
             "adoption_created",
@@ -156,6 +174,7 @@ class EmailViewSet(viewsets.ViewSet):
                 "adoption": adoption,
                 "host_weekend": adoption.circumstance == CircumstanceOptions.HOST_WEEKEND,
                 "foster": adoption.circumstance == CircumstanceOptions.FOSTER,
+                "dog": dog,
             },
             adoption.adopter.user_profile.primary_email,
         )

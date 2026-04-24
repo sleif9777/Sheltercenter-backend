@@ -13,7 +13,7 @@ SHELTERLUV_STATUS_MAP = {
     "Healthy In Home": DogStatus.HEALTHY_IN_HOME,
     "Hold": DogStatus.UNAVAILABLE,
     "Medical Foster": DogStatus.UNAVAILABLE,
-    "Pending": DogStatus.UNAVAILABLE,
+    "Pending": DogStatus.AVAILABLE_NOW,
     "Deceased": DogStatus.UNAVAILABLE,
 }
 
@@ -84,6 +84,7 @@ def map_dog(animal: dict) -> dict | None:
             "name": animal["Name"][:255],
             "description": description[:5000],
             "photo_url": animal.get("CoverPhoto", "")[:500],
+            "other_photos": animal.get("Photos", []),
             "age_months": animal.get("Age"),
             "weight": int(float(weight_raw)) if weight_raw else None,
             "sex": DogSex.MALE if animal.get("Sex") == "Male" else DogSex.FEMALE,

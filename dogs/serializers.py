@@ -18,9 +18,19 @@ class ListModificationRequest(DogIDRequestSerializer, AdopterIDRequestSerializer
     pass
 
 
-class DashboardDogSerializer(serializers.ModelSerializer):
+class DogValueLabelPairSerializer(serializers.HyperlinkedModelSerializer):
     ID = serializers.IntegerField(source="id")
     name = serializers.CharField()
+
+    class Meta:
+        model = Dog
+        fields = [
+            "ID",
+            "name",
+        ]
+
+
+class DashboardDogSerializer(DogValueLabelPairSerializer):
     photoURL = serializers.CharField(source="photo_url")
     unavailableDate = serializers.CharField(source="unavailable_date_iso", allow_null=True)
 
@@ -29,9 +39,7 @@ class DashboardDogSerializer(serializers.ModelSerializer):
         fields = ["ID", "name", "photoURL", "unavailableDate"]
 
 
-class DogSerializerBase(serializers.ModelSerializer):
-    ID = serializers.IntegerField(source="id")
-    name = serializers.CharField()
+class DogSerializerBase(DogValueLabelPairSerializer):
     ageMonths = serializers.IntegerField(source="age_months")
 
     class Meta:

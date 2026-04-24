@@ -3,6 +3,7 @@ from appointments.enums import OutcomeTypes
 from django.http import JsonResponse
 from django.utils import timezone
 from adopters.views import AdopterViewSet
+from dogs.models import Dog
 from email_templates.views import EmailViewSet
 from pending_adoption_updates.models import PendingAdoptionUpdate
 from rest_framework import status, viewsets
@@ -103,12 +104,18 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
         query = CreatePendingAdoptionRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
 
-        dog = query.validated_data["dog"].title()
+        if "dog" in query.validated_data:
+            dogID = None
+            dog = query.validated_data["dog"].title()
+        elif "dogID" in query.validated_data:
+            dogID = int(query.validated_data["dogID"])
+            dog = Dog.objects.get(pk=dogID).name
 
         circumstance = query.validated_data["circumstance"]
 
         pending_adoption = PendingAdoption.objects.create(
             dog=dog,
+            dogID=dogID,
             adopter=adopter,
             circumstance=circumstance,
             created_instant=timezone.now(),

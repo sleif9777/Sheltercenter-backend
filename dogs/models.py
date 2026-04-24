@@ -9,6 +9,7 @@ class Dog(models.Model):
     shelterluv_id = models.IntegerField(null=False, blank=False)
     description = models.CharField(default="", max_length=5000, null=False, blank=True)
     photo_url = models.CharField(default="", max_length=200, null=False, blank=True)
+    other_photos = models.JSONField(default=list, blank=True)
     age_months = models.IntegerField(null=True,blank=True)
     weight = models.IntegerField(null=True,blank=True)
     sex = models.IntegerField(choices=DogSex.choices, null=False, blank=False)
@@ -28,7 +29,7 @@ class Dog(models.Model):
 
     @property
     def unavailable_date_iso(self):
-        return self.unavailable_date.isoformat()
+        return self.unavailable_date.isoformat() if self.unavailable_date else None
 
     @property
     def interest_count(self):

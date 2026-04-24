@@ -19,6 +19,7 @@ class PendingAdoption(models.Model):
 
     # RELEVANT PARTY ITEMS
     dog = models.CharField(default="", max_length=50)
+    dogID = models.IntegerField(null=True, blank=True)
     adopter = models.ForeignKey(Adopter, on_delete=models.CASCADE)
 
     # EVENT ITEMS

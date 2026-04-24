@@ -5,6 +5,7 @@ from django.utils import timezone
 from environment_settings.models import EnvironmentSettings
 from pending_adoptions.enums import PendingAdoptionStatus
 from pending_adoptions.models import PendingAdoption
+from pending_adoptions.serializers import DashboardPendingAdoptionDogSerializer
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 
@@ -35,37 +36,40 @@ class DogsViewSet(viewsets.ModelViewSet):
         monday = today - timedelta(days=today.weekday())
 
         # Convert monday to an aware datetime at midnight in the current timezone
-        monday_aware = timezone.make_aware(
-            datetime.combine(monday, datetime.min.time())
-        )
+        monday_aware = timezone.make_aware(datetime.combine(monday, datetime.min.time()))
 
         newly_in_home = Dog.objects.filter(
-            status=DogStatus.HEALTHY_IN_HOME,
-            last_updated__gte=monday_aware
+            status=DogStatus.HEALTHY_IN_HOME, last_updated__gte=monday_aware
         )
 
         fta = Dog.objects.filter(status=DogStatus.FTA)
 
         # Get dogs whose name matches a PendingAdoption with READY_TO_ROLL status
-        ready_to_roll_dog_names = PendingAdoption.objects.filter(
-            status=PendingAdoptionStatus.READY_TO_ROLL
-        ).values_list("dog", flat=True)
+        ready_to_roll = PendingAdoption.objects.filter(status=PendingAdoptionStatus.READY_TO_ROLL)
 
-        ready_to_roll = Dog.objects.filter(
-            name__in=ready_to_roll_dog_names,
-            status__in=[DogStatus.CHOSEN_SN, DogStatus.CHOSEN_WC]
+        needs_sn = PendingAdoption.objects.filter(status=PendingAdoptionStatus.NEEDS_SN).difference(
+            ready_to_roll
         )
-
-        needs_sn = Dog.objects.filter(status=DogStatus.CHOSEN_SN).difference(ready_to_roll)
-        needs_wc = Dog.objects.filter(status=DogStatus.CHOSEN_WC).difference(ready_to_roll)
+        needs_wc = PendingAdoption.objects.filter(
+            status=PendingAdoptionStatus.NEEDS_WELL_CHECK
+        ).difference(ready_to_roll)
 
         return JsonResponse(
             {
                 "hash": {
                     "chosen": {
-                        "needsSN": [DashboardDogSerializer(dog).data for dog in needs_sn],
-                        "needsWC": [DashboardDogSerializer(dog).data for dog in needs_wc],
-                        "readyToRoll": [DashboardDogSerializer(dog).data for dog in ready_to_roll],
+                        "needsSN": [
+                            DashboardPendingAdoptionDogSerializer(adoption).data
+                            for adoption in needs_sn
+                        ],
+                        "needsWC": [
+                            DashboardPendingAdoptionDogSerializer(adoption).data
+                            for adoption in needs_wc
+                        ],
+                        "readyToRoll": [
+                            DashboardPendingAdoptionDogSerializer(adoption).data
+                            for adoption in ready_to_roll
+                        ],
                     },
                     "fta": [DashboardDogSerializer(dog).data for dog in fta],
                     "newlyInHome": [DashboardDogSerializer(dog).data for dog in newly_in_home],
@@ -79,6 +83,16 @@ class DogsViewSet(viewsets.ModelViewSet):
         dog = DogsViewSet.UnpackDogFromDogIDRequest(request.query_params)
 
         return JsonResponse({"dog": DogDemographicsSerializer(dog).data}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["GET"], url_path="GetDogSelectFieldOptions")
+    def GetDogSelectFieldOptions(self, request):
+        dogs = Dog.objects.filter(
+            status=DogStatus.AVAILABLE_NOW,
+        )
+
+        options = [DogValueLabelPairSerializer(dog).data for dog in dogs]
+
+        return JsonResponse({"options": options}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["GET"], url_path="GetPublishableDogs")
     def GetPublishableDogs(self, request):

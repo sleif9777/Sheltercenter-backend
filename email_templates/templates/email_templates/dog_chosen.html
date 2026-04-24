@@ -30,6 +30,45 @@
             We're working hard to get your new dog home to you as quickly as possible, and we'll be in touch with updates as soon as we have them.
         </p>
     </div>
+    {% if dog %}
+        {% if dog.description %}
+            <hr />
+            <div>
+                <h3>About {{appointment.source_adoption.dog}}</h3>
+                <p>{{ dog.description }}</p>
+            </div>
+        {% endif %}
+
+        {% with default_photo="https://new-s3.shelterluv.com/public/img/profile_photo/default_dog.png" %}
+            {% if dog.photo_url != default_photo or dog.other_photos %}
+                <hr />
+                <table width="100%" cellpadding="4" cellspacing="0">
+                    <tr>
+                        {% if dog.photo_url and dog.photo_url != default_photo %}
+                            <td width="33%" style="vertical-align: top;">
+                                <img
+                                    src="{{ dog.photo_url }}"
+                                    alt="Photo of {{ appointment.source_adoption.dog }}"
+                                    style="width: 100%; height: 180px; object-fit: cover; border-radius: 6px;"
+                                />
+                            </td>
+                        {% endif %}
+                        {% for photo_url in dog.other_photos %}
+                            {% if photo_url != default_photo %}
+                                <td width="33%" style="vertical-align: top;">
+                                    <img
+                                        src="{{ photo_url }}"
+                                        alt="Photo of {{ appointment.source_adoption.dog }}"
+                                        style="width: 100%; height: 180px; object-fit: cover; border-radius: 6px;"
+                                    />
+                                </td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                </table>
+            {% endif %}
+        {% endwith %}
+    {% endif %}
     <div>
         <p>Thank you,</p>
         <p class="pink signature">The Adoptions Team</p>
