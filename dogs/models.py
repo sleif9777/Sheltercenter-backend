@@ -40,7 +40,7 @@ class Dog(models.Model):
         return self.status == DogStatus.AVAILABLE_NOW
 
     def __repr__(self):
-        self.name
+        return self.name
 
     def __str__(self):
         return f"{self.name} [{self.id}, SL-{self.shelterluv_id}]"
