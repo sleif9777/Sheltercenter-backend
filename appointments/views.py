@@ -273,7 +273,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         id = query.validated_data["apptID"]
         outcome = query.validated_data["outcome"]
-        dogID = int(query.validated_data["dogID"])
+        dogID = query.validated_data["dogID"]
         send_sleepover_info = query.validated_data["sendSleepoverInfo"]
 
         dog = Dog.objects.get(pk=dogID).name if dogID else ""

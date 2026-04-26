@@ -155,10 +155,10 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
             EmailViewSet().ReadyToRoll(adoption, message)
 
         if new_status == PendingAdoptionStatus.CANCELED and adoption.source_appointment:
+            if adoption.status != PendingAdoptionStatus.COMPLETED:
+                adoption.adopter.restrict_calendar(restrict=False)
             adoption.source_appointment.outcome = OutcomeTypes.NO_DECISION
             adoption.source_appointment.chosen_dog = ""
-            adoption.adopter.restrict_calendar(restrict=False)
             adoption.source_appointment.save()
-            # TODO, email adopter about cancellation and restored calendar access
 
         return JsonResponse({}, status=status.HTTP_200_OK)

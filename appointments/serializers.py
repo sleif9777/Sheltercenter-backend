@@ -34,19 +34,27 @@ class CheckInAppointmentRequestSerializer(AppointmentIDRequestSerializer):
     city = serializers.CharField()
     state = serializers.CharField()
     postalCode = serializers.CharField()
-    
+
 
 class CheckOutAppointmentRequestSerializer(AppointmentIDRequestSerializer):
     outcome = serializers.IntegerField()
     sendSleepoverInfo = serializers.BooleanField()
     dogID = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
+    def validate_dogID(self, value):
+        if not value:
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            raise serializers.ValidationError("Must be a valid integer.")
+
     def validate(self, data):
         outcome = data["outcome"]
         dogID = data.get("dogID")
 
         if outcome < OutcomeTypes.NO_DECISION and not dogID:
-            raise serializers.ValidationError({"dog": "This field is required."})
+            raise serializers.ValidationError({"dogID": "This field is required."})
 
         return data
 
@@ -76,14 +84,10 @@ class CreateWalkInRequestSerializer(serializers.Serializer):
         try:
             int_value = int(value)
         except (TypeError, ValueError):
-            raise serializers.ValidationError(
-                "adopterID must be an integer or '*'"
-            )
+            raise serializers.ValidationError("adopterID must be an integer or '*'")
 
         if int_value < 0:
-            raise serializers.ValidationError(
-                "adopterID must be a positive integer"
-            )
+            raise serializers.ValidationError("adopterID must be a positive integer")
 
         return int_value
 
@@ -93,18 +97,16 @@ class CreateWalkInRequestSerializer(serializers.Serializer):
         # If wildcard, require full adopter info
         if adopter_id == "*":
             missing = [
-                field for field in ("firstName", "lastName", "primaryEmail")
-                if not attrs.get(field)
+                field for field in ("firstName", "lastName", "primaryEmail") if not attrs.get(field)
             ]
 
             if missing:
-                raise serializers.ValidationError({
-                    field: "This field is required when adopterID is '*'."
-                    for field in missing
-                })
+                raise serializers.ValidationError(
+                    {field: "This field is required when adopterID is '*'." for field in missing}
+                )
 
         return attrs
-    
+
 
 class ISODateRequestSerializer(serializers.Serializer):
     isoDate = serializers.CharField()
@@ -129,10 +131,14 @@ class CreateAppointmentRequestSerializer(ISODateRequestSerializer):
     pendingAdoptionID = serializers.IntegerField(required=False)
 
 
-class ScheduleAppointmentRequestSerializer(AppointmentIDRequestSerializer, AdopterPreferencesRequestSerializer):
+class ScheduleAppointmentRequestSerializer(
+    AppointmentIDRequestSerializer, AdopterPreferencesRequestSerializer
+):
     pass
 
+
 # RESPONSES
+
 
 class AppointmentCardDataSerializer(serializers.ModelSerializer):
     ID = serializers.IntegerField(source="id")
@@ -176,7 +182,7 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
             "checkOutTime",
             "outcomeDisplay",
             "outcome",
-            "chosenDog"
+            "chosenDog",
         ]
 
     def to_representation(self, instance: Appointment):
@@ -216,7 +222,7 @@ class AppointmentMissingOutcomeSerializer(serializers.Serializer):
         ]
 
 
-class ReportingAdminAppointmentSerializer(serializers.ModelSerializer): 
+class ReportingAdminAppointmentSerializer(serializers.ModelSerializer):
     ID = serializers.IntegerField(source="id")
     timeDisplay = serializers.CharField(source="time_display")
     description = serializers.CharField()
@@ -234,7 +240,7 @@ class ReportingAdminAppointmentSerializer(serializers.ModelSerializer):
             "typeDisplay",
             "notes",
         ]
-        
+
 
 class ReportingAdoptionAppointmentSerializer(serializers.ModelSerializer):
     ID = serializers.IntegerField(source="id")
