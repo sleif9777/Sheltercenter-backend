@@ -1,7 +1,8 @@
 import pytz
 
 from adopters.views import AdopterViewSet
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
 from environment_settings.models import EnvironmentSettings
@@ -90,18 +91,15 @@ class DogsViewSet(viewsets.ModelViewSet):
     def GetDogSelectFieldOptions(self, request):
         eastern = pytz.timezone("America/New_York")
         now = timezone.now()
-        cutoff_end = eastern.localize(datetime(2026, 4, 27, 18, 0, 0))
+        cutoff_end = eastern.localize(datetime(2026, 4, 29, 18, 0, 0))
 
         if now < cutoff_end:
-            # Until Tuesday 4/27 6pm EDT: all dogs updated since Thursday 4/23
-            cutoff_start = eastern.localize(datetime(2026, 4, 23, 0, 0, 0))
+            cutoff_start = date(2026, 4, 23)
         else:
-            # After that: dogs updated within the past 48 hours
-            cutoff_start = now - timedelta(hours=48)
+            cutoff_start = now.astimezone(eastern).date() - timedelta(days=2)
 
         dogs = Dog.objects.filter(
-            status=DogStatus.AVAILABLE_NOW,
-            last_updated__gte=cutoff_start,
+            Q(status=DogStatus.AVAILABLE_NOW) | Q(last_updated__gte=cutoff_start)
         )
 
         options = [DogValueLabelPairSerializer(dog).data for dog in dogs]
