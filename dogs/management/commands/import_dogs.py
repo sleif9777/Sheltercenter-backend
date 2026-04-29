@@ -51,6 +51,11 @@ class Command(BaseCommand):
 
         publishable_ids = self._fetch_all_ids(status_type="publishable")
         self._debug_output(f"Fetched {len(publishable_ids)} publishable IDs from API")
+
+        if not publishable_ids:
+            self._debug_output(self.style.ERROR("No publishable IDs returned from API — aborting to prevent incorrect deactivations."))
+            return
+        
         if self.test_dog_id:
             self._debug_output(f"Test dog {self.test_dog_id} in publishable_ids: {self.test_dog_id in publishable_ids}")
 
