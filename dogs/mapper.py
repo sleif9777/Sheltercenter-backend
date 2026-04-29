@@ -7,7 +7,7 @@ SHELTERLUV_STATUS_MAP = {
     "Available for Adoption": DogStatus.AVAILABLE_NOW,
     "Chosen - Needs Well Check": DogStatus.CHOSEN_WC,
     "Chosen - needs s/n": DogStatus.CHOSEN_SN,
-    "Foster Care": DogStatus.UNAVAILABLE,
+    "Foster Care": DogStatus.FOSTER,
     "Foster Returning Soon to Farm": DogStatus.AVAILABLE_NOW,
     "Foster to Adopt for Heartworm": DogStatus.FTA,
     "Healthy In Home": DogStatus.HEALTHY_IN_HOME,

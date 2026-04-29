@@ -13,4 +13,5 @@ class DogStatus(models.IntegerChoices, Enum):
     CHOSEN_WC = 2, "Chosen_WC"
     FTA = 3, "FTA"
     HEALTHY_IN_HOME = 4, "Healthy in Home"
-    UNAVAILABLE = 5, "Unavailable"
+    UNAVAILABLE = 5, "Unavailable",
+    FOSTER = 6, "Foster"

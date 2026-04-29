@@ -55,7 +55,7 @@ class Command(BaseCommand):
         if not publishable_ids:
             self._debug_output(self.style.ERROR("No publishable IDs returned from API — aborting to prevent incorrect deactivations."))
             return
-        
+
         if self.test_dog_id:
             self._debug_output(f"Test dog {self.test_dog_id} in publishable_ids: {self.test_dog_id in publishable_ids}")
 
@@ -226,7 +226,8 @@ class Command(BaseCommand):
         self._debug_output(f"  just_deactivated={just_deactivated} (not created={not created}, was_active={was_active}, not publishable={not dog.publishable})")
 
         if just_deactivated:
-            dog.unavailable_date = timezone.localdate()
+            if dog.status != DogStatus.FOSTER:
+                dog.unavailable_date = timezone.localdate()
             dog.save()
             dog = Dog.objects.prefetch_related("interest_adopters").get(pk=dog.pk)
             adopters = list(dog.interest_adopters.all())
@@ -256,6 +257,7 @@ class Command(BaseCommand):
         dogs_to_deactivate = list(
             Dog.objects.filter(publishable=True, unavailable_date__isnull=True)
             .exclude(shelterluv_id__in=imported_ids)
+            .exclude(status__in=[DogStatus.FOSTER])
             .prefetch_related("interest_adopters")
         )
 
@@ -264,9 +266,14 @@ class Command(BaseCommand):
             self._debug_output(f"  Deactivating dog {dog.name} (shelterluv_id={dog.shelterluv_id})")
             self._notify_interested_adopters(dog)
 
-        deactivated_count = Dog.objects.filter(publishable=True).exclude(
-            shelterluv_id__in=imported_ids
-        ).update(publishable=False, unavailable_date=timezone.localdate())
+        base_qs = Dog.objects.filter(publishable=True).exclude(shelterluv_id__in=imported_ids)
+
+        deactivated_count = base_qs.exclude(status=DogStatus.FOSTER).update(
+            publishable=False, unavailable_date=timezone.localdate()
+        )
+        deactivated_count += base_qs.filter(status=DogStatus.FOSTER).update(
+            publishable=False  # unavailable_date left as None for fosters
+        )
 
         return deactivated_count
 
