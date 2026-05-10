@@ -12,6 +12,14 @@ from dotenv import load_dotenv
 from email_templates.views import EmailViewSet
 from environment_settings.models import EnvironmentSettings
 
+# If the API ever returns fewer than this many animals total, something is wrong
+# and we should abort rather than risk mass-deactivating our DB.
+MIN_EXPECTED_ANIMALS = 15
+
+# If imported_ids covers less than this fraction of currently-active DB dogs,
+# treat it as a partial/failed import and skip deactivation.
+MIN_IMPORT_COVERAGE_RATIO = 0.5
+
 
 class Command(BaseCommand):
     help = "Import dogs from Shelterluv API"
@@ -36,7 +44,9 @@ class Command(BaseCommand):
         self.is_test_env = kwargs.get("env_type") == 1
 
         if self.test_dog_id:
-            self._debug_output(self.style.WARNING(f"--- TEST MODE: only processing dog ID {self.test_dog_id} ---"))
+            self._debug_output(
+                self.style.WARNING(f"--- TEST MODE: only processing dog ID {self.test_dog_id} ---")
+            )
 
         api_key = self._get_api_key()
         if not api_key:
@@ -47,22 +57,40 @@ class Command(BaseCommand):
 
         environment = EnvironmentSettings.objects.get(pk=1)
         is_first_run = environment.last_dog_import is None
-        self._debug_output(f"is_first_run={is_first_run}, last_dog_import={environment.last_dog_import}")
+        self._debug_output(
+            f"is_first_run={is_first_run}, last_dog_import={environment.last_dog_import}"
+        )
 
         publishable_ids = self._fetch_all_ids(status_type="publishable")
         self._debug_output(f"Fetched {len(publishable_ids)} publishable IDs from API")
 
         if not publishable_ids:
-            self._debug_output(self.style.ERROR("No publishable IDs returned from API — aborting to prevent incorrect deactivations."))
+            self._debug_output(
+                self.style.ERROR(
+                    "No publishable IDs returned from API — aborting to prevent incorrect deactivations."
+                )
+            )
             return
 
         if self.test_dog_id:
-            self._debug_output(f"Test dog {self.test_dog_id} in publishable_ids: {self.test_dog_id in publishable_ids}")
+            self._debug_output(
+                f"Test dog {self.test_dog_id} in publishable_ids: {self.test_dog_id in publishable_ids}"
+            )
 
-        imported_ids, total_imported, total_reactivated, total_created = self._import_all_animals(
-            publishable_ids, is_first_run
+        imported_ids, total_imported, total_reactivated, total_created, had_fetch_error = (
+            self._import_all_animals(publishable_ids, is_first_run)
         )
-        deactivated = self._deactivate_missing_dogs(imported_ids)
+
+        if had_fetch_error:
+            self._debug_output(
+                self.style.ERROR(
+                    "One or more API pages failed to fetch — skipping deactivation to prevent mass depublish."
+                )
+            )
+            deactivated = 0
+        else:
+            deactivated = self._deactivate_missing_dogs(imported_ids)
+
         self._update_last_import_timestamp(environment)
 
         self._debug_output(
@@ -109,12 +137,25 @@ class Command(BaseCommand):
         total_imported = 0
         total_reactivated = 0
         total_created = 0
+        had_fetch_error = False
 
         first_page = self._fetch_page(0)
         if first_page is None:
-            return imported_ids, total_imported, total_reactivated, total_created
+            return imported_ids, total_imported, total_reactivated, total_created, True
 
         total_count = first_page.get("total_count", 0)
+
+        # Guard: if the API reports a suspiciously low total, abort before
+        # building imported_ids so we don't trigger mass deactivation downstream.
+        if total_count < MIN_EXPECTED_ANIMALS:
+            self._debug_output(
+                self.style.ERROR(
+                    f"API total_count={total_count} is below the minimum expected "
+                    f"({MIN_EXPECTED_ANIMALS}) — aborting import to prevent mass deactivation."
+                )
+            )
+            return imported_ids, total_imported, total_reactivated, total_created, True
+
         offsets = [0] + list(range(100, total_count, 100))
         self._debug_output(f"Total animals from API: {total_count}, pages to fetch: {len(offsets)}")
 
@@ -133,6 +174,14 @@ class Command(BaseCommand):
 
             data = first_page if offset == 0 else self._fetch_page(offset)
             if data is None:
+                # A mid-run page failure means imported_ids is incomplete.
+                # Flag it so the caller can skip deactivation entirely.
+                self._debug_output(
+                    self.style.ERROR(
+                        f"Page fetch failed at offset={offset} — flagging for deactivation skip."
+                    )
+                )
+                had_fetch_error = True
                 break
 
             animals = data.get("animals", [])
@@ -140,11 +189,14 @@ class Command(BaseCommand):
             if self.test_dog_id:
                 animals = [a for a in animals if a.get("ID") == str(self.test_dog_id)]
                 if animals:
-                    self._debug_output(f"Found test dog {self.test_dog_id} in page at offset={offset}")
+                    self._debug_output(
+                        f"Found test dog {self.test_dog_id} in page at offset={offset}"
+                    )
 
             if is_first_run:
                 animals = [
-                    a for a in animals
+                    a
+                    for a in animals
                     if parse_status(a) not in [DogStatus.UNAVAILABLE, DogStatus.HEALTHY_IN_HOME]
                 ]
 
@@ -158,7 +210,7 @@ class Command(BaseCommand):
             if animals:
                 self._debug_output(f"  Processed {len(animals)} animals at offset={offset}.")
 
-        return imported_ids, total_imported, total_reactivated, total_created
+        return imported_ids, total_imported, total_reactivated, total_created, had_fetch_error
 
     def _process_animals(self, animals, imported_ids, publishable_ids):
         total_imported = 0
@@ -208,9 +260,7 @@ class Command(BaseCommand):
             f"unavailable_date={unavailable_date}"
         )
 
-        dog, created = Dog.objects.update_or_create(
-            shelterluv_id=shelterluv_id, defaults=parsed
-        )
+        dog, created = Dog.objects.update_or_create(shelterluv_id=shelterluv_id, defaults=parsed)
 
         self._debug_output(
             f"  DB state after upsert: created={created}, "
@@ -219,11 +269,15 @@ class Command(BaseCommand):
 
         reactivated = not created and was_inactive and dog.publishable
         if reactivated:
-            self._debug_output(self.style.SUCCESS(f"  Dog {dog.name} ({shelterluv_id}) reactivated"))
+            self._debug_output(
+                self.style.SUCCESS(f"  Dog {dog.name} ({shelterluv_id}) reactivated")
+            )
             self._handle_reactivation(dog, unavailable_date)
 
         just_deactivated = not created and was_active and not dog.publishable
-        self._debug_output(f"  just_deactivated={just_deactivated} (not created={not created}, was_active={was_active}, not publishable={not dog.publishable})")
+        self._debug_output(
+            f"  just_deactivated={just_deactivated} (not created={not created}, was_active={was_active}, not publishable={not dog.publishable})"
+        )
 
         if just_deactivated:
             if dog.status != DogStatus.FOSTER:
@@ -238,7 +292,9 @@ class Command(BaseCommand):
                 )
             )
             for adopter in adopters:
-                self._debug_output(f"    Adopter pk={adopter.pk}, adoption_completed={adopter.user_profile.adoption_completed}")
+                self._debug_output(
+                    f"    Adopter pk={adopter.pk}, adoption_completed={adopter.user_profile.adoption_completed}"
+                )
             self._notify_interested_adopters(dog)
 
         return created, reactivated
@@ -254,6 +310,33 @@ class Command(BaseCommand):
             self._debug_output(self.style.WARNING("TEST MODE: skipping deactivate_missing_dogs"))
             return 0
 
+        # Guard: if we imported suspiciously few dogs, something went wrong upstream.
+        # Refuse to deactivate anything rather than risk a mass depublish.
+        if len(imported_ids) < MIN_EXPECTED_ANIMALS:
+            self._debug_output(
+                self.style.ERROR(
+                    f"imported_ids has only {len(imported_ids)} entries — below minimum "
+                    f"({MIN_EXPECTED_ANIMALS}). Skipping deactivation to prevent mass depublish."
+                )
+            )
+            return 0
+
+        # Guard: if imported_ids is less than half the currently-active DB dogs,
+        # the import was likely truncated. Skip deactivation.
+        active_dog_count = Dog.objects.filter(publishable=True).count()
+        if (
+            active_dog_count > 0
+            and len(imported_ids) < active_dog_count * MIN_IMPORT_COVERAGE_RATIO
+        ):
+            self._debug_output(
+                self.style.ERROR(
+                    f"imported_ids ({len(imported_ids)}) covers less than "
+                    f"{int(MIN_IMPORT_COVERAGE_RATIO * 100)}% of active DB dogs "
+                    f"({active_dog_count}) — skipping deactivation to prevent mass depublish."
+                )
+            )
+            return 0
+
         dogs_to_deactivate = list(
             Dog.objects.filter(publishable=True, unavailable_date__isnull=True)
             .exclude(shelterluv_id__in=imported_ids)
@@ -261,7 +344,9 @@ class Command(BaseCommand):
             .prefetch_related("interest_adopters")
         )
 
-        self._debug_output(f"Dogs newly missing from API (to deactivate): {len(dogs_to_deactivate)}")
+        self._debug_output(
+            f"Dogs newly missing from API (to deactivate): {len(dogs_to_deactivate)}"
+        )
         for dog in dogs_to_deactivate:
             self._debug_output(f"  Deactivating dog {dog.name} (shelterluv_id={dog.shelterluv_id})")
             self._notify_interested_adopters(dog)
@@ -279,7 +364,8 @@ class Command(BaseCommand):
 
     def _notify_interested_adopters(self, dog):
         email_list: list[Adopter] = [
-            adopter for adopter in dog.interest_adopters.all()
+            adopter
+            for adopter in dog.interest_adopters.all()
             if not adopter.user_profile.adoption_completed
         ]
 
