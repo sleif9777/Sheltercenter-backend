@@ -1,16 +1,17 @@
 # Saving Grace – Backend
 
-Django REST API backend for [Saving Grace Animals for Adoption](https://savinggracenc.org), a dog shelter in Wake Forest, NC. Powers the shelter's appointment scheduling, watchlists, messaging, check-in/check-out, and pending adoptions. Also hosts email template content and background services for appointment reminders, Shelterluv dog imports, and adopter imports from Excel.
+Django REST API for [Saving Grace Animals for Adoption](https://savinggracenc.org), a dog shelter in Wake Forest, NC. Powers appointment scheduling, adopter management, watchlists, check-in/check-out, pending adoptions, email notifications, and Shelterluv dog sync.
 
 ---
 
 ## Tech Stack
 
-- **Language:** Python
-- **Framework:** Django + Django REST Framework
-- **Auth:** JWT via `djangorestframework-simplejwt`
+- **Language:** Python 3
+- **Framework:** Django 5.1 + Django REST Framework 3.15
+- **Auth:** JWT via `djangorestframework-simplejwt` (15-minute access tokens)
 - **Email:** Mailgun via `django-anymail`
-- **Deployment:** Heroku (via `django-on-heroku`)
+- **Database:** PostgreSQL (production) · SQLite (local development)
+- **Deployment:** Heroku via `django-on-heroku` + Gunicorn
 
 ---
 
@@ -18,26 +19,23 @@ Django REST API backend for [Saving Grace Animals for Adoption](https://savinggr
 
 ### Prerequisites
 
-- Python 3.x
+- Python 3.10+
 - pip
 
 ### Installation
 
 ```bash
-git clone <repo-url>
-cd sheltercenter-backend
+git clone https://github.com/sleif9777/Sheltercenter-backend.git
+cd Sheltercenter-backend
 
-# Create and activate a virtual environment
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 ### Environment Variables
 
-Create a `.env` file in the project root. Required variables:
+Create a `.env` file in this directory:
 
 ```properties
 DEBUG=1
@@ -54,7 +52,7 @@ MAILGUN_SENDER_DOMAIN="mg.savinggracenc.org"
 # Shelterluv integration
 SHELTERLUV_API_KEY="your-shelterluv-api-key"
 
-# PostgreSQL (optional — omit to use SQLite locally)
+# PostgreSQL (omit all four to use SQLite locally)
 POSTGRES_DB="your-db-name"
 POSTGRES_USER="your-db-user"
 POSTGRES_PASSWORD="your-db-password"
@@ -62,32 +60,66 @@ POSTGRES_HOST="your-db-host"
 POSTGRES_PORT="5432"
 ```
 
-> **Database:** If the `POSTGRES_*` variables are not set, the app falls back to a local SQLite database (`db.sqlite3`), which is sufficient for local development.
-
 ### Database Setup
 
-Apply all migrations:
-
 ```bash
-cd backend
 python manage.py migrate
 ```
 
 ### Running Locally
 
 ```bash
-cd backend
-gunicorn backend.wsgi
+source venv/bin/activate
+python manage.py runserver      # dev server with auto-reload at http://localhost:8000
 ```
-
-The API will be available at `http://localhost:8000` by default.
 
 ---
 
 ## Background Services
 
-| Service | Description |
+| Command | Description |
 |---|---|
-| Appointment reminders | Sends day-prior email reminders to adopters |
-| Shelterluv import | Syncs dog records from the Shelterluv API |
-| Adopter import | Imports adopter records from an Excel file |
+| `python manage.py import_dogs` | Syncs publishable dog records from the Shelterluv API; safely deactivates dogs no longer listed |
+| `python manage.py run_reminders` | Sends day-prior appointment reminder emails to all booked adopters |
+
+---
+
+## API Overview
+
+Base URL: `http://localhost:8000/`
+
+| Endpoint | Resource |
+|---|---|
+| `Adopters/` | Adopter profiles |
+| `Appointments/` | Appointment slots |
+| `ClosedDates/` | Blocked scheduling dates |
+| `Dogs/` | Dog records |
+| `PendingAdoptions/` | In-progress adoptions |
+| `TemplateAppointments/` | Recurring slot templates |
+| `UserProfiles/` | User accounts |
+| `auth/token/` | Obtain JWT |
+| `auth/token/refresh/` | Refresh JWT |
+
+---
+
+## Code Style
+
+```bash
+black .         # format (line length 100)
+isort .         # sort imports
+mypy .          # type check
+```
+
+Configuration in `pyproject.toml`. Migrations are excluded from type checking.
+
+---
+
+## Contributing
+
+Commits must follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat(dogs): add coat color field
+fix(appointments): prevent double-booking on concurrent requests
+chore: bump django to 5.2
+```
