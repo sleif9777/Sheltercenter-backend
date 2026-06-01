@@ -61,13 +61,33 @@ class Command(BaseCommand):
             f"is_first_run={is_first_run}, last_dog_import={environment.last_dog_import}"
         )
 
-        publishable_ids = self._fetch_all_ids(status_type="publishable")
+        publishable_ids, ids_fetch_error = self._fetch_all_ids(status_type="publishable")
         self._debug_output(f"Fetched {len(publishable_ids)} publishable IDs from API")
 
-        if not publishable_ids:
+        if ids_fetch_error:
             self._debug_output(
                 self.style.ERROR(
-                    "No publishable IDs returned from API — aborting to prevent incorrect deactivations."
+                    "publishable ID fetch encountered a page error — aborting to prevent incorrect deactivations."
+                )
+            )
+            return
+
+        if not publishable_ids or len(publishable_ids) < MIN_EXPECTED_ANIMALS:
+            self._debug_output(
+                self.style.ERROR(
+                    f"publishable_ids has only {len(publishable_ids)} entries — below minimum "
+                    f"({MIN_EXPECTED_ANIMALS}). Aborting to prevent incorrect deactivations."
+                )
+            )
+            return
+
+        active_dog_count = Dog.objects.filter(publishable=True).count()
+        if active_dog_count > 0 and len(publishable_ids) < active_dog_count * MIN_IMPORT_COVERAGE_RATIO:
+            self._debug_output(
+                self.style.ERROR(
+                    f"publishable_ids ({len(publishable_ids)}) covers less than "
+                    f"{int(MIN_IMPORT_COVERAGE_RATIO * 100)}% of active DB dogs "
+                    f"({active_dog_count}) — aborting to prevent incorrect deactivations."
                 )
             )
             return
@@ -117,10 +137,12 @@ class Command(BaseCommand):
 
     def _fetch_all_ids(self, status_type=None):
         ids = set()
+        had_error = False
         offset = 0
         while True:
             data = self._fetch_page(offset, status_type=status_type)
             if data is None:
+                had_error = True
                 break
             for animal in data.get("animals", []):
                 try:
@@ -130,7 +152,7 @@ class Command(BaseCommand):
             if not data.get("has_more", False):
                 break
             offset += 100
-        return ids
+        return ids, had_error
 
     def _import_all_animals(self, publishable_ids, is_first_run):
         imported_ids = set()
