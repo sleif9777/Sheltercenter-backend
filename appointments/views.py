@@ -261,9 +261,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         appt.check_in(query.validated_data)
 
-        adopter: Adopter = appt.get_current_booking().adopter
-        adopter.update_address(query.validated_data)
-
         return JsonResponse({}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["POST"], url_path="CheckOutAppointment")
@@ -279,7 +276,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         dog = Dog.objects.get(pk=dogID).name if dogID else ""
 
         appt = Appointment.objects.get(pk=id)
-        appt.check_out(outcome, dog)
+        appt.check_out(outcome, dog, dogID)
 
         if outcome == OutcomeTypes.CHOSEN:
             # create pending adoption
@@ -463,11 +460,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         else:
             adopter = Adopter.objects.get(pk=adopter_id)
 
-        now = timezone.localtime(timezone.now())
-        instant = now.replace(
-            minute=(now.minute // 15) * 15,
-            second=0,
-            microsecond=0,
+        appt_date = query.validated_data["isoDate"]
+        hour = query.validated_data["hour"]
+        minute = query.validated_data["minute"]
+        instant = timezone.make_aware(
+            datetime.datetime(appt_date.year, appt_date.month, appt_date.day, hour, minute, 0, 0)
         )
 
         adopter.internal_notes = "Walk-in ({0})".format(instant.date().isoformat())

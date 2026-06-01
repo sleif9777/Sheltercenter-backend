@@ -10,6 +10,11 @@ from .models import Appointment
 # REQUESTS
 
 
+class TimeRequestSerializer(serializers.Serializer):
+    hour = serializers.IntegerField(required=True, min_value=0, max_value=23)
+    minute = serializers.IntegerField(required=True, min_value=0, max_value=59)
+
+
 class AppointmentIDRequestSerializer(serializers.Serializer):
     apptID = serializers.IntegerField()
 
@@ -30,10 +35,6 @@ class CheckInAppointmentRequestSerializer(AppointmentIDRequestSerializer):
         allow_blank=True,
         allow_null=True,
     )
-    streetAddress = serializers.CharField()
-    city = serializers.CharField()
-    state = serializers.CharField()
-    postalCode = serializers.CharField()
 
 
 class CheckOutAppointmentRequestSerializer(AppointmentIDRequestSerializer):
@@ -59,7 +60,7 @@ class CheckOutAppointmentRequestSerializer(AppointmentIDRequestSerializer):
         return data
 
 
-class CreateWalkInRequestSerializer(serializers.Serializer):
+class CreateWalkInRequestSerializer(TimeRequestSerializer):
     adopterID = serializers.CharField()
     firstName = serializers.CharField(
         max_length=255,
@@ -76,6 +77,15 @@ class CreateWalkInRequestSerializer(serializers.Serializer):
         allow_blank=True,
     )
     type = serializers.IntegerField(required=True)
+    isoDate = serializers.CharField()
+
+    def validate_isoDate(self, isoDate: str) -> date:
+        try:
+            year, month, day = map(int, isoDate.split("-"))
+            isoDate = date(year, month, day)
+        except (ValueError, TypeError):
+            raise serializers.ValidationError("Not a valid ISO date (YYYY-MM-DD).")
+        return isoDate
 
     def validate_adopterID(self, value):
         if value == "*":
@@ -121,9 +131,7 @@ class ISODateRequestSerializer(serializers.Serializer):
         return isoDate
 
 
-class CreateAppointmentRequestSerializer(ISODateRequestSerializer):
-    hour = serializers.IntegerField(required=True, min_value=0, max_value=23)
-    minute = serializers.IntegerField(required=True, min_value=0, max_value=59)
+class CreateAppointmentRequestSerializer(ISODateRequestSerializer, TimeRequestSerializer):
     fka = serializers.CharField(required=False, allow_null=True)
     type = serializers.IntegerField(required=True)
     locked = serializers.BooleanField()
@@ -157,6 +165,7 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
     outcomeDisplay = serializers.CharField(source="outcome_value_display")
     outcome = serializers.IntegerField(read_only=True, allow_null=True)
     chosenDog = serializers.CharField(source="chosen_dog", allow_null=True)
+    chosenDogID = serializers.IntegerField(source="chosen_dog_id", allow_null=True)
 
     checkInTime = serializers.CharField(read_only=True, allow_null=True)
     clothingDescription = serializers.CharField(read_only=True, allow_null=True)
@@ -183,6 +192,7 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
             "outcomeDisplay",
             "outcome",
             "chosenDog",
+            "chosenDogID",
         ]
 
     def to_representation(self, instance: Appointment):

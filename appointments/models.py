@@ -178,6 +178,7 @@ class Appointment(models.Model):
         return self.outcome in [OutcomeTypes.ADOPTION, OutcomeTypes.CHOSEN, OutcomeTypes.FTA]
 
     chosen_dog = models.CharField(default="", max_length=1000, null=True, blank=True)
+    chosen_dog_id = models.IntegerField(null=True, blank=True)
 
     # SURRENDER FIELDS
     surrendered_dog = models.CharField(default="", max_length=1000, null=True, blank=True)
@@ -215,11 +216,12 @@ class Appointment(models.Model):
         self.counselor = counselor
         self.save()
 
-    def check_out(self, outcome: OutcomeTypes, dog: Optional[str]):
+    def check_out(self, outcome: OutcomeTypes, dog: Optional[str], dog_id=None):
         # Process on the appointment level
         self.check_out_time = timezone.now()
         self.outcome = outcome
         self.chosen_dog = dog
+        self.chosen_dog_id = dog_id
         self.save()
 
         # Then the booking itself
