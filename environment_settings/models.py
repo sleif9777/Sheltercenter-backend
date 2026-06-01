@@ -16,6 +16,9 @@ class EnvironmentSettings(models.Model):
     fta_doc_1_path = models.CharField(max_length=1000, null=True, blank=True)
     fta_doc_2_path = models.CharField(max_length=1000, null=True, blank=True)
 
+    # APPLICATION APPROVAL FILES
+    application_approved_pdf_path = models.CharField(max_length=1000, null=True, blank=True)
+
     last_dog_import = models.DateTimeField(null=True, blank=True)
     
     @property

@@ -21,6 +21,11 @@ class EmailViewSet(viewsets.ViewSet):
         if adopter.application_comments and len(adopter.application_comments) > 0:
             subject += " ({0})".format(adopter.application_comments)
 
+        attachments = []
+        environment = EnvironmentSettings.objects.get(pk=1)
+        if environment.application_approved_pdf_path:
+            attachments.append(environment.application_approved_pdf_path)
+
         email = EmailService(
             subject,
             "application_approved",
@@ -29,6 +34,7 @@ class EmailViewSet(viewsets.ViewSet):
                 "approved_until_display": adopter.approved_until.strftime("%b %d, %Y"),
             },
             recipients,
+            attachments=attachments,
         )
 
         email.send()
