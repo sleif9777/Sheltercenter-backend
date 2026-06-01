@@ -6,20 +6,22 @@
 
 {% block content %}
     <div>
+        <p>Hi {{ adopter.user_profile.first_name }},</p>
+
         <p>
-            Hi {{ adopter.user_profile.first_name }},
+            Great news! Your Saving Grace adoption request has been reviewed and approved —
+            valid through <strong>{{ approved_until_display }}</strong>.
         </p>
 
         <p>
-            Great news! Your Saving Grace adoption request has been reviewed and approved.
-            Please read the information below carefully before scheduling your appointment.
+            We've attached our <strong>Adoption Process Guide</strong> to this email.
+            Please read it before your appointment — it covers finding dogs, what to expect on the day,
+            our adoption rules, and more.
         </p>
 
         <!-- LIVES WITH PARENTS BLOCK -->
         {% if adopter.lives_with_parents %}
-            <p>
-                Because you indicated that you live with your parents or guardians:
-            </p>
+            <p>Because you indicated that you live with your parents or guardians:</p>
             <ul>
                 <li>At least one parent or guardian must attend your appointment.</li>
                 <li>This requirement does not apply if you own your home.</li>
@@ -28,15 +30,12 @@
 
         <!-- OUT OF STATE BLOCK -->
         {% if adopter.user_profile.out_of_state %}
-            <p>
-                We welcome out-of-state adopters. Please note:
-            </p>
+            <p>As an out-of-state adopter, please note:</p>
             <ul>
-                <li>All adopters must meet dogs in person.</li>
-                <li>We do not offer transport or shipping.</li>
+                <li>All adopters must meet dogs in person — we do not offer transport or shipping.</li>
                 <li>We do not place dogs on hold.</li>
                 <li>Heartworm-positive dogs cannot be adopted out of state.</li>
-                <li>You are responsible for researching your state or county's licensing and health certification requirements for new dogs.</li>
+                <li>You are responsible for researching your state or county's licensing and health certification requirements.</li>
             </ul>
         {% else %}
             <p>
@@ -51,124 +50,32 @@
 
     <!-- SCHEDULING -->
     <div class="subsection">
-        <h2>Scheduling Your Appointment</h2>
-    
-        <ul>
-            <li>
-                Appointments may be scheduled <strong>up to two weeks in advance</strong>.
-            </li>
-            <li>
-                Approved applications remain on file for one year
-                <strong>(your application will expire on {{ approved_until_display }})</strong>.
-            </li>
-            <li>
-                Schedule online at
-                <a href="https://www.savinggracencscheduler.com" target="_blank"><strong>www.savinggracencscheduler.com</strong></a>.
-            </li
-            <li>
-                <strong>Email is our primary method of communication</strong>; phone support is not available.
-            </li>
-        </ul>
-    
+        <h2>Schedule Your Appointment</h2>
         <p>
-            If you experience technical issues, email
-            <a href="mailto:adoptions@savinggracenc.org"><strong>adoptions@savinggracenc.org</strong></a> with specific details. Screenshots are especially helpful.
+            Schedule online at
+            <a href="https://www.savinggracencscheduler.com" target="_blank">
+                <strong>www.savinggracencscheduler.com</strong>
+            </a>.
+            Appointments can be booked up to two weeks in advance.
+        </p>
+        <p>
+            <strong>Email is our primary method of communication — phone support is not available.</strong>
+            If you run into technical issues, email
+            <a href="mailto:adoptions@savinggracenc.org"><strong>adoptions@savinggracenc.org</strong></a>
+            with details (screenshots are especially helpful).
         </p>
     </div>
-    
-    <!-- AVAILABILITY -->
-    <div class="subsection">
-        <h2>Dog Availability & Selection</h2>
-    
-        <ul>
-            <li>Applications are <strong>general interest</strong>, not for a specific dog.</li>
-            <li>Dogs are adopted on a <strong>first-come, first-served basis</strong>.</li>
-            <li>We <strong>do not hold dogs</strong> for appointments or future dates.</li>
-            <li>We do not recommend <strong>getting attached to a specific dog ahead of your appointment</strong>.</li>
-            <li>Appointments last about one hour and include <strong>meeting multiple dogs</strong>.</li>
-            <li>Any dog listed on our website is <strong>currently available</strong>.</li>
-            <li>Dogs removed from the website are <strong>no longer available</strong>.</li>
-        </ul>
-    
-        <p>
-            We are unable to track wishlists or confirm future availability by email. <strong>Flexibility is encouraged</strong>, as we often have more dogs available than are listed online.
-        </p>
-    </div>
-    
-    <!-- PUPPIES & FUN SIZE -->
-    <div class="subsection">
-        <h2>Puppies & “Fun Size” Dogs</h2>
-    
-        <p><strong>Puppies</strong></p>
-        <ul>
-            <li>Puppies typically <strong>arrive on Wednesdays</strong>.</li>
-            <li>Once they arrive, they are <strong>available every day until adopted</strong>.</li>
-            <li>We <strong>do not hold puppies</strong> for future appointments.</li>
-            <li>For the best chance of meeting a specific puppy, <strong>schedule the earliest available appointment</strong> on their arrival date.</li>
-            <li>Any <strong>exceptions</strong> will be clearly noted in the puppy’s bio.</li>
-            <li><strong>Adult size cannot be guaranteed</strong>.</li>
-        </ul>
-    
-        <p><strong>Fun Size Dogs</strong></p>
-        <ul>
-            <li>Dogs labeled <strong>“Fun Size”</strong> (most, but not all under 20 lbs, as noted in the bio) are housed in <strong>off-site foster care</strong>.</li>
-            <li>Fun Size dogs are available for adoption appointments <strong>Fridays and Saturdays only</strong>.</li>
-        </ul>
-    </div>
-    
-    <!-- IMPORTANT POLICIES -->
-    <div class="subsection">
-        <h2>Important Policies</h2>
-    
-        <ul>
-            <li><strong>Additional donations</strong> listed in a dog's bio are mandatory.</li>
-            <li><strong>We don't offer trial adoptions</strong>. <a href="https://savinggracenc.org/sleepover/" target="_blank">Our Sleepover program</a> is not designed or intended for this.</li>
-            <li><strong>We do not transport or ship dogs.</strong></li>
-            <li>Adoptions must be completed <strong>in person by the approved applicant</strong>.</li>
-            <li>Friends or family members <strong>should not adopt on someone else's behalf</strong>.</li>
-            <li>We strongly encourage <strong>young children to attend appointments</strong> to ensure a kid-friendly fit.</li>
-            <li>Please let us know <strong>in advance if you need mobility or accessibility accommodations</strong>.</li>
-        </ul>
-    </div>
-    
-    <!-- LOCATION & HOURS -->
-    <div class="subsection">
-        <h2>Location & Hours</h2>
-    
-        <ul>
-            <li>All adoption appointments are held on-site at <strong>13400 Old Creedmoor Rd, Wake Forest, NC</strong>.</li>
-            <li><strong>Hours:</strong>
-                <ul>
-                    <li>Mon, Tue, Wed, Fri: <strong>12-6pm</strong></li>
-                    <li>Thu: <strong>1-6pm</strong></li>
-                    <li>Sat: <strong>12-3pm</strong></li>
-                </ul>
-            </li>
-        </ul>
-    </div>
-    
-    <!-- FEES & OUTCOMES -->
-    <div class="subsection">
-        <h2>Adoption Fees & Outcomes</h2>
-    
-        <ul>
-            <li>Adoption fee: <strong>$395</strong>, plus any additional donation listed on bio</li>
-            <li>Payment accepted: <strong>cash or credit/debit only</strong></li>
-            <li><strong>Valid ID required</strong></li>
-            <li><strong>Adoptable:</strong> Dog goes home the same day</li>
-            <li><strong>Foster-to-Adopt:</strong> Heartworm-positive dogs, you foster until treatment is complete</li>
-            <li><strong>Chosen/Reserved:</strong> Dog requires additional veterinary care before adoption or foster-to-adopt</li>
-        </ul>
-    </div>    
 
     <!-- PARTNERSHIPS -->
     <div class="subsection">
         <h2>Partnerships</h2>
         <p>
-            We are proud to partner with Boehringer-Ingelheim (BI), who offers a free preventative care program for adopted dogs. BI will contact you after adoption with more information about their services, and you will have the option to opt out of future communications.
+            We partner with Boehringer-Ingelheim (BI), who offers free preventative care for adopted dogs.
+            BI may contact you after your adoption — you can opt out at any time.
         </p>
         <p>
-            Additionally, we use a private scheduling program owned and created by one of our volunteers. Your application data will be stored securely in the database and used solely for scheduling purposes.
+            Our scheduling program is owned and created by a volunteer. Your application data is stored
+            securely and used solely for scheduling purposes.
         </p>
     </div>
 {% endblock %}
