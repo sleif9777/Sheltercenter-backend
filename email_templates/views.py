@@ -1,5 +1,7 @@
 from adopters.models import Adopter
 from django.utils import timezone
+from dogs.enums import DogStatus
+from dogs.models import Dog
 from environment_settings.models import EnvironmentSettings
 from pending_adoptions.enums import CircumstanceOptions
 from rest_framework import viewsets
@@ -62,6 +64,12 @@ class EmailViewSet(viewsets.ViewSet):
 
     def AppointmentReminder(self, appointment):
         booking = appointment.get_current_booking()
+        adopter = booking.adopter
+
+        watchlist_entries = adopter.watchlistentry_set.select_related("dog").all()
+        watchlist_available = [e.dog for e in watchlist_entries if e.dog.status == DogStatus.AVAILABLE_NOW]
+        watchlist_unavailable = [e.dog for e in watchlist_entries if e.dog.status != DogStatus.AVAILABLE_NOW]
+
         subject = "Reminder: Your Upcoming Appointment with Saving Grace"
 
         email = EmailService(
@@ -69,8 +77,10 @@ class EmailViewSet(viewsets.ViewSet):
             "appointment_reminder",
             {
                 "appointment": appointment,
+                "watchlist_available": watchlist_available,
+                "watchlist_unavailable": watchlist_unavailable,
             },
-            booking.adopter.user_profile.primary_email,
+            adopter.user_profile.primary_email,
         )
         email.send()
 
@@ -102,7 +112,6 @@ class EmailViewSet(viewsets.ViewSet):
         adoption = appointment.source_adoption
         dog = None
         if adoption.dogID:
-            from dogs.models import Dog
             try:
                 dog = Dog.objects.get(pk=adoption.dogID)
             except Dog.DoesNotExist:
@@ -167,7 +176,6 @@ class EmailViewSet(viewsets.ViewSet):
 
         dog = None
         if adoption.dogID:
-            from dogs.models import Dog
             try:
                 dog = Dog.objects.get(pk=adoption.dogID)
             except Dog.DoesNotExist:

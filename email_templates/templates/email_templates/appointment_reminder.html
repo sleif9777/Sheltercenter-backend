@@ -28,6 +28,31 @@
         <p>
             We can't wait to help you meet some of our amazing dogs — your future best friend might be just a tail wag away!
         </p>
+        {% if watchlist_available or watchlist_unavailable %}
+        <div class="subsection">
+            <h2>Your Watchlist</h2>
+            {% if watchlist_available %}
+            <p><strong>Currently available to meet:</strong></p>
+            <ul>
+                {% for dog in watchlist_available %}
+                <li>{{dog.name}}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% if watchlist_unavailable %}
+            <p><strong>Not currently available:</strong></p>
+            <ul>
+                {% for dog in watchlist_unavailable %}
+                <li>{{dog.name}}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            <p>
+                Please keep in mind that dogs can be adopted at appointments earlier than yours,
+                so availability may change before your visit. We'll do our best to keep you updated!
+            </p>
+        </div>
+        {% endif %}
     </div>
     <div>
         <p>Warmly,</p>
