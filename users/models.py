@@ -6,6 +6,7 @@ from adopters.models import Adopter
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.core.validators import validate_email
 from django.db import models
+from django.db.models.deletion import ProtectedError
 from django.utils import timezone
 from email_templates.views import EmailViewSet
 
@@ -157,7 +158,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         faulty = Adopter.objects.filter(user_profile=None)
 
         for adopter in faulty:
-            adopter.delete()
+            try:
+                adopter.delete()
+            except ProtectedError:
+                pass
 
         users = UserProfile.objects.all()
         archivable = [user for user in users if user.due_for_archive]

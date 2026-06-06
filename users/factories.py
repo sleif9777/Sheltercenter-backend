@@ -295,6 +295,7 @@ class UserFormFactory(UserFactory):
         user, user_created = UserProfile.objects.update_or_create(
             primary_email=self.form_data["primaryEmail"].lower(),
             defaults={
+                "adopter_profile": adopter,
                 "first_name": self.form_data["firstName"].title(),
                 "last_name": self.form_data["lastName"].title(),
                 "archived": False,

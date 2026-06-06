@@ -434,7 +434,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             if "" in [adopter_email, adopter_first_name, adopter_last_name]:
                 return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
 
-            adopter, _ = Adopter.objects.update_or_create(
+            adopter, adopter_created = Adopter.objects.update_or_create(
                 primary_email=adopter_email.lower(),
                 defaults={"status": ApprovalStatus.APPROVED},
                 create_defaults={
@@ -443,20 +443,26 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 },
             )
 
-            UserProfile.objects.update_or_create(
-                primary_email=adopter_email.lower(),
-                defaults={
-                    "first_name": adopter_first_name.title(),
-                    "last_name": adopter_last_name.title(),
-                    "archived": False,
-                },
-                create_defaults={
-                    "adopter_profile": adopter,
-                    "first_name": adopter_first_name.title(),
-                    "last_name": adopter_last_name.title(),
-                    "security_level": SecurityLevel.ADOPTER,
-                },
-            )
+            try:
+                UserProfile.objects.update_or_create(
+                    primary_email=adopter_email.lower(),
+                    defaults={
+                        "adopter_profile": adopter,
+                        "first_name": adopter_first_name.title(),
+                        "last_name": adopter_last_name.title(),
+                        "archived": False,
+                    },
+                    create_defaults={
+                        "adopter_profile": adopter,
+                        "first_name": adopter_first_name.title(),
+                        "last_name": adopter_last_name.title(),
+                        "security_level": SecurityLevel.ADOPTER,
+                    },
+                )
+            except Exception:
+                if adopter_created:
+                    adopter.delete()
+                return JsonResponse({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             adopter = Adopter.objects.get(pk=adopter_id)
 
