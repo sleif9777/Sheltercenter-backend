@@ -3,7 +3,7 @@ import pytz
 from adopters.views import AdopterViewSet
 from datetime import date, datetime, timedelta
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import JsonResponse, QueryDict
 from django.utils import timezone
 from environment_settings.models import EnvironmentSettings
 from pending_adoptions.enums import PendingAdoptionStatus
@@ -23,7 +23,7 @@ class DogsViewSet(viewsets.ModelViewSet):
 
     # Static methods
     @staticmethod
-    def UnpackDogFromDogIDRequest(data) -> Dog:
+    def UnpackDogFromDogIDRequest(data: QueryDict) -> Dog:
         query = DogIDRequestSerializer(data=data)
         query.is_valid(raise_exception=True)
 
@@ -48,7 +48,9 @@ class DogsViewSet(viewsets.ModelViewSet):
         fta = Dog.objects.filter(status=DogStatus.FTA)
 
         # Get dogs whose name matches a PendingAdoption with READY_TO_ROLL status
-        ready_to_roll = PendingAdoption.objects.filter(status=PendingAdoptionStatus.READY_TO_ROLL)
+        ready_to_roll = PendingAdoption.objects.filter(
+            status=PendingAdoptionStatus.READY_TO_ROLL
+        ).select_related("dog")
 
         needs_sn = PendingAdoption.objects.filter(status=PendingAdoptionStatus.NEEDS_SN).difference(
             ready_to_roll

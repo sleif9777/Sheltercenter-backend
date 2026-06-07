@@ -104,7 +104,7 @@ class Adopter(models.Model):
 
     min_weight_preference = models.IntegerField(null=True, blank=True)
     max_weight_preference = models.IntegerField(null=True, blank=True)
-    low_allergy = models.BooleanField(default=False)
+    low_shedding = models.BooleanField(default=False)
 
     # VISIT LOGISTICS ITEMS
     mobility = models.BooleanField(default=False)
@@ -158,7 +158,7 @@ class Adopter(models.Model):
     def get_current_appointment(self) -> Appointment | None:  # type: ignore
         try:
             return self.bookings.get(status=BookingStatus.ACTIVE).appointment
-        except:
+        except ObjectDoesNotExist:
             return None
 
     def should_email_watchlist_updates(self) -> bool:
@@ -216,7 +216,7 @@ class Adopter(models.Model):
         self.other_pets_comment = data.get("otherPetsComment", "")
         self.has_fence = data.get("hasFence", False)
         self.bringing_dog = data.get("bringingDog", False)
-        self.low_allergy = data.get("lowShed", False)
+        self.low_shedding = data.get("lowShed", False)
         self.mobility = data.get("mobility", False)
 
         self.min_weight_preference = data.get("minWeightPreference")

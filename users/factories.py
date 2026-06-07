@@ -2,7 +2,7 @@ import csv
 import email
 import email.utils
 import io
-import traceback
+import logging
 
 import pandas
 from django.core.files.uploadedfile import UploadedFile
@@ -16,6 +16,8 @@ from email_templates.views import EmailViewSet
 
 from .enums import *
 from .models import UserProfile
+
+logger = logging.getLogger(__name__)
 
 
 class UploadResultsHash(TypedDict):
@@ -106,9 +108,8 @@ class UserSpreadsheetFactory(UserFactory):
                 else:
                     updates += 1
 
-            except Exception as e:
-                print(f"Error processing row {i}: {e}")
-                traceback.print_exc()
+            except Exception:
+                logger.exception("Error processing spreadsheet row %s", i)
                 failures += 1
 
         aversions = list({a["ID"]: a for a in aversions}.values())
@@ -159,7 +160,8 @@ class UserSpreadsheetFactory(UserFactory):
             adopter.update_last_upload()
 
             return user, (adopter_created and user_created), approval_averted
-        except:
+        except Exception:
+            logger.exception("Error processing user form row; cleaning up partial records")
             if not adopter or not user:  # if either is missing, since you need both
                 self.clean_records(adopter, user)
             return None, False, False
@@ -270,10 +272,8 @@ class UserFormFactory(UserFactory):
             if self.is_new_context or newly_approved:
                 self.send_approval_email(adopter)
             return adopter, (adopter_created and user_created), approval_averted
-        except Exception as e:
-            traceback.print_exc()
-            traceback.print_stack()
-            # TODO email Sam
+        except Exception:
+            logger.exception("Error processing user form data; cleaning up partial records")
             self.clean_records(adopter, user)
             return None, False, False
 

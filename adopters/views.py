@@ -1,7 +1,8 @@
 import datetime
-import traceback
+import logging
 
 from django.db.models import CharField, Value
+from django.http import QueryDict
 from django.db.models.functions import Concat
 from django.http import JsonResponse
 from django.utils import timezone
@@ -10,12 +11,15 @@ from appointments.views import AppointmentViewSet
 from email_templates.views import EmailViewSet
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from users.enums import SecurityLevel
 from users.models import UserProfile
 from utils import DateTimeUtils
 
 from .enums import ApprovalStatus
 from .models import Adopter
 from .serializers import *
+
+logger = logging.getLogger(__name__)
 
 
 # Create your views here.
@@ -24,7 +28,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     # Static methods
     @staticmethod
-    def UnpackAdopterFromAdopterIDRequest(data) -> Adopter:
+    def UnpackAdopterFromAdopterIDRequest(data: QueryDict) -> Adopter:
         query = AdopterIDRequestSerializer(data=data)
         query.is_valid(raise_exception=True)
 
@@ -79,6 +83,9 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["GET"], url_path="GetAdopterDemographics")
     def GetAdopterDemographics(self, request):
+        if request.user.security_level < SecurityLevel.GREETER:
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)
         appt = adopter.get_current_appointment()
 
@@ -127,8 +134,8 @@ class AdopterViewSet(viewsets.ModelViewSet):
             serialized = [DirectoryAdopterSerializer(adopter).data for adopter in adopters]
 
             return JsonResponse({"adopters": serialized}, status=status.HTTP_200_OK)
-        except:
-            traceback.print_exc()
+        except Exception:
+            logger.exception("Error in GetAdopterDirectoryListing")
 
     @action(detail=False, methods=["GET"], url_path="GetAdopterPreferences")
     def GetAdopterPreferences(self, request):
@@ -139,6 +146,9 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["GET"], url_path="GetAdopterSelectFieldOptions")
     def GetAdopterSelectFieldOptions(self, request):
+        if request.user.security_level < SecurityLevel.GREETER:
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
         include_scheduled = request.query_params["includeScheduled"].lower() == "true"
         include_archived = request.query_params["includeArchived"].lower() == "true"
 

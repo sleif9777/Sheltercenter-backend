@@ -5,7 +5,7 @@ from django.db import models
 
 class ActivityLevelOptions(models.IntegerChoices, Enum):
     LOW = 0, "Low"
-    MODERATE = 1, "Moderate"
+    MEDIUM = 1, "Medium"
     ACTIVE = 2, "Active"
     VERY_ACTIVE = 3, "Very Active"
 

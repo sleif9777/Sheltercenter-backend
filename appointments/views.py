@@ -1,6 +1,9 @@
 import datetime
 import io
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from requests import Response
 
@@ -165,13 +168,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             instant__range=DateTimeUtils.get_range_for_date(timezone.now(), backdate_days=10),
             outcome__in=[OutcomeTypes.ADOPTION, OutcomeTypes.FTA],
             soft_deleted=False,
-        )
+        ).prefetch_related("bookings__adopter").select_related("chosen_dog")
 
         paperwork_appts = Appointment.objects.filter(
             instant__range=DateTimeUtils.get_range_for_date(timezone.now(), backdate_days=10),
             type=AppointmentTypes.PAPERWORK,
             soft_deleted=False,
-        )
+        ).select_related("paperwork_adoption__adopter", "paperwork_adoption__dog")
 
         all_serialized_adoptions = [
             {
@@ -315,8 +318,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
                 # restore calendar access
                 pending_adoption.adopter.restrict_calendar(restrict=False)
-            except:
-                pass
+            except Exception:
+                logger.exception("Error canceling pending adoption on NO_DECISION checkout for appt %s", appt.id)
 
             EmailViewSet().NoDecision(appt, send_sleepover_info)
         elif outcome in [OutcomeTypes.ADOPTION, OutcomeTypes.FTA]:
@@ -553,7 +556,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 adoption = PendingAdoption.objects.get(paperwork_appointment=appt)
                 adoption.paperwork_appointment = None
                 adoption.save()
-            except:
+            except PendingAdoption.DoesNotExist:
                 pass
 
         return JsonResponse({}, status=status.HTTP_200_OK)

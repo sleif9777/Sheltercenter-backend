@@ -1,3 +1,5 @@
+import logging
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpRequest, JsonResponse
 from django.utils import timezone
@@ -5,6 +7,8 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+
+logger = logging.getLogger(__name__)
 
 from appointments.models import Appointment
 from users.factories import UserFormFactory, UserSpreadsheetFactory
@@ -63,13 +67,11 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_202_ACCEPTED,
             )
-        except:
-            return JsonResponse(
-                {
-                    "isAuthenticated": False,
-                },
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+        except ObjectDoesNotExist:
+            return JsonResponse({"isAuthenticated": False}, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception:
+            logger.exception("Unexpected error during LogIn")
+            return JsonResponse({"isAuthenticated": False}, status=status.HTTP_401_UNAUTHORIZED)
 
     # POST methods
     @action(detail=False, methods=["POST"], url_path="ImportSpreadsheetBatch")

@@ -163,7 +163,7 @@ class AdopterPreferencesResponseSerializer(serializers.ModelSerializer):
     housingType = serializers.IntegerField(source="housing_type", required=False, allow_null=True)
     housingOwnership = serializers.IntegerField(source="homeowner", required=False, allow_null=True)
     hasFence = serializers.BooleanField(source="has_fence", required=False)
-    lowShed = serializers.BooleanField(source="low_allergy", required=False)
+    lowShed = serializers.BooleanField(source="low_shedding", required=False)
     mobility = serializers.BooleanField(required=False)
     minWeightPreference = serializers.IntegerField(
         source="min_weight_preference", required=False, allow_null=True
