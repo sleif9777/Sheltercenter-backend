@@ -3,6 +3,7 @@ from django.http import HttpRequest, JsonResponse
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from appointments.models import Appointment
@@ -17,7 +18,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
 
     # GET methods
-    @action(detail=False, methods=["GET"], url_path="LogIn")
+    @action(detail=False, methods=["GET"], url_path="LogIn", permission_classes=[AllowAny])
     def LogIn(self, request: HttpRequest):
         try:
             query = PrimaryEmailRequestSerializer(data=request.query_params)
@@ -82,7 +83,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
         return JsonResponse(upload_result, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="SaveUserForm")
+    @action(detail=False, methods=["POST"], url_path="SaveUserForm", permission_classes=[AllowAny])
     def SaveUserForm(self, request):
         query = SaveUserFormRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
