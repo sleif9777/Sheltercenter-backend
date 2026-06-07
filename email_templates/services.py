@@ -1,6 +1,8 @@
+import mimetypes
 import os
 import sys
 
+import requests
 from adopters.models import Adopter
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
@@ -58,7 +60,17 @@ class EmailService:
             msg.attach_alternative(self.content_html, "text/html")
 
             for attachment in self.attachments:
-                msg.attach_file(attachment)
+                if attachment.startswith(("http://", "https://")):
+                    response = requests.get(attachment)
+                    response.raise_for_status()
+                    filename = attachment.split("?")[0].split("/")[-1]
+                    mime_type = response.headers.get(
+                        "Content-Type",
+                        mimetypes.guess_type(filename)[0] or "application/octet-stream",
+                    )
+                    msg.attach(filename, response.content, mime_type)
+                else:
+                    msg.attach_file(attachment)
 
             msg.send()
         except Exception as e:
