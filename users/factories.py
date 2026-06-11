@@ -271,6 +271,7 @@ class UserFormFactory(UserFactory):
 
             if self.is_new_context or newly_approved:
                 self.send_approval_email(adopter)
+                adopter.update_last_upload()
             return adopter, (adopter_created and user_created), approval_averted
         except Exception:
             logger.exception("Error processing user form data; cleaning up partial records")

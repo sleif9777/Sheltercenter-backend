@@ -58,15 +58,13 @@ class Adopter(models.Model):
         if not self.is_approved:
             return False
 
-        never_uploaded = self.last_uploaded is None
+        if self.approval_emailed:
+            if self.last_uploaded is None:
+                return True
+            two_days_ago = timezone.now() - datetime.timedelta(hours=48)
+            return self.last_uploaded < two_days_ago
 
-        if never_uploaded:
-            return True
-
-        two_days_ago = timezone.now() - datetime.timedelta(hours=48)
-        is_old_enough = self.last_uploaded < two_days_ago
-
-        return is_old_enough
+        return True
 
     # HOUSING ENVIRONMENT ITEMS
     homeowner = models.IntegerField(choices=HomeownershipOptons.choices, null=True, blank=True)
@@ -235,7 +233,7 @@ class Adopter(models.Model):
 
     def update_last_upload(self):
         self.last_uploaded = timezone.now()
-        self.save()
+        self.save(update_fields=["last_uploaded"])
 
     def update_address(self, request_data):
         street_address = request_data.get("streetAddress", "")

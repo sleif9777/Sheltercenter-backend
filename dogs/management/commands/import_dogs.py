@@ -405,7 +405,7 @@ class Command(BaseCommand):
 
     def _update_last_import_timestamp(self, environment):
         environment.last_dog_import = timezone.now()
-        environment.save()
+        environment.save(update_fields=["last_dog_import"])
 
     def _debug_output(self, message):
         if self.is_test_env:

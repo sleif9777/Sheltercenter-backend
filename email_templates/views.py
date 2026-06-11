@@ -41,7 +41,7 @@ class EmailViewSet(viewsets.ViewSet):
 
         email.send()
         adopter.approval_emailed = True
-        adopter.save()
+        adopter.save(update_fields=["approval_emailed"])
 
     def AppointmentScheduled(self, appointment):
         booking = appointment.get_current_booking()
