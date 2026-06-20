@@ -48,9 +48,7 @@ class DogsViewSet(viewsets.ModelViewSet):
         fta = Dog.objects.filter(status=DogStatus.FTA)
 
         # Get dogs whose name matches a PendingAdoption with READY_TO_ROLL status
-        ready_to_roll = PendingAdoption.objects.filter(
-            status=PendingAdoptionStatus.READY_TO_ROLL
-        ).select_related("dog")
+        ready_to_roll = PendingAdoption.objects.filter(status=PendingAdoptionStatus.READY_TO_ROLL)
 
         needs_sn = PendingAdoption.objects.filter(status=PendingAdoptionStatus.NEEDS_SN).difference(
             ready_to_roll

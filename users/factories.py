@@ -6,6 +6,7 @@ import logging
 
 import pandas
 from django.core.files.uploadedfile import UploadedFile
+from django.db import transaction
 from django.utils import timezone
 from mimetypes import guess_type
 from typing import TypedDict
@@ -28,11 +29,6 @@ class UploadResultsHash(TypedDict):
 
 
 class UserFactory:
-    def clean_records(self, adopter: Adopter, user: UserProfile):
-        for record in [adopter, user]:
-            if record is not None:
-                record.delete()
-
     def send_approval_email(self, adopter: Adopter):
         if not adopter.should_send_approval_email:
             return
@@ -148,23 +144,26 @@ class UserSpreadsheetFactory(UserFactory):
             return None, False, False
 
         new_status, approval_averted = Adopter.get_application_status(row_data[4], row_data[27])
-        adopter: Adopter = None
-        user: UserProfile = None
 
         try:
-            adopter, adopter_created = self.create_new_adopter(index, new_status)
-            user, user_created = self.create_new_user(index, adopter)
-
-            self.send_approval_email(adopter)
-
-            adopter.update_last_upload()
-
-            return user, (adopter_created and user_created), approval_averted
+            with transaction.atomic():
+                adopter, adopter_created = self.create_new_adopter(index, new_status)
+                user, user_created = self.create_new_user(index, adopter)
         except Exception:
-            logger.exception("Error processing user form row; cleaning up partial records")
-            if not adopter or not user:  # if either is missing, since you need both
-                self.clean_records(adopter, user)
+            logger.exception("Error processing spreadsheet row %s; record rolled back", index)
             return None, False, False
+
+        try:
+            self.send_approval_email(adopter)
+        except Exception:
+            logger.exception(
+                "Failed to send approval email for %s; approval_emailed stays False "
+                "for retry on next upload or via send_pending_approval_emails",
+                row_data[27],
+            )
+
+        adopter.update_last_upload()
+        return user, (adopter_created and user_created), approval_averted
 
     def is_foster_application(self, app_type: str):
         return "Foster" in app_type
@@ -262,21 +261,25 @@ class UserFormFactory(UserFactory):
                 current_status != new_status
             )
 
-        adopter: Adopter
-        user: UserProfile
-
         try:
-            adopter, adopter_created = self.create_new_adopter(new_status)
-            user, user_created = self.create_new_user(adopter)
-
-            if self.is_new_context or newly_approved:
-                self.send_approval_email(adopter)
-                adopter.update_last_upload()
-            return adopter, (adopter_created and user_created), approval_averted
+            with transaction.atomic():
+                adopter, adopter_created = self.create_new_adopter(new_status)
+                _, user_created = self.create_new_user(adopter)
         except Exception:
-            logger.exception("Error processing user form data; cleaning up partial records")
-            self.clean_records(adopter, user)
+            logger.exception("Error processing user form data; record rolled back")
             return None, False, False
+
+        if self.is_new_context or newly_approved:
+            try:
+                self.send_approval_email(adopter)
+            except Exception:
+                logger.exception(
+                    "Failed to send approval email for %s; will retry via send_pending_approval_emails",
+                    self.form_data["primaryEmail"],
+                )
+            adopter.update_last_upload()
+
+        return adopter, (adopter_created and user_created), approval_averted
 
     def create_new_adopter(self, new_status: ApprovalStatus) -> tuple[Adopter, bool]:
         adopter, adopter_created = Adopter.objects.update_or_create(

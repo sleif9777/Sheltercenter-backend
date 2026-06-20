@@ -17,6 +17,7 @@ from appointments.services import ContinuityAccessSpreadsheetService
 from bookings.enums import BookingMessageTemplate
 from bookings.models import Booking, BookingStatus
 from closed_dates.models import ClosedDate
+from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from dogs.models import Dog
@@ -469,6 +470,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         else:
             adopter = Adopter.objects.get(pk=adopter_id)
 
+        if adopter.has_current_booking:
+            return JsonResponse({}, status=status.HTTP_409_CONFLICT)
+
         appt_date = query.validated_data["isoDate"]
         hour = query.validated_data["hour"]
         minute = query.validated_data["minute"]
@@ -509,18 +513,22 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return JsonResponse({}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["POST"], url_path="ScheduleAppointment")
+    @transaction.atomic
     def ScheduleAppointment(self, request):
         query = ScheduleAppointmentRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
         data = query.validated_data
 
-        # Fetch the appointment and adopter
+        # Fetch the appointment and adopter; lock the adopter row to prevent concurrent bookings
         appt = Appointment.objects.get(pk=request.data["apptID"])
-        adopter = Adopter.objects.get(pk=request.data["adopterID"])
+        adopter = Adopter.objects.select_for_update().get(pk=request.data["adopterID"])
 
         # Update the adopter demographics
         if len(data.keys()) > 2:  # More than just apptID and adopterID
             adopter.update_preferences(data)
+
+        if adopter.has_current_booking:
+            return JsonResponse({}, status=status.HTTP_409_CONFLICT)
 
         if appt.get_current_booking() is not None:
             return JsonResponse({}, status=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION)
