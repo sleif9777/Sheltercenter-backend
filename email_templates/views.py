@@ -1,5 +1,4 @@
 from adopters.models import Adopter
-from django.utils import timezone
 from dogs.enums import DogStatus
 from dogs.models import Dog
 from environment_settings.models import EnvironmentSettings
@@ -204,45 +203,10 @@ class EmailViewSet(viewsets.ViewSet):
             attachments.append(environment.fta_doc_2_path)
             attachments = [a for a in attachments if a]
 
-        match timezone.now().weekday():
-            case 0 | 1 | 3 | 6:  # MON/TUE/THU/SUN
-                next_bus_day = "tomorrow"
-                today_close = "6:00pm"
-                open_hour = "12:00pm"  # TUE/WED/FRI
-                close_hour = "6:00pm"
-            case 2:  # WED
-                next_bus_day = "tomorrow"
-                today_close = "6:00pm"  # WED
-                open_hour = "1:00pm"  # THU
-                close_hour = "6:00pm"  # THU
-            case 4:  # FRI
-                next_bus_day = "tomorrow"
-                today_close = "6:00pm"  # FRI
-                open_hour = "12:00pm"  # SAT
-                close_hour = "3:00pm"  # SAT
-            case 5:  # SAT
-                next_bus_day = "on Monday"
-                today_close = "3:00pm"  # SAT
-                open_hour = "12:00pm"  # MON
-                close_hour = "6:00pm"  # MON
-
-        if custom_message.strip(" ") == "":
-            template = "ready_to_roll"
-            context = {
-                "adoption": adoption,
-                "next_bus_day": next_bus_day,
-                "today_close": today_close,
-                "open_hour": open_hour,
-                "close_hour": close_hour,
-            }
-        else:
-            template = "generic"
-            context = {"message": custom_message.replace("\n", "<br />")}
-
         email = EmailService(
             subject,
-            template,
-            context,
+            "generic",
+            {"message": custom_message},
             adoption.adopter.user_profile.primary_email,
             attachments=attachments,
         )

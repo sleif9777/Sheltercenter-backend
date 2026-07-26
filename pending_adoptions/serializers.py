@@ -40,6 +40,7 @@ class CreatePendingAdoptionUpdateRequestSerializer:
 class MarkStatusRequestSerializer(AdoptionIDRequestSerializer):
     status = serializers.IntegerField(required=True)
     message = serializers.CharField(required=False, allow_blank=True)
+    sendEmail = serializers.BooleanField(required=False, default=True)
 
 
 class MarkHeartwormRequestSerializer(AdoptionIDRequestSerializer):

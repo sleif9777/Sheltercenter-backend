@@ -147,11 +147,12 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
 
         new_status = query.validated_data["status"]
         message = query.validated_data.get("message", "")
+        send_email = query.validated_data.get("sendEmail", True)
 
         adoption = query.get_adoption()
         adoption.mark_status(new_status)
 
-        if new_status == PendingAdoptionStatus.READY_TO_ROLL:
+        if new_status == PendingAdoptionStatus.READY_TO_ROLL and send_email:
             EmailViewSet().ReadyToRoll(adoption, message)
 
         if new_status == PendingAdoptionStatus.CANCELED and adoption.source_appointment:
