@@ -79,7 +79,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
 
         EmailViewSet().GenericMessage(adoption.adopter.user_profile, subject, message)
 
-        return JsonResponse(status=status.HTTP_201_CREATED)
+        return JsonResponse({}, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["POST"], url_path="ChangeDog")
     def ChangeDog(self, request):
