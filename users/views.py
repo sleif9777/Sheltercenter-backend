@@ -55,6 +55,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                             {
                                 "ID": current_appt.id,
                                 "isoDate": timezone.localtime(current_appt.instant).date().isoformat(),
+                                "isoInstant": timezone.localtime(current_appt.instant).isoformat(),
                                 "instantDisplay": current_appt.instant_display,
                             }
                             if current_appt
