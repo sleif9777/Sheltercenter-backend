@@ -21,11 +21,17 @@ from .models import UserProfile
 logger = logging.getLogger(__name__)
 
 
+class RejectedRow(TypedDict):
+    name: str
+    email: str
+
+
 class UploadResultsHash(TypedDict):
     successes: int
-    updates: str
-    failures: str
-    aversions: list[str]
+    updates: int
+    failures: int
+    aversions: list[dict]
+    rejected: list[RejectedRow]
 
 
 class UserFactory:
@@ -75,24 +81,41 @@ class UserSpreadsheetFactory(UserFactory):
             case _:
                 raise ValueError(f"Unsupported file type: {file_name}")
 
+    def _get_row_identity(self, i: int) -> RejectedRow:
+        try:
+            row = self.rows[i]
+            first = str(row[14]).strip().title() if len(row) > 14 else ""
+            last = str(row[15]).strip().title() if len(row) > 15 else ""
+            primary_email = str(row[27]).strip() if len(row) > 27 else ""
+            return {
+                "name": f"{first} {last}".strip() or "Unknown",
+                "email": primary_email or "Unknown",
+            }
+        except Exception:
+            return {"name": "Unknown", "email": "Unknown"}
+
     def run_import_batch(self) -> UploadResultsHash:
         successes, updates, failures = 0, 0, 0
         aversions = []
+        rejected = []
 
         for i in range(len(self.rows)):
             try:
                 if not self.validate_single_row(i):
+                    rejected.append(self._get_row_identity(i))
                     failures += 1
+                    continue
+
+                if self.is_foster_application(self.rows[i][1]):
                     continue
 
                 user, created, approval_averted = self.process_single_row(i)
 
-                # Skip if user is None (foster app or error)
                 if user is None:
+                    rejected.append(self._get_row_identity(i))
                     failures += 1
                     continue
 
-                # Update batch counts
                 if created:
                     successes += 1
                 elif approval_averted:
@@ -106,6 +129,7 @@ class UserSpreadsheetFactory(UserFactory):
 
             except Exception:
                 logger.exception("Error processing spreadsheet row %s", i)
+                rejected.append(self._get_row_identity(i))
                 failures += 1
 
         aversions = list({a["ID"]: a for a in aversions}.values())
@@ -115,6 +139,7 @@ class UserSpreadsheetFactory(UserFactory):
             "updates": updates,
             "failures": failures,
             "aversions": aversions,
+            "rejected": rejected,
         }
 
     def validate_single_row(self, index):
