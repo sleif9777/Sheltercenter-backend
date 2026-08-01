@@ -74,17 +74,27 @@ class EmailService:
             msg.attach_alternative(self.content_html, "text/html")
 
             for attachment in self.attachments:
-                if attachment.startswith(("http://", "https://")):
-                    response = requests.get(attachment)
+                if isinstance(attachment, tuple):
+                    path_or_url, desired_filename = attachment
+                else:
+                    path_or_url, desired_filename = attachment, None
+
+                if path_or_url.startswith(("http://", "https://")):
+                    response = requests.get(path_or_url)
                     response.raise_for_status()
-                    filename = attachment.split("?")[0].split("/")[-1]
+                    filename = desired_filename or path_or_url.split("?")[0].split("/")[-1]
                     mime_type = response.headers.get(
                         "Content-Type",
                         mimetypes.guess_type(filename)[0] or "application/octet-stream",
                     )
                     msg.attach(filename, response.content, mime_type)
                 else:
-                    msg.attach_file(attachment)
+                    if desired_filename:
+                        mime_type = mimetypes.guess_type(path_or_url)[0] or "application/octet-stream"
+                        with open(path_or_url, "rb") as f:
+                            msg.attach(desired_filename, f.read(), mime_type)
+                    else:
+                        msg.attach_file(path_or_url)
 
             msg.send()
         except Exception as e:

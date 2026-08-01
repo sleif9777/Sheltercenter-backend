@@ -23,7 +23,7 @@ class EmailViewSet(viewsets.ViewSet):
         attachments = []
         environment = EnvironmentSettings.objects.get(pk=1)
         if environment.application_approved_pdf_path:
-            attachments.append(environment.application_approved_pdf_path)
+            attachments.append((environment.application_approved_pdf_path, "SGNC_AdoptionProcess.pdf"))
 
         email = EmailService(
             subject,
