@@ -130,6 +130,12 @@ Configured in `pyproject.toml`:
 
 ---
 
+## Domain Policy
+
+**No holds, no guarantees, first-come-first-served.** Saving Grace does not hold dogs for specific adopters. Application comments (e.g. "interested in German Shepherds") reflect preferences, not reservations. Do not design features that imply a dog is reserved or held for a specific person.
+
+---
+
 ## Django Apps
 
 | App | Purpose |
