@@ -11,6 +11,20 @@ from environment_settings.models import EnvironmentSettings
 
 
 class EmailService:
+    _GENERIC_COMMENTS: frozenset[str] = frozenset({"dog", "dogs", "a dog", "any dog", "any"})
+    _MAX_COMMENT_LENGTH: int = 50
+
+    @staticmethod
+    def subject_with_comments(base: str, comments: str | None) -> str:
+        cleaned = (comments or "").strip()
+        if not cleaned:
+            return base
+        if cleaned.lower() in EmailService._GENERIC_COMMENTS:
+            return base
+        if len(cleaned) > EmailService._MAX_COMMENT_LENGTH:
+            return base
+        return f"{base} (Interested in: {cleaned})"
+
     def __init__(self, title, template_path, context, recipients: str | list[str], attachments=None, adopter: Adopter=None):
         attachments = attachments or []
 

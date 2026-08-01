@@ -15,12 +15,10 @@ class EmailViewSet(viewsets.ViewSet):
             for e in [adopter.user_profile.primary_email, adopter.user_profile.secondary_email]
             if e
         ]
-        subject = "Your application has been reviewed: {0}".format(
-            adopter.user_profile.full_name.upper()
+        subject = EmailService.subject_with_comments(
+            "Your application has been reviewed: {0}".format(adopter.user_profile.full_name.upper()),
+            adopter.application_comments,
         )
-
-        if adopter.application_comments and len(adopter.application_comments) > 0:
-            subject += " ({0})".format(adopter.application_comments)
 
         attachments = []
         environment = EnvironmentSettings.objects.get(pk=1)
@@ -44,12 +42,10 @@ class EmailViewSet(viewsets.ViewSet):
 
     def AppointmentScheduled(self, appointment):
         booking = appointment.get_current_booking()
-        subject = "Your appointment has been scheduled: {0}".format(
-            booking.adopter.user_profile.full_name.upper()
+        subject = EmailService.subject_with_comments(
+            "Your appointment has been scheduled: {0}".format(booking.adopter.user_profile.full_name.upper()),
+            booking.adopter.application_comments,
         )
-
-        if booking.adopter.application_comments and len(booking.adopter.application_comments) > 0:
-            subject += " ({0})".format(booking.adopter.application_comments)
 
         email = EmailService(
             subject,
@@ -85,12 +81,10 @@ class EmailViewSet(viewsets.ViewSet):
 
     def AppointmentCanceled(self, appointment):
         booking = appointment.get_current_booking()
-        subject = "Your appointment has been canceled: {0}".format(
-            booking.adopter.user_profile.full_name.upper()
+        subject = EmailService.subject_with_comments(
+            "Your appointment has been canceled: {0}".format(booking.adopter.user_profile.full_name.upper()),
+            booking.adopter.application_comments,
         )
-
-        if booking.adopter.application_comments and len(booking.adopter.application_comments) > 0:
-            subject += " ({0})".format(booking.adopter.application_comments)
 
         email = EmailService(
             subject,
