@@ -14,3 +14,9 @@ class OutcomeTypes(models.IntegerChoices, Enum):
     CHOSEN = 2
     NO_DECISION = 3
     NO_SHOW = 4
+
+
+class NoDecisionEmailOption(int, Enum):
+    NO_EMAIL = 0
+    STANDARD = 1
+    WITH_SLEEPOVER = 2

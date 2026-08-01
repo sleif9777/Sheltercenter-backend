@@ -4,7 +4,7 @@ from adopters.serializers import AdopterPreferencesRequestSerializer
 from bookings.serializers import BookingCardModelSerializer
 from rest_framework import serializers
 
-from .enums import OutcomeTypes
+from .enums import NoDecisionEmailOption, OutcomeTypes
 from .models import Appointment
 
 # REQUESTS
@@ -39,7 +39,7 @@ class CheckInAppointmentRequestSerializer(AppointmentIDRequestSerializer):
 
 class CheckOutAppointmentRequestSerializer(AppointmentIDRequestSerializer):
     outcome = serializers.IntegerField()
-    sendSleepoverInfo = serializers.BooleanField()
+    noDecisionEmailOption = serializers.IntegerField(default=NoDecisionEmailOption.WITH_SLEEPOVER)
     dogID = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     def validate_dogID(self, value):

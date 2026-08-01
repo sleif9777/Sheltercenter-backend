@@ -12,7 +12,7 @@ from adopters.models import Adopter
 from adopters.serializers import AdopterContactInfoSerializer
 from appointment_bases.enums import AppointmentTypes
 from appointment_bases.models import AppointmentBase
-from appointments.enums import OutcomeTypes
+from appointments.enums import NoDecisionEmailOption, OutcomeTypes
 from appointments.services import ContinuityAccessSpreadsheetService
 from bookings.enums import BookingMessageTemplate
 from bookings.models import Booking, BookingStatus
@@ -275,7 +275,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         id = query.validated_data["apptID"]
         outcome = query.validated_data["outcome"]
         dogID = query.validated_data["dogID"]
-        send_sleepover_info = query.validated_data["sendSleepoverInfo"]
+        no_decision_email_option = query.validated_data["noDecisionEmailOption"]
 
         dog = Dog.objects.get(pk=dogID).name if dogID else ""
 
@@ -322,7 +322,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             except Exception:
                 logger.exception("Error canceling pending adoption on NO_DECISION checkout for appt %s", appt.id)
 
-            EmailViewSet().NoDecision(appt, send_sleepover_info)
+            if no_decision_email_option != NoDecisionEmailOption.NO_EMAIL:
+                send_sleepover_info = no_decision_email_option == NoDecisionEmailOption.WITH_SLEEPOVER
+                EmailViewSet().NoDecision(appt, send_sleepover_info)
         elif outcome in [OutcomeTypes.ADOPTION, OutcomeTypes.FTA]:
             appt.get_current_booking().adopter.restrict_calendar()
 
