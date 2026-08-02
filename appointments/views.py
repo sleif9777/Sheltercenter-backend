@@ -3,6 +3,8 @@ import io
 import logging
 from typing import Optional
 
+from django.db.models import Count
+
 logger = logging.getLogger(__name__)
 
 from requests import Response
@@ -591,3 +593,113 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appt.toggle_lock()
 
         return JsonResponse({}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["GET"], url_path="GetReportingStats")
+    def GetReportingStats(self, request):
+        if request.user.id != 1816:
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+        today = DateTimeUtils.get_today()
+        py_same_day = today.replace(year=today.year - 1)
+
+        ranges = {
+            "ytd": (datetime.date(today.year, 1, 1), today),
+            "pytd": (datetime.date(today.year - 1, 1, 1), py_same_day),
+            "prev_year": (datetime.date(today.year - 1, 1, 1), datetime.date(today.year - 1, 12, 31)),
+            "current_month": (datetime.date(today.year, today.month, 1), today),
+            "current_month_py": (
+                datetime.date(today.year - 1, today.month, 1),
+                datetime.date(today.year - 1, today.month, today.day),
+            ),
+        }
+
+        adoption_types = [
+            AppointmentTypes.ADULTS,
+            AppointmentTypes.PUPPIES,
+            AppointmentTypes.ALL_AGES,
+            AppointmentTypes.FUN_SIZE,
+        ]
+
+        periods = {}
+        for key, (start, end) in ranges.items():
+            appts_qs = Appointment.objects.filter(
+                type__in=adoption_types,
+                soft_deleted=False,
+                outcome__isnull=False,
+                instant__date__gte=start,
+                instant__date__lte=end,
+            )
+            hw_qs = PendingAdoption.objects.filter(
+                source_appointment__instant__date__gte=start,
+                source_appointment__instant__date__lte=end,
+            )
+            visitors = (
+                Booking.objects.filter(
+                    status=BookingStatus.COMPLETED,
+                    appointment__instant__date__gte=start,
+                    appointment__instant__date__lte=end,
+                )
+                .values("adopter_id")
+                .distinct()
+                .count()
+            )
+            adopters_count = (
+                Booking.objects.filter(
+                    status=BookingStatus.COMPLETED,
+                    appointment__outcome=OutcomeTypes.ADOPTION,
+                    appointment__instant__date__gte=start,
+                    appointment__instant__date__lte=end,
+                )
+                .values("adopter_id")
+                .distinct()
+                .count()
+            )
+            periods[key] = {
+                "total": appts_qs.count(),
+                "adoptions": appts_qs.filter(outcome=OutcomeTypes.ADOPTION).count(),
+                "chosen": appts_qs.filter(outcome=OutcomeTypes.CHOSEN).count(),
+                "fta": appts_qs.filter(outcome=OutcomeTypes.FTA).count(),
+                "no_decision": appts_qs.filter(outcome=OutcomeTypes.NO_DECISION).count(),
+                "no_show": appts_qs.filter(outcome=OutcomeTypes.NO_SHOW).count(),
+                "hw_positive": hw_qs.filter(heartworm_positive=True).count(),
+                "hw_negative": hw_qs.filter(heartworm_positive=False).count(),
+                "applications": Adopter.objects.filter(
+                    last_uploaded__date__gte=start,
+                    last_uploaded__date__lte=end,
+                ).count(),
+                "visitors": visitors,
+                "adopters": adopters_count,
+            }
+
+        adopted_adopter_ids = set(
+            Booking.objects.filter(
+                status=BookingStatus.COMPLETED,
+                appointment__outcome=OutcomeTypes.ADOPTION,
+            ).values_list("adopter_id", flat=True)
+        )
+        visit_counts = list(
+            Booking.objects.filter(
+                status=BookingStatus.COMPLETED,
+                adopter_id__in=adopted_adopter_ids,
+            )
+            .values("adopter_id")
+            .annotate(count=Count("id"))
+        )
+        avg_visits = (
+            round(sum(v["count"] for v in visit_counts) / len(visit_counts), 1) if visit_counts else 0.0
+        )
+
+        all_visitor_ids = set(
+            Booking.objects.filter(status=BookingStatus.COMPLETED).values_list("adopter_id", flat=True)
+        )
+        visitors_never_adopted = len(all_visitor_ids - adopted_adopter_ids)
+
+        return JsonResponse(
+            {
+                "periods": periods,
+                "global": {
+                    "avg_visits_before_adopting": avg_visits,
+                    "visitors_never_adopted": visitors_never_adopted,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
