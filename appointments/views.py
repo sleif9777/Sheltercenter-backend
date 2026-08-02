@@ -596,8 +596,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["GET"], url_path="GetReportingStats")
     def GetReportingStats(self, request):
-        if request.user.id != 1816:
-            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
         today = DateTimeUtils.get_today()
         py_same_day = today.replace(year=today.year - 1)
 
