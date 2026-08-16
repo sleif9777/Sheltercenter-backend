@@ -1,4 +1,5 @@
 from adopters.models import Adopter
+from adopters.serializers import AdopterIDRequestSerializer
 from appointments.enums import OutcomeTypes
 from django.http import JsonResponse
 from django.utils import timezone
@@ -37,6 +38,34 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
         return adoption
 
     # GET commands
+    @action(detail=False, methods=["GET"], url_path="GetAdopterCurrentPendingAdoptionStatus")
+    def GetAdopterCurrentPendingAdoptionStatus(self, request):
+        query = AdopterIDRequestSerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+
+        adopter_id: int = int(query.validated_data["adopterID"])
+
+        adoption = (
+            PendingAdoption.objects.filter(adopter__id=adopter_id)
+            .exclude(status=PendingAdoptionStatus.COMPLETED)
+            .exclude(status=PendingAdoptionStatus.CANCELED)
+            .order_by("-id")
+            .first()
+        )
+
+        if adoption is None:
+            return JsonResponse(
+                {"status": None, "readyToRollInstant": None}, status=status.HTTP_200_OK
+            )
+
+        rtr_instant = (
+            adoption.ready_to_roll_instant.isoformat() if adoption.ready_to_roll_instant else None
+        )
+        return JsonResponse(
+            {"status": adoption.status, "readyToRollInstant": rtr_instant},
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=False, methods=["GET"], url_path="GetActivePendingAdoptions", permission_classes=[MinSecurityLevel(SecurityLevel.GREETER)])
     def GetActivePendingAdoptions(self, request):
         adoptions = PendingAdoption.objects.exclude(
