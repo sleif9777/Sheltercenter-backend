@@ -127,6 +127,9 @@ class DogsViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["GET"], url_path="GetWatchlistForAdopter")
     def GetWatchlistForAdopter(self, request):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)
+
+        if not AdopterViewSet._is_own_adopter_or_staff(request, adopter):
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
         environment = EnvironmentSettings.objects.get(pk=1)
 
         publishable_dogs = Dog.objects.filter(publishable=True)
@@ -146,6 +149,9 @@ class DogsViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["GET"], url_path="GetWatchlistHashForAdopter")
     def GetWatchlistHashForAdopter(self, request):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)
+
+        if not AdopterViewSet._is_own_adopter_or_staff(request, adopter):
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
         environment = EnvironmentSettings.objects.get(pk=1)
 
         publishable_dogs = Dog.objects.filter(publishable=True)
@@ -174,6 +180,10 @@ class DogsViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["POST"], url_path="AddDogToList")
     def AddDogToList(self, request: ListModificationRequest):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.data)
+
+        if not AdopterViewSet._is_own_adopter_or_staff(request, adopter):
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
         dog = DogsViewSet.UnpackDogFromDogIDRequest(request.data)
 
         if not dog.interest_adopters.contains(adopter):
@@ -185,6 +195,10 @@ class DogsViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["POST"], url_path="RemoveDogFromList")
     def RemoveDogFromList(self, request: ListModificationRequest):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.data)
+
+        if not AdopterViewSet._is_own_adopter_or_staff(request, adopter):
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
         dog = DogsViewSet.UnpackDogFromDogIDRequest(request.data)
 
         if dog.interest_adopters.contains(adopter):
