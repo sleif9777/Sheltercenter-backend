@@ -538,6 +538,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if adopter.has_current_booking:
             return JsonResponse({}, status=status.HTTP_409_CONFLICT)
 
+        if adopter.user_profile.adoption_completed:
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
         if appt.get_current_booking() is not None:
             return JsonResponse({}, status=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION)
 
