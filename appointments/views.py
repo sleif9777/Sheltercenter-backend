@@ -4,18 +4,19 @@ import logging
 from typing import Optional
 
 from django.db.models import Count
+from django.db.models.functions import ExtractWeekDay
 
 logger = logging.getLogger(__name__)
 
 from requests import Response
 
 from adopters.enums import ApprovalStatus
-from adopters.models import Adopter
+from adopters.models import Adopter, AdopterUploadEvent
 from adopters.serializers import AdopterContactInfoSerializer
 from appointment_bases.enums import AppointmentTypes
 from appointment_bases.models import AppointmentBase
 from appointments.enums import NoDecisionEmailOption, OutcomeTypes
-from appointments.services import ContinuityAccessSpreadsheetService
+from appointments.services import ContinuityAccessSpreadsheetService, ReportingStatsExportService
 from bookings.enums import BookingMessageTemplate
 from bookings.models import Booking, BookingStatus
 from closed_dates.models import ClosedDate
@@ -31,6 +32,7 @@ from rest_framework.decorators import action
 from utils import DateTimeUtils
 from users.enums import SecurityLevel
 from users.models import UserProfile
+from users.permissions import MinSecurityLevel
 
 from .mapper import AppointmentHashMapper
 from .models import Appointment
@@ -594,8 +596,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["GET"], url_path="GetReportingStats")
-    def GetReportingStats(self, request):
+    @staticmethod
+    def _compute_reporting_stats() -> dict:
         today = DateTimeUtils.get_today()
         py_same_day = today.replace(year=today.year - 1)
 
@@ -660,9 +662,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 "no_show": appts_qs.filter(outcome=OutcomeTypes.NO_SHOW).count(),
                 "hw_positive": hw_qs.filter(heartworm_positive=True).count(),
                 "hw_negative": hw_qs.filter(heartworm_positive=False).count(),
-                "applications": Adopter.objects.filter(
-                    last_uploaded__date__gte=start,
-                    last_uploaded__date__lte=end,
+                "applications": AdopterUploadEvent.objects.filter(
+                    uploaded_at__date__gte=start,
+                    uploaded_at__date__lte=end,
                 ).count(),
                 "visitors": visitors,
                 "adopters": adopters_count,
@@ -691,13 +693,59 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
         visitors_never_adopted = len(all_visitor_ids - adopted_adopter_ids)
 
-        return JsonResponse(
-            {
-                "periods": periods,
-                "global": {
-                    "avg_visits_before_adopting": avg_visits,
-                    "visitors_never_adopted": visitors_never_adopted,
-                },
+        return {
+            "periods": periods,
+            "global": {
+                "avg_visits_before_adopting": avg_visits,
+                "visitors_never_adopted": visitors_never_adopted,
             },
-            status=status.HTTP_200_OK,
+        }
+
+    @action(detail=False, methods=["GET"], url_path="GetReportingStats", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
+    def GetReportingStats(self, request):
+        return JsonResponse(AppointmentViewSet._compute_reporting_stats(), status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["GET"], url_path="GetReportingStatsExport", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
+    def GetReportingStatsExport(self, request):
+        stats = AppointmentViewSet._compute_reporting_stats()
+        buffer = ReportingStatsExportService(stats["periods"], stats["global"]).build()
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
+        response["Content-Disposition"] = (
+            f'attachment; filename="reporting_stats_{DateTimeUtils.get_iso_date(DateTimeUtils.get_now())}.xlsx"'
+        )
+        return response
+
+    @action(detail=False, methods=["GET"], url_path="GetDayOfWeekStats", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
+    def GetDayOfWeekStats(self, request):
+        adoption_types = [
+            AppointmentTypes.ADULTS,
+            AppointmentTypes.PUPPIES,
+            AppointmentTypes.ALL_AGES,
+            AppointmentTypes.FUN_SIZE,
+        ]
+
+        # Django's ExtractWeekDay: 1=Sunday, 2=Monday, ..., 7=Saturday
+        DAY_NAMES = {1: "Sun", 2: "Mon", 3: "Tue", 4: "Wed", 5: "Thu", 6: "Fri", 7: "Sat"}
+
+        base_qs = Appointment.objects.filter(
+            type__in=adoption_types,
+            soft_deleted=False,
+            outcome__isnull=False,
+        ).annotate(dow=ExtractWeekDay("instant"))
+
+        rows = {}
+        for dow_num, day_name in DAY_NAMES.items():
+            day_qs = base_qs.filter(dow=dow_num)
+            rows[day_name] = {
+                "total": day_qs.count(),
+                "adoptions": day_qs.filter(outcome=OutcomeTypes.ADOPTION).count(),
+                "chosen": day_qs.filter(outcome=OutcomeTypes.CHOSEN).count(),
+                "fta": day_qs.filter(outcome=OutcomeTypes.FTA).count(),
+                "no_decision": day_qs.filter(outcome=OutcomeTypes.NO_DECISION).count(),
+                "no_show": day_qs.filter(outcome=OutcomeTypes.NO_SHOW).count(),
+            }
+
+        return JsonResponse({"days": rows}, status=status.HTTP_200_OK)
