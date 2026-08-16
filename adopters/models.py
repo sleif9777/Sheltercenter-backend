@@ -284,3 +284,12 @@ class Adopter(models.Model):
     # CLASS METADATA
     class Meta:
         ordering = ["user_profile", "primary_email"]
+
+
+class AdopterUploadEvent(models.Model):
+    adopter = models.ForeignKey(Adopter, on_delete=models.CASCADE, related_name="upload_events")
+    shelterluv_app_id = models.CharField(max_length=50, blank=True, default="")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at"]

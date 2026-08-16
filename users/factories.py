@@ -11,7 +11,7 @@ from django.utils import timezone
 from mimetypes import guess_type
 from typing import TypedDict
 
-from adopters.models import Adopter
+from adopters.models import Adopter, AdopterUploadEvent
 from adopters.enums import ApprovalStatus
 from email_templates.views import EmailViewSet
 
@@ -188,6 +188,15 @@ class UserSpreadsheetFactory(UserFactory):
             )
 
         adopter.update_last_upload()
+
+        try:
+            AdopterUploadEvent.objects.create(
+                adopter=adopter,
+                shelterluv_app_id=self.rows[index][0] or "",
+            )
+        except Exception:
+            logger.exception("Failed to write AdopterUploadEvent for row %s; upload continues", index)
+
         return user, (adopter_created and user_created), approval_averted
 
     def is_foster_application(self, app_type: str):
