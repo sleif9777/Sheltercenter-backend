@@ -13,6 +13,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from users.enums import SecurityLevel
 from users.models import UserProfile
+from users.permissions import MinSecurityLevel
 from utils import DateTimeUtils
 
 from .enums import ApprovalStatus
@@ -28,6 +29,15 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     # Static methods
     @staticmethod
+    def _is_own_adopter_or_staff(request, adopter: Adopter) -> bool:
+        if request.user.security_level >= SecurityLevel.GREETER:
+            return True
+        return (
+            request.user.adopter_profile is not None
+            and request.user.adopter_profile.id == adopter.id
+        )
+
+    @staticmethod
     def UnpackAdopterFromAdopterIDRequest(data: QueryDict) -> Adopter:
         query = AdopterIDRequestSerializer(data=data)
         query.is_valid(raise_exception=True)
@@ -39,7 +49,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     # GET commands
 
-    @action(detail=False, methods=["GET"], url_path="GetAdopterAlerts")
+    @action(detail=False, methods=["GET"], url_path="GetAdopterAlerts", permission_classes=[MinSecurityLevel(SecurityLevel.GREETER)])
     def GetAdopterAlerts(self, request):
         date, _ = AppointmentViewSet.GetISODateFromISODateRequest(request.query_params)
 
@@ -81,11 +91,8 @@ class AdopterViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=False, methods=["GET"], url_path="GetAdopterDemographics")
+    @action(detail=False, methods=["GET"], url_path="GetAdopterDemographics", permission_classes=[MinSecurityLevel(SecurityLevel.GREETER)])
     def GetAdopterDemographics(self, request):
-        if request.user.security_level < SecurityLevel.GREETER:
-            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
-
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)
         appt = adopter.get_current_appointment()
 
@@ -98,7 +105,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
             }
         )
 
-    @action(detail=False, methods=["GET"], url_path="GetAdopterDirectoryListing")
+    @action(detail=False, methods=["GET"], url_path="GetAdopterDirectoryListing", permission_classes=[MinSecurityLevel(SecurityLevel.GREETER)])
     def GetAdopterDirectoryListing(self, request):
         query = AdopterDirectoryListingRequestSerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
@@ -140,15 +147,19 @@ class AdopterViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["GET"], url_path="GetAdopterPreferences")
     def GetAdopterPreferences(self, request):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)
-        serializer = AdopterPreferencesResponseSerializer(adopter)
+
+        if not AdopterViewSet._is_own_adopter_or_staff(request, adopter):
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
+        if request.user.security_level >= SecurityLevel.GREETER:
+            serializer = AdopterPreferencesResponseSerializer(adopter)
+        else:
+            serializer = AdopterPreferencesPublicSerializer(adopter)
 
         return JsonResponse({"pref": serializer.data}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["GET"], url_path="GetAdopterSelectFieldOptions")
+    @action(detail=False, methods=["GET"], url_path="GetAdopterSelectFieldOptions", permission_classes=[MinSecurityLevel(SecurityLevel.GREETER)])
     def GetAdopterSelectFieldOptions(self, request):
-        if request.user.security_level < SecurityLevel.GREETER:
-            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
-
         include_scheduled = request.query_params["includeScheduled"].lower() == "true"
         include_archived = request.query_params["includeArchived"].lower() == "true"
 
@@ -169,7 +180,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({"options": options}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["GET"], url_path="GetRecentlyUploadedAdopters")
+    @action(detail=False, methods=["GET"], url_path="GetRecentlyUploadedAdopters", permission_classes=[MinSecurityLevel(SecurityLevel.GREETER)])
     def GetRecentlyUploadedAdopters(self, request):
         query = RecentlyUploadedAdoptersRequestSerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
@@ -189,7 +200,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
     # POST commands
 
-    @action(detail=False, methods=["POST"], url_path="MessageAdopter")
+    @action(detail=False, methods=["POST"], url_path="MessageAdopter", permission_classes=[MinSecurityLevel(SecurityLevel.GREETER)])
     def MessageAdopter(self, request):
         query = SendMessageRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -212,6 +223,9 @@ class AdopterViewSet(viewsets.ModelViewSet):
         adopter_id: int = int(query.validated_data["adopterID"])
         adopter = Adopter.objects.get(pk=adopter_id)
 
+        if not AdopterViewSet._is_own_adopter_or_staff(request, adopter):
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
         subject: str = "Message from " + adopter.user_profile.full_name
         message: str = query.validated_data["message"]
 
@@ -219,7 +233,22 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=False, methods=["POST"], url_path="ResendApproval")
+    @action(detail=False, methods=["POST"], url_path="ReportBug")
+    def ReportBug(self, request):
+        query = ReportBugRequestSerializer(data=request.data)
+        query.is_valid(raise_exception=True)
+
+        adopter_id: int = int(query.validated_data["adopterID"])
+        adopter = Adopter.objects.get(pk=adopter_id)
+
+        if not AdopterViewSet._is_own_adopter_or_staff(request, adopter):
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
+        EmailViewSet().BugReport(adopter, query.validated_data["bugDescription"])
+
+        return JsonResponse({}, status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["POST"], url_path="ResendApproval", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
     def ResendApproval(self, request):
         adopter = self.UnpackAdopterFromAdopterIDRequest(request.data)
 
@@ -227,7 +256,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=False, methods=["POST"], url_path="RestoreCalendarAccess")
+    @action(detail=False, methods=["POST"], url_path="RestoreCalendarAccess", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
     def RestoreCalendarAccess(self, request):
         adopter = self.UnpackAdopterFromAdopterIDRequest(request.data)
 
@@ -242,6 +271,9 @@ class AdopterViewSet(viewsets.ModelViewSet):
 
         adopter_id: int = int(query.validated_data["adopterID"])
         adopter = Adopter.objects.get(pk=adopter_id)
+
+        if not AdopterViewSet._is_own_adopter_or_staff(request, adopter):
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
 
         adopter.update_preferences(query.validated_data)
 

@@ -1,0 +1,14 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    Issue Report from {{ adopter_name }}
+{% endblock %}
+
+{% block content %}
+    <div class="subsection">
+        <p>{{ bug_description|linebreaksbr }}</p>
+    </div>
+    <div class="auto-gen-disclaimer">
+        This email has been BCC'd to our engineer.
+    </div>
+{% endblock %}

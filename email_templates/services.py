@@ -50,7 +50,7 @@ class EmailService:
             self.subject = f"[TEST EMAIL] {self.subject}"
 
     # TODO: deprecate always_send
-    def send(self, always_send=False, cc_adoptions=True):
+    def send(self, always_send=False, cc_adoptions=True, bcc: list[str] | None = None):
         cc_list = []
 
         if cc_adoptions:
@@ -58,16 +58,17 @@ class EmailService:
 
         if self.adopter:
             cc_list.append(self.adopter.primary_email)
-        
+
         try:
             sender = os.environ.get("MAILGUN_SENDER")
-            
+
             msg = EmailMultiAlternatives(
                 subject=self.subject,
                 body=self.content_plain,
                 from_email=sender,
                 to=self.recipients,
                 cc=cc_list if len(cc_list) > 0 else None,
+                bcc=bcc if bcc else None,
                 reply_to=[self.adopter.primary_email] if self.adopter else ["adoptions@savinggracenc.org"],
             )
 

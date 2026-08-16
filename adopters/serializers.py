@@ -28,6 +28,10 @@ class SendMessageRequestSerializer(AdopterIDRequestSerializer):
         return super().validate_adopterID(value)
 
 
+class ReportBugRequestSerializer(AdopterIDRequestSerializer):
+    bugDescription = serializers.CharField()
+
+
 class RecentlyUploadedAdoptersRequestSerializer(serializers.Serializer):
     lookbackDays = serializers.ChoiceField(choices=[1, 2, 3, 5, 10], required=False, default=3)
 
@@ -128,6 +132,75 @@ class AdopterPreferencesRequestSerializer(AdopterIDRequestSerializer):
         allow_blank=True,
         allow_null=True,
     )
+
+
+class AdopterPreferencesPublicSerializer(serializers.ModelSerializer):
+    """Adopter-facing preferences — excludes staff-only fields."""
+
+    adopterID = serializers.IntegerField(source="id")
+    activityLevel = serializers.IntegerField(
+        source="activity_level", required=False, allow_null=True
+    )
+    agePreference = serializers.IntegerField(
+        source="age_preference", required=False, allow_null=True
+    )
+    agePreferenceDisplay = serializers.CharField(
+        source="age_preference_display", required=False, allow_null=True
+    )
+    genderPreference = serializers.IntegerField(
+        source="gender_preference", required=False, allow_null=True
+    )
+    genderPreferenceDisplay = serializers.CharField(
+        source="gender_preference_display", required=False, allow_null=True
+    )
+    bringingDog = serializers.BooleanField(source="bringing_dog", required=False)
+    hasDogs = serializers.BooleanField(source="dogs_in_home", required=False)
+    hasCats = serializers.BooleanField(source="cats_in_home", required=False)
+    hasOtherPets = serializers.BooleanField(source="other_pets_in_home", required=False)
+    otherPetsComment = serializers.CharField(
+        source="other_pets_comment",
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+    )
+    housingType = serializers.IntegerField(source="housing_type", required=False, allow_null=True)
+    housingOwnership = serializers.IntegerField(source="homeowner", required=False, allow_null=True)
+    hasFence = serializers.BooleanField(source="has_fence", required=False)
+    lowShed = serializers.BooleanField(source="low_shedding", required=False)
+    mobility = serializers.BooleanField(required=False)
+    minWeightPreference = serializers.IntegerField(
+        source="min_weight_preference", required=False, allow_null=True
+    )
+    maxWeightPreference = serializers.IntegerField(
+        source="max_weight_preference", required=False, allow_null=True
+    )
+    adopterNotes = serializers.CharField(
+        source="adopter_notes", required=False, allow_blank=True, allow_null=True
+    )
+
+    class Meta:
+        model = Adopter
+        fields = [
+            "adopterID",
+            "activityLevel",
+            "agePreference",
+            "agePreferenceDisplay",
+            "genderPreference",
+            "genderPreferenceDisplay",
+            "bringingDog",
+            "hasDogs",
+            "hasCats",
+            "hasOtherPets",
+            "otherPetsComment",
+            "housingType",
+            "housingOwnership",
+            "hasFence",
+            "lowShed",
+            "mobility",
+            "minWeightPreference",
+            "maxWeightPreference",
+            "adopterNotes",
+        ]
 
 
 class AdopterPreferencesResponseSerializer(serializers.ModelSerializer):
