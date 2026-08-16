@@ -106,6 +106,14 @@ class DogsViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({"options": options}, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=["GET"], url_path="GetSurrenderDogOptions")
+    def GetSurrenderDogOptions(self, request):
+        dogs = Dog.objects.order_by("-last_updated")
+        return JsonResponse(
+            {"options": [SurrenderDogSelectSerializer(dog).data for dog in dogs]},
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=False, methods=["GET"], url_path="GetPublishableDogs")
     def GetPublishableDogs(self, request):
         environment = EnvironmentSettings.objects.get(pk=1)

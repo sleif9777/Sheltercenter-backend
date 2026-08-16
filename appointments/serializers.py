@@ -137,6 +137,7 @@ class CreateAppointmentRequestSerializer(ISODateRequestSerializer, TimeRequestSe
     locked = serializers.BooleanField()
     notes = serializers.CharField(required=False, allow_null=True)
     pendingAdoptionID = serializers.IntegerField(required=False)
+    surrenderDogID = serializers.IntegerField(required=False, allow_null=True)
 
 
 class ScheduleAppointmentRequestSerializer(
@@ -172,6 +173,7 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
     counselor = serializers.CharField(read_only=True, allow_null=True)
 
     checkOutTime = serializers.CharField(read_only=True, allow_null=True)
+    notes = serializers.CharField(source="appointment_notes", allow_null=True)
 
     class Meta:
         model = Appointment
@@ -193,6 +195,7 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
             "outcome",
             "chosenDog",
             "chosenDogID",
+            "notes",
         ]
 
     def to_representation(self, instance: Appointment):
@@ -214,6 +217,16 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
             if instance.is_checked_out:
                 data["checkOutTime"] = instance.check_out_time_display
                 data["outcomeDisplay"] = instance.outcome_value_display
+
+        if instance.is_surrender_appointment and instance.surrendered_dog_instance:
+            dog = instance.surrendered_dog_instance
+            data["surrenderedDogInstance"] = {
+                "ID": dog.id,
+                "name": dog.name,
+                "shelterluvID": dog.shelterluv_id,
+                "photoURL": dog.photo_url,
+                "lastUpdated": dog.last_updated.isoformat() if dog.last_updated else None,
+            }
 
         return {k: v for k, v in data.items() if (v != "")}
 

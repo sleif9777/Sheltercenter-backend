@@ -96,9 +96,13 @@ class Appointment(models.Model):
             return self.appointment_notes or "UNKNOWN"
 
         if self.is_surrender_appointment:
-            dogDisplay = self.surrendered_dog or "UNKNOWN"
+            dogDisplay = (
+                self.surrendered_dog_instance.name
+                if self.surrendered_dog_instance
+                else self.surrendered_dog or "UNKNOWN"
+            )
 
-            if self.is_surrender_appointment and self.surrendered_dog_fka:
+            if self.surrendered_dog_fka:
                 dogDisplay += " (fka {0})".format(self.surrendered_dog_fka)
 
             return dogDisplay
@@ -183,6 +187,13 @@ class Appointment(models.Model):
     # SURRENDER FIELDS
     surrendered_dog = models.CharField(default="", max_length=1000, null=True, blank=True)
     surrendered_dog_fka = models.CharField(default="", max_length=1000, null=True, blank=True)
+    surrendered_dog_instance = models.ForeignKey(
+        "dogs.Dog",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="surrender_appointments",
+    )
 
     # OTHER RELATIONAL FIELDS
     def __repr__(self):

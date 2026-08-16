@@ -79,6 +79,17 @@ class WatchlistDogSerializer(DogSerializerBase):
         ]
 
 
+class SurrenderDogSelectSerializer(serializers.ModelSerializer):
+    ID = serializers.IntegerField(source="id")
+    shelterluvID = serializers.IntegerField(source="shelterluv_id")
+    photoURL = serializers.CharField(source="photo_url")
+    lastUpdated = serializers.DateField(source="last_updated", allow_null=True)
+
+    class Meta:
+        model = Dog
+        fields = ["ID", "name", "shelterluvID", "photoURL", "lastUpdated"]
+
+
 class DogDemographicsSerializer(HashDogSerializer, WatchlistDogSerializer):
     shelterluvID = serializers.IntegerField(source="shelterluv_id")
     description = serializers.CharField()

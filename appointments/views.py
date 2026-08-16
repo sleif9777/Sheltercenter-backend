@@ -353,17 +353,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
         type = query.validated_data["type"]
-        notes = query.validated_data["notes"] if "notes" in query.validated_data else ""
-        fka = query.validated_data["fka"] if "fka" in query.validated_data else ""
+        notes = query.validated_data.get("notes", "")
+        fka = query.validated_data.get("fka", "")
         locked = query.validated_data["locked"]
-        pending_adoption_id = (
-            query.validated_data["pendingAdoptionID"]
-            if "pendingAdoptionID" in query.validated_data
-            else 0
-        )
+        pending_adoption_id = query.validated_data.get("pendingAdoptionID", 0)
+        surrender_dog_id = query.validated_data.get("surrenderDogID")
 
         adoption = None
         is_paperwork_appt = type == AppointmentTypes.PAPERWORK
+        is_surrender_appt = type == AppointmentTypes.SURRENDER
 
         if is_paperwork_appt and pending_adoption_id > 0:
             adoption = PendingAdoption.objects.get(pk=pending_adoption_id)
@@ -373,13 +371,17 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             type=type,
             instant=instant,
             appointment_notes=(
-                notes
-                if type in [AppointmentTypes.VISIT, AppointmentTypes.DONATION_DROP_OFF]
-                else adoption.dog if is_paperwork_appt else ""
+                adoption.dog if is_paperwork_appt else notes or ""
             ),
-            surrendered_dog=(notes if type == AppointmentTypes.SURRENDER else ""),
-            surrendered_dog_fka=(fka if type == AppointmentTypes.SURRENDER else ""),
+            surrendered_dog_fka=(fka if is_surrender_appt else ""),
         )
+
+        if is_surrender_appt and surrender_dog_id:
+            try:
+                appointment.surrendered_dog_instance = Dog.objects.get(pk=surrender_dog_id)
+                appointment.save()
+            except Dog.DoesNotExist:
+                pass
 
         if adoption:
             adoption.paperwork_appointment = appointment
