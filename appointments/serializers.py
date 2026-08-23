@@ -3,6 +3,7 @@ from datetime import date
 from adopters.serializers import AdopterPreferencesRequestSerializer
 from bookings.serializers import BookingCardModelSerializer
 from rest_framework import serializers
+from users.enums import SecurityLevel
 
 from .enums import NoDecisionEmailOption, OutcomeTypes
 from .models import Appointment
@@ -201,8 +202,14 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
     def to_representation(self, instance: Appointment):
         data = super().to_representation(instance)
         booking = instance.get_current_booking()
+        request = self.context.get("request")
+        is_adopter = (
+            request is not None
+            and hasattr(request.user, "security_level")
+            and request.user.security_level == SecurityLevel.ADOPTER
+        )
 
-        if instance.is_adoption_appointment and booking is not None:
+        if instance.is_adoption_appointment and booking is not None and not is_adopter:
             data["booking"] = BookingCardModelSerializer(
                 booking,
                 context=self.context,

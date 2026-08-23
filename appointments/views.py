@@ -71,7 +71,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def GetAppointmentCardData(self, request):
         appointment = self.GetAppointmentFromAppointmentIDRequest(request.query_params)
 
-        serializer = AppointmentCardDataSerializer(appointment)
+        serializer = AppointmentCardDataSerializer(appointment, context={"request": request})
 
         return JsonResponse({"cardData": serializer.data}, status=status.HTTP_200_OK)
 

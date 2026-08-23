@@ -318,11 +318,15 @@ class UserFormFactory(UserFactory):
     def create_new_adopter(self, new_status: ApprovalStatus) -> tuple[Adopter, bool]:
         adopter, adopter_created = Adopter.objects.update_or_create(
             primary_email=self.form_data["primaryEmail"].lower(),
-            defaults={"status": new_status, "internal_notes": self.form_data["internalNotes"]},
+            defaults={
+                "approved_until": Adopter.get_default_approval_date(),
+                "internal_notes": self.form_data["internalNotes"],
+                "status": new_status,
+            },
             create_defaults={
                 "approved_until": Adopter.get_default_approval_date(),
-                "status": self.form_data["status"],
                 "internal_notes": self.form_data["internalNotes"],
+                "status": self.form_data["status"],
             },
         )
 

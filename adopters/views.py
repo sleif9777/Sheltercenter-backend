@@ -144,6 +144,18 @@ class AdopterViewSet(viewsets.ModelViewSet):
         except Exception:
             logger.exception("Error in GetAdopterDirectoryListing")
 
+    @action(detail=False, methods=["GET"], url_path="GetCalendarRestrictionStatus")
+    def GetCalendarRestrictionStatus(self, request):
+        adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)
+
+        if not AdopterViewSet._is_own_adopter_or_staff(request, adopter):
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
+        return JsonResponse(
+            {"restrictCalendar": adopter.user_profile.adoption_completed},
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=False, methods=["GET"], url_path="GetAdopterPreferences")
     def GetAdopterPreferences(self, request):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.query_params)

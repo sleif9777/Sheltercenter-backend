@@ -15,6 +15,8 @@ class Command(BaseCommand):
         sent, failed = 0, 0
         for adopter in pending:
             try:
+                adopter.approved_until = Adopter.get_default_approval_date()
+                adopter.save(update_fields=["approved_until"])
                 EmailViewSet().ApplicationApproved(adopter)
                 sent += 1
             except Exception as e:
