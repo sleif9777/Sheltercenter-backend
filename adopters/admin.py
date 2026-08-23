@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Adopter
+from .models import Adopter, AdopterUploadEvent
 
 
 class AdopterAdmin(admin.ModelAdmin):
@@ -8,3 +8,4 @@ class AdopterAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Adopter, AdopterAdmin)
+admin.site.register(AdopterUploadEvent)
