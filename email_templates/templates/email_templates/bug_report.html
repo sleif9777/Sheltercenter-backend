@@ -6,7 +6,7 @@
 
 {% block content %}
     <div class="subsection">
-        <p>{{ bug_description|linebreaksbr }}</p>
+        <p>{{ bug_description|safe }}</p>
     </div>
     <div class="auto-gen-disclaimer">
         This email has been BCC'd to our engineer.

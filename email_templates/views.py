@@ -244,12 +244,13 @@ class EmailViewSet(viewsets.ViewSet):
 
     def BugReport(self, adopter: Adopter, bug_description: str):
         email = EmailService(
-            f"Issue Report from {adopter.user_profile.full_name}",
+            f"Message from {adopter.user_profile.full_name} [Issue Report]",
             "bug_report",
             {
                 "adopter_name": adopter.user_profile.full_name,
                 "bug_description": bug_description,
             },
             "adoptions@savinggracenc.org",
+            adopter=adopter,
         )
-        email.send(cc_adoptions=False, bcc=["leifersam9@gmail.com"])
+        email.send(cc_adoptions=True, bcc=["leifersam9@gmail.com"])
