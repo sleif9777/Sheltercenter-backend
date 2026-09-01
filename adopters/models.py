@@ -292,6 +292,13 @@ class AdopterUploadEvent(models.Model):
     shelterluv_app_id = models.CharField(max_length=50, blank=True, default="")
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
+    def __repr__(self):
+        ts = self.uploaded_at.strftime("%-m/%-d/%y %-I:%M %p")
+        return f"Upload for {self.adopter.__repr__()} ({self.shelterluv_app_id}) at {ts} [{self.id}; ADPT {self.adopter_id}]"
+
+    def __str__(self):
+        return self.__repr__()
+
     class Meta:
         verbose_name = "adopter upload event"
         ordering = ["uploaded_at"]

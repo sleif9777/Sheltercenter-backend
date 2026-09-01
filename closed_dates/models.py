@@ -8,6 +8,9 @@ class ClosedDate(models.Model):
     def __repr__(self):
         return f"Closed Date {self.date.strftime('%-m/%-d/%y')} [{self.id}]"
 
+    def __str__(self):
+        return self.__repr__()
+
     def exists_for_date(cls, date):
         return cls.objects.filter(date=date).exists()
 
