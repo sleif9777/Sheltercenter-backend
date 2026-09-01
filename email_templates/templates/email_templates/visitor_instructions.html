@@ -3,14 +3,17 @@
 </h1>
 
 {% block content %}
+    {% if show_dog_availability %}
     <div class="subsection">
         <h2>Dog Availability</h2>
         <ul>
             <li><strong>Dogs are first-come, first-served.</strong> Appointments are not dog-specific, and availability is never guaranteed. If multiple adopters share the same appointment time, priority goes to whoever booked first.</li>
             <li><strong>Our website updates automatically;</strong> dogs removed are likely adopted.</li>
             <li><strong>More dogs are available in person than listed online.</strong> Flexibility increases your chance of a successful adoption.</li>
+            <li><strong>Manage your watchlist on our scheduling website.</strong> Track dogs you're interested in.</li>
         </ul>
     </div>
+    {% endif %}
 
     <div class="subsection">
         <h2>Directions</h2>

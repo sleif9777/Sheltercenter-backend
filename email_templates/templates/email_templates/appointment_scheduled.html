@@ -23,5 +23,7 @@
     </div>
     {% include 'email_templates/signature.html' %}
     <hr />
+    {% with show_dog_availability=True %}
     {% include 'email_templates/visitor_instructions.html' %}
+    {% endwith %}
 {% endblock %}
