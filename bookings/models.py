@@ -59,6 +59,9 @@ class Booking(models.Model):
     def __repr__(self):
         return self.__str__()
 
+    class Meta:
+        verbose_name = "booking"
+
     def mark_status(self, status: BookingStatus):
         self.status = status
         self.modified = timezone.now()

@@ -267,6 +267,9 @@ class Appointment(models.Model):
         self.locked = override if override is not None else not self.locked
         self.save()
 
+    class Meta:
+        verbose_name = "appointment"
+
     # STATIC METHODS
     @staticmethod
     def get_appts_missing_outcomes() -> list["Appointment"]:

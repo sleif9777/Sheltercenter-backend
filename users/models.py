@@ -172,6 +172,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     # CLASS METADATA
     class Meta:
+        verbose_name = "user profile"
         ordering = ["first_name", "last_name", "primary_email"]
 
     USERNAME_FIELD = "primary_email"

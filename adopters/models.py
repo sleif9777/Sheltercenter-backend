@@ -283,6 +283,7 @@ class Adopter(models.Model):
 
     # CLASS METADATA
     class Meta:
+        verbose_name = "adopter"
         ordering = ["user_profile", "primary_email"]
 
 
@@ -292,4 +293,5 @@ class AdopterUploadEvent(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = "adopter upload event"
         ordering = ["uploaded_at"]

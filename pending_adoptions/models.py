@@ -83,3 +83,6 @@ class PendingAdoption(models.Model):
 
     def __repr__(self):
         return self.__str__()
+
+    class Meta:
+        verbose_name = "pending adoption"

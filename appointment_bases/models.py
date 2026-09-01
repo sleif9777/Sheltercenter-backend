@@ -34,6 +34,9 @@ class AppointmentBase(models.Model):
     def print_time(self):
         return self.time.strftime("%-I:%M %p")
 
+    class Meta:
+        verbose_name = "appointment base"
+
     # STATIC METHODS
     @staticmethod
     def map_appointments(templates: list["AppointmentBase"]) -> list[dict]:

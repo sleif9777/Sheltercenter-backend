@@ -9,3 +9,6 @@ class OpenHouseAppointment(models.Model):
 
     def __repr__(self):
         return ""
+
+    class Meta:
+        verbose_name = "open house appointment"

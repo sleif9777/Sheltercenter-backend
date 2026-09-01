@@ -41,4 +41,6 @@ class AdminAppointment(models.Model):
                 return "FTA"
             case _:
                 return None
-    
+
+    class Meta:
+        verbose_name = "admin appointment"

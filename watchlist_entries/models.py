@@ -7,3 +7,7 @@ from dogs.models import Dog
 class WatchlistEntry(models.Model):
     adopter = models.ForeignKey(Adopter, null=False, blank=False, on_delete=models.CASCADE)
     dog = models.ForeignKey(Dog, null=False, blank=False, on_delete=models.CASCADE)
+
+    class Meta:
+        verbose_name = "watchlist entry"
+        verbose_name_plural = "watchlist entries"

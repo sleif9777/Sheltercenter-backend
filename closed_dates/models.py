@@ -12,3 +12,6 @@ class ClosedDate(models.Model):
         return cls.objects.filter(date=date).exists()
 
     exists_for_date = classmethod(exists_for_date)
+
+    class Meta:
+        verbose_name = "closed date"

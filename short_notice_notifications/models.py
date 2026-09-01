@@ -34,7 +34,10 @@ class ShortNoticeNotification(models.Model):
 
     def __repr__(self):
         return ""
-    
+
+    class Meta:
+        verbose_name = "short notice notification"
+
     @staticmethod
     def is_short_notice(instant: datetime.datetime):
         now = timezone.now()

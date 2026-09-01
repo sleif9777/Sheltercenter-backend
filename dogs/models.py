@@ -44,3 +44,6 @@ class Dog(models.Model):
 
     def __str__(self):
         return f"{self.name} [{self.id}, SL-{self.shelterluv_id}]"
+
+    class Meta:
+        verbose_name = "dog"

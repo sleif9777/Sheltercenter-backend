@@ -11,3 +11,6 @@ class Litter(models.Model):
 
     def send(self):
         return ""
+
+    class Meta:
+        verbose_name = "litter"

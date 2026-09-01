@@ -54,4 +54,6 @@ class AdminAppointmentBase(models.Model):
             
     def get_time(self):
         return "time string here"
-    
+
+    class Meta:
+        verbose_name = "admin appointment base"

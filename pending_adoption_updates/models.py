@@ -16,3 +16,6 @@ class PendingAdoptionUpdate(models.Model):
     @property
     def instant_iso(self):
         return self.instant.isoformat()
+
+    class Meta:
+        verbose_name = "pending adoption update"
