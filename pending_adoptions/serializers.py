@@ -31,7 +31,7 @@ class CreatePendingAdoptionRequestSerializer(serializers.Serializer):
     circumstance = serializers.IntegerField(required=True)
 
 
-class CreatePendingAdoptionUpdateRequestSerializer:
+class CreatePendingAdoptionUpdateRequestSerializer(serializers.Serializer):
     adoptionID = serializers.IntegerField(required=True)
     message = serializers.CharField(required=True)
     subject = serializers.CharField(required=True)
