@@ -357,7 +357,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         fka = query.validated_data.get("fka", "")
         locked = query.validated_data["locked"]
         pending_adoption_id = query.validated_data.get("pendingAdoptionID", 0)
-        surrender_dog_id = query.validated_data.get("surrenderDogID")
+        surrender_dog_name = query.validated_data.get("surrenderDogName", "")
 
         adoption = None
         is_paperwork_appt = type == AppointmentTypes.PAPERWORK
@@ -373,15 +373,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment_notes=(
                 adoption.dog if is_paperwork_appt else notes or ""
             ),
+            surrendered_dog=(surrender_dog_name if is_surrender_appt else ""),
             surrendered_dog_fka=(fka if is_surrender_appt else ""),
         )
-
-        if is_surrender_appt and surrender_dog_id:
-            try:
-                appointment.surrendered_dog_instance = Dog.objects.get(pk=surrender_dog_id)
-                appointment.save()
-            except Dog.DoesNotExist:
-                pass
 
         if adoption:
             adoption.paperwork_appointment = appointment

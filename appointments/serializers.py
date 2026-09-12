@@ -138,7 +138,7 @@ class CreateAppointmentRequestSerializer(ISODateRequestSerializer, TimeRequestSe
     locked = serializers.BooleanField()
     notes = serializers.CharField(required=False, allow_null=True)
     pendingAdoptionID = serializers.IntegerField(required=False)
-    surrenderDogID = serializers.IntegerField(required=False, allow_null=True)
+    surrenderDogName = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
 class ScheduleAppointmentRequestSerializer(
