@@ -726,25 +726,39 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             AppointmentTypes.FUN_SIZE,
         ]
 
+        today = DateTimeUtils.get_today()
+        py_same_day = today.replace(year=today.year - 1)
+
+        date_ranges = {
+            "ytd": (datetime.date(today.year, 1, 1), today),
+            "pytd": (datetime.date(today.year - 1, 1, 1), py_same_day),
+            "prev_year": (datetime.date(today.year - 1, 1, 1), datetime.date(today.year - 1, 12, 31)),
+        }
+
         # Django's ExtractWeekDay: 1=Sunday, 2=Monday, ..., 7=Saturday
         DAY_NAMES = {1: "Sun", 2: "Mon", 3: "Tue", 4: "Wed", 5: "Thu", 6: "Fri", 7: "Sat"}
 
-        base_qs = Appointment.objects.filter(
-            type__in=adoption_types,
-            soft_deleted=False,
-            outcome__isnull=False,
-        ).annotate(dow=ExtractWeekDay("instant"))
+        periods = {}
+        for period_key, (start, end) in date_ranges.items():
+            base_qs = Appointment.objects.filter(
+                type__in=adoption_types,
+                soft_deleted=False,
+                outcome__isnull=False,
+                instant__date__gte=start,
+                instant__date__lte=end,
+            ).annotate(dow=ExtractWeekDay("instant"))
 
-        rows = {}
-        for dow_num, day_name in DAY_NAMES.items():
-            day_qs = base_qs.filter(dow=dow_num)
-            rows[day_name] = {
-                "total": day_qs.count(),
-                "adoptions": day_qs.filter(outcome=OutcomeTypes.ADOPTION).count(),
-                "chosen": day_qs.filter(outcome=OutcomeTypes.CHOSEN).count(),
-                "fta": day_qs.filter(outcome=OutcomeTypes.FTA).count(),
-                "no_decision": day_qs.filter(outcome=OutcomeTypes.NO_DECISION).count(),
-                "no_show": day_qs.filter(outcome=OutcomeTypes.NO_SHOW).count(),
-            }
+            rows = {}
+            for dow_num, day_name in DAY_NAMES.items():
+                day_qs = base_qs.filter(dow=dow_num)
+                rows[day_name] = {
+                    "total": day_qs.count(),
+                    "adoptions": day_qs.filter(outcome=OutcomeTypes.ADOPTION).count(),
+                    "chosen": day_qs.filter(outcome=OutcomeTypes.CHOSEN).count(),
+                    "fta": day_qs.filter(outcome=OutcomeTypes.FTA).count(),
+                    "no_decision": day_qs.filter(outcome=OutcomeTypes.NO_DECISION).count(),
+                    "no_show": day_qs.filter(outcome=OutcomeTypes.NO_SHOW).count(),
+                }
+            periods[period_key] = {"days": rows}
 
-        return JsonResponse({"days": rows}, status=status.HTTP_200_OK)
+        return JsonResponse({"periods": periods}, status=status.HTTP_200_OK)
