@@ -371,7 +371,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             type=type,
             instant=instant,
             appointment_notes=(
-                adoption.dog if is_paperwork_appt else notes or ""
+                adoption.dog if (is_paperwork_appt and adoption is not None) else notes or ""
             ),
             surrendered_dog=(surrender_dog_name if is_surrender_appt else ""),
             surrendered_dog_fka=(fka if is_surrender_appt else ""),
