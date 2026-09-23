@@ -129,11 +129,13 @@ class EmailViewSet(viewsets.ViewSet):
 
     @staticmethod
     def _get_watchlist_still_available(adopter: Adopter, exclude_dog: Dog) -> list[Dog]:
-        return [
-            e.dog
-            for e in adopter.watchlistentry_set.select_related("dog").all()
-            if e.dog.status == DogStatus.AVAILABLE_NOW and e.dog.pk != exclude_dog.pk
-        ]
+        return list(
+            Dog.objects.filter(
+                interest_adopters=adopter,
+                status=DogStatus.AVAILABLE_NOW,
+                publishable=True,
+            ).exclude(pk=exclude_dog.pk)
+        )
 
     @staticmethod
     def _get_upcoming_appointment_display(adopter: Adopter) -> str | None:
