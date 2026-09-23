@@ -12,8 +12,9 @@ A message from Saving Grace
 </div>
 <div>
     <p>
-        We wanted to check in — we saw you've requested to meet {{dog_name}}, and we're glad to share that
-        {{dog_name}} has found a home and is no longer available for adoption.
+        We wanted to check in because we saw you've requested to meet {{dog_name}}. Unfortunately, {{dog_name}} will
+        no longer be available for adoption{% if available_date_phrase %} {{available_date_phrase}}{% endif %} as
+        previously listed. Please keep an eye on our website for current listings, since availability can change.
     </p>
     {% if watchlist_still_available %}
     <p><strong>Other dogs on your watchlist who are still available:</strong></p>

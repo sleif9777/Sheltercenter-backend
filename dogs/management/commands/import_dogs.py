@@ -393,10 +393,15 @@ class Command(BaseCommand):
 
         self._debug_output(f"  Notifying {len(email_list)} adopters for dog {dog.name}")
 
+        use_temporarily_unavailable = dog.status in [DogStatus.UNAVAILABLE, DogStatus.FOSTER]
+
         for adopter in email_list:
             try:
                 self._debug_output(f"    Sending email to adopter pk={adopter.pk}...")
-                EmailViewSet().DogNoLongerAvailable(adopter, dog.name)
+                if use_temporarily_unavailable:
+                    EmailViewSet().DogTemporarilyUnavailable(adopter, dog)
+                else:
+                    EmailViewSet().DogNoLongerAvailable(adopter, dog)
                 self._debug_output(self.style.SUCCESS(f"    Email sent to adopter pk={adopter.pk}"))
             except Exception as e:
                 self._debug_output(

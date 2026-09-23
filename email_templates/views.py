@@ -1,3 +1,5 @@
+from datetime import date
+
 from adopters.models import Adopter
 from dogs.enums import DogStatus
 from dogs.models import Dog
@@ -9,12 +11,16 @@ from .services import EmailService
 
 
 class EmailViewSet(viewsets.ViewSet):
-    def ApplicationApproved(self, adopter: Adopter):
-        recipients = [
+    @staticmethod
+    def _adopter_recipients(adopter: Adopter) -> list[str]:
+        return [
             e
             for e in [adopter.user_profile.primary_email, adopter.user_profile.secondary_email]
             if e
         ]
+
+    def ApplicationApproved(self, adopter: Adopter):
+        recipients = self._adopter_recipients(adopter)
         subject = EmailService.subject_with_comments(
             "Your application has been reviewed: {0}".format(adopter.user_profile.full_name.upper()),
             adopter.application_comments,
@@ -121,18 +127,50 @@ class EmailViewSet(viewsets.ViewSet):
         )
         email.send()
 
-    def DogNoLongerAvailable(self, adopter: Adopter, dog_name: str):
-        recipients = [
-            e
-            for e in [adopter.user_profile.primary_email, adopter.user_profile.secondary_email]
-            if e
+    @staticmethod
+    def _get_watchlist_still_available(adopter: Adopter, exclude_dog: Dog) -> list[Dog]:
+        return [
+            e.dog
+            for e in adopter.watchlistentry_set.select_related("dog").all()
+            if e.dog.status == DogStatus.AVAILABLE_NOW and e.dog.pk != exclude_dog.pk
         ]
+
+    @staticmethod
+    def _get_upcoming_appointment_display(adopter: Adopter) -> str | None:
+        appointment = adopter.get_current_appointment()
+        if not appointment:
+            return None
+        return appointment.long_instant_display
+
+    def DogNoLongerAvailable(self, adopter: Adopter, dog: Dog):
+        recipients = self._adopter_recipients(adopter)
         email = EmailService(
             "An update from your watchlist",
             "dog_no_longer_available",
             {
                 "adopter": adopter,
-                "dog_name": dog_name,
+                "dog_name": dog.name,
+                "watchlist_still_available": self._get_watchlist_still_available(adopter, dog),
+                "appointment_display": self._get_upcoming_appointment_display(adopter),
+            },
+            recipients,
+        )
+        email.send()
+
+    def DogTemporarilyUnavailable(self, adopter: Adopter, dog: Dog):
+        recipients = self._adopter_recipients(adopter)
+        available_date_phrase = ""
+        if dog.available_date and dog.available_date > date.today():
+            available_date_phrase = f"on {dog.available_date.strftime('%B %d, %Y')}"
+        email = EmailService(
+            "An update from your watchlist",
+            "dog_temporarily_unavailable",
+            {
+                "adopter": adopter,
+                "dog_name": dog.name,
+                "available_date_phrase": available_date_phrase,
+                "watchlist_still_available": self._get_watchlist_still_available(adopter, dog),
+                "appointment_display": self._get_upcoming_appointment_display(adopter),
             },
             recipients,
         )

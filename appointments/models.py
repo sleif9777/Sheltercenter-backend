@@ -85,6 +85,11 @@ class Appointment(models.Model):
     def time_display(self):
         return self.local_dt.strftime("%I:%M %p")
 
+    @property
+    def long_instant_display(self):
+        dt = self.local_dt
+        return f"{dt.strftime('%B')} {dt.day} at {dt.strftime('%I:%M %p').lstrip('0')}"
+
     # DESCRIPTORS
     @property
     def description(self):
