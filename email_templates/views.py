@@ -282,6 +282,16 @@ class EmailViewSet(viewsets.ViewSet):
         )
         email.send()
 
+    def CalendarAccessRestored(self, adopter: Adopter):
+        recipients = self._adopter_recipients(adopter)
+        email = EmailService(
+            "Your Saving Grace calendar access has been restored",
+            "calendar_access_restored",
+            {"adopter": adopter},
+            recipients,
+        )
+        email.send()
+
     def BugReport(self, adopter: Adopter, bug_description: str):
         email = EmailService(
             f"Message from {adopter.user_profile.full_name} [Issue Report]",

@@ -1,0 +1,29 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    Your calendar access has been restored!
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>Hi {{ adopter.user_profile.first_name }},</p>
+
+        <p>
+            Your access to the Saving Grace scheduling calendar has been restored.
+            You can now book an appointment at
+            <a href="https://www.savinggracencscheduler.com" target="_blank">
+                <strong>www.savinggracencscheduler.com</strong>
+            </a>.
+        </p>
+
+        <p class="highlight">
+            &#9888; IMPORTANT: YOU MUST LOG OUT AND LOG BACK IN BEFORE YOU WILL BE ABLE TO ACCESS THE CALENDAR. YOUR CURRENT SESSION WILL NOT REFLECT THIS CHANGE UNTIL YOU DO SO.
+        </p>
+
+        <p>
+            If you run into any issues after logging back in, please email
+            <a href="mailto:adoptions@savinggracenc.org"><strong>adoptions@savinggracenc.org</strong></a>.
+        </p>
+    </div>
+    {% include 'email_templates/signature.html' %}
+{% endblock %}
