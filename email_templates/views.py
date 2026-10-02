@@ -58,6 +58,7 @@ class EmailViewSet(viewsets.ViewSet):
             "appointment_scheduled",
             {
                 "appointment": appointment,
+                "cancel_token": booking.cancel_token,
             },
             booking.adopter.user_profile.primary_email,
         )
@@ -80,6 +81,7 @@ class EmailViewSet(viewsets.ViewSet):
                 "appointment": appointment,
                 "watchlist_available": watchlist_available,
                 "watchlist_unavailable": watchlist_unavailable,
+                "cancel_token": booking.cancel_token,
             },
             adopter.user_profile.primary_email,
         )

@@ -23,8 +23,17 @@
             </p>
         </div>
         <p>
-            Please plan to arrive a few minutes early to check in. If something comes up and you need to reschedule, please <a href="www.savinggracencscheduler.com" target="_blank" rel="noreferrer">click here</a> to cancel or reschedule so we can open your spot for another potential adopter.
+            Please plan to arrive a few minutes early to check in. If something comes up and you need to cancel, please use the button below so we can open your spot for another potential adopter.
         </p>
+        {% if cancel_token %}
+        <p class="center">
+            <a class="btn" href="https://savinggracencscheduler.com/cancel?token={{ cancel_token }}" target="_blank" rel="noreferrer">Cancel my appointment</a>
+        </p>
+        {% else %}
+        <p>
+            Please visit <a href="https://savinggracencscheduler.com" target="_blank" rel="noreferrer">savinggracencscheduler.com</a> to cancel.
+        </p>
+        {% endif %}
         <p>
             We can't wait to help you meet some of our amazing dogs — your future best friend might be just a tail wag away!
         </p>

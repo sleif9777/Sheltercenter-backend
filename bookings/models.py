@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 from adopters.models import Adopter
 from appointments.models import Appointment
@@ -30,6 +31,24 @@ class Booking(models.Model):
         return DateTimeUtils.get_local_instant(self.created).strftime("%m/%d/%Y, %I:%M %p")
 
     modified = models.DateTimeField(null=True, blank=True)
+
+    # CANCEL TOKEN
+    cancel_token = models.UUIDField(null=True, blank=True, unique=True)
+    cancel_token_expires_at = models.DateTimeField(null=True, blank=True)
+
+    @classmethod
+    def create_active(cls, adopter: Adopter, appointment: Appointment) -> "Booking":
+        approved_until_dt = timezone.make_aware(
+            datetime.datetime.combine(adopter.approved_until, datetime.time.max)
+        )
+        return cls.objects.create(
+            adopter=adopter,
+            appointment=appointment,
+            status=BookingStatus.ACTIVE,
+            created=timezone.now(),
+            cancel_token=uuid.uuid4(),
+            cancel_token_expires_at=min(appointment.instant, approved_until_dt),
+        )
 
     # MESSAGES SENT
     sent_limited_puppies = models.BooleanField(default=False)

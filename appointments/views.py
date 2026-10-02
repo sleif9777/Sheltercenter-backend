@@ -29,6 +29,7 @@ from pending_adoptions.enums import CircumstanceOptions, PendingAdoptionStatus
 from pending_adoptions.models import PendingAdoption
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from utils import DateTimeUtils
 from users.enums import SecurityLevel
 from users.models import UserProfile
@@ -252,6 +253,48 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         booking.mark_status(BookingStatus.CANCELLED)
 
         # Create short notice notification
+
+        return JsonResponse({}, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def _get_active_booking_by_token(token: str) -> Optional[Booking]:
+        try:
+            return Booking.objects.select_related("appointment").get(
+                cancel_token=token,
+                status=BookingStatus.ACTIVE,
+                cancel_token_expires_at__gt=timezone.now(),
+            )
+        except Booking.DoesNotExist:
+            return None
+
+    @action(detail=False, methods=["GET"], url_path="GetByToken", permission_classes=[AllowAny])
+    def GetByToken(self, request):
+        token = request.query_params.get("token")
+        if not token:
+            return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking = self._get_active_booking_by_token(token)
+        if booking is None:
+            return JsonResponse({}, status=status.HTTP_404_NOT_FOUND)
+
+        return JsonResponse(
+            {"instantDisplay": booking.appointment.instant_display},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["POST"], url_path="CancelByToken", permission_classes=[AllowAny])
+    def CancelByToken(self, request):
+        token = request.data.get("token")
+        if not token:
+            return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking = self._get_active_booking_by_token(token)
+        if booking is None:
+            return JsonResponse({}, status=status.HTTP_404_NOT_FOUND)
+
+        appt = booking.appointment
+        EmailViewSet().AppointmentCanceled(appt)
+        booking.mark_status(BookingStatus.CANCELLED)
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
@@ -491,9 +534,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             instant=instant,
         )
 
-        Booking.objects.create(
-            adopter=adopter, appointment=appt, status=BookingStatus.ACTIVE, created=timezone.now()
-        )
+        Booking.create_active(adopter, appt)
 
         return JsonResponse({}, status=status.HTTP_201_CREATED)
 
@@ -539,9 +580,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return JsonResponse({}, status=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION)
 
         # Create a new booking
-        Booking.objects.create(
-            adopter=adopter, appointment=appt, status=BookingStatus.ACTIVE, created=timezone.now()
-        )
+        Booking.create_active(adopter, appt)
 
         # Send email to the adopter
         EmailViewSet().AppointmentScheduled(appt)
