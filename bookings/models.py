@@ -18,7 +18,7 @@ class Booking(models.Model):
     appointment = models.ForeignKey(
         Appointment, null=True, blank=True, related_name="bookings", on_delete=models.PROTECT
     )
-    status = models.IntegerField(choices=BookingStatus.choices)
+    status = models.IntegerField(choices=BookingStatus.choices, db_index=True)
 
     @property
     def status_display(self):

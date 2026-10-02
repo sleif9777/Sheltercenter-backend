@@ -245,15 +245,9 @@ class Appointment(models.Model):
         booking.mark_status(BookingStatus.COMPLETED)
 
     def get_current_booking(self) -> Optional["Booking"]:  # type: ignore
-        for booking in self.bookings.all():
-            if booking.status in [
-                BookingStatus.ACTIVE,
-                BookingStatus.NOSHOW,
-                BookingStatus.COMPLETED,
-            ]:
-                return booking
-
-        return None
+        return self.bookings.filter(
+            status__in=[BookingStatus.ACTIVE, BookingStatus.NOSHOW, BookingStatus.COMPLETED]
+        ).first()
 
     def no_show(self):
         self.outcome = OutcomeTypes.NO_SHOW
