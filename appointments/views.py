@@ -562,8 +562,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         query.is_valid(raise_exception=True)
         data = query.validated_data
 
-        # Fetch the appointment and adopter; lock the adopter row to prevent concurrent bookings
-        appt = Appointment.objects.get(pk=request.data["apptID"])
+        # Fetch and lock the appointment and adopter rows to prevent concurrent bookings
+        appt = Appointment.objects.select_for_update().get(pk=request.data["apptID"])
         adopter = Adopter.objects.select_for_update().get(pk=request.data["adopterID"])
 
         # Update the adopter demographics
@@ -577,7 +577,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
 
         if appt.get_current_booking() is not None:
-            return JsonResponse({}, status=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION)
+            return JsonResponse({}, status=status.HTTP_409_CONFLICT)
 
         # Create a new booking
         Booking.create_active(adopter, appt)
