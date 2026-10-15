@@ -273,6 +273,7 @@ class AdopterViewSet(viewsets.ModelViewSet):
         adopter = self.UnpackAdopterFromAdopterIDRequest(request.data)
 
         adopter.restrict_calendar(restrict=False)
+        EmailViewSet().CalendarAccessRestored(adopter)
 
         return JsonResponse({}, status=status.HTTP_204_NO_CONTENT)
 
