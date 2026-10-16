@@ -175,7 +175,9 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
 
     description = serializers.CharField()
     weekday = serializers.IntegerField()
+    isoDate = serializers.CharField(source="iso_date")
     instantDisplay = serializers.CharField(source="instant_display")
+    timeDisplay = serializers.CharField(source="time_display")
 
     locked = serializers.BooleanField()
     softDeleted = serializers.BooleanField(source="soft_deleted")
@@ -201,7 +203,9 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
             "typeDisplay",
             "description",
             "weekday",
+            "isoDate",
             "instantDisplay",
+            "timeDisplay",
             "locked",
             "softDeleted",
             "hasCurrentBooking",

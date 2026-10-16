@@ -178,6 +178,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             soft_deleted=False,
         ).order_by("instant", "type")
 
+        # One open appointment per type per timeslot, preferring an unlocked one
         slots: dict[int, dict] = {}
         for appt in appts:
             if not appt.is_adoption_appointment or appt.has_current_booking:
@@ -186,11 +187,19 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             local_dt = appt.local_dt
             key = (local_dt.hour * 100) + local_dt.minute
             slot = slots.setdefault(
-                key, {"key": key, "label": appt.time_display.lstrip("0"), "appts": []}
+                key, {"key": key, "label": appt.time_display.lstrip("0"), "appts": {}}
             )
-            slot["appts"].append(
-                {"ID": appt.id, "typeDisplay": appt.type_display, "locked": appt.locked}
-            )
+
+            current = slot["appts"].get(appt.type)
+            if current is None or (current["locked"] and not appt.locked):
+                slot["appts"][appt.type] = {
+                    "ID": appt.id,
+                    "typeDisplay": appt.type_display,
+                    "locked": appt.locked,
+                }
+
+        for slot in slots.values():
+            slot["appts"] = list(slot["appts"].values())
 
         return JsonResponse(
             {"isoDate": date_key, "slots": list(slots.values())},

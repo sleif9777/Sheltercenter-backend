@@ -86,3 +86,29 @@ class RescheduleTests(SmokeTestCase):
         slots = resp.json()["slots"]
         self.assertEqual([s["key"] for s in slots], [1500])
         self.assertEqual([a["ID"] for a in slots[0]["appts"]], [self.open_appt.id])
+
+    def test_open_slots_show_one_appt_per_type_preferring_unlocked(self) -> None:
+        instant = self.open_appt.instant
+        Appointment.objects.filter(pk=self.open_appt.pk).update(locked=True)
+        unlocked = Appointment.objects.create(type=AppointmentTypes.ADULTS, instant=instant)
+        Appointment.objects.create(type=AppointmentTypes.ADULTS, instant=instant)
+        puppies = Appointment.objects.create(type=AppointmentTypes.PUPPIES, instant=instant)
+
+        resp = self.client_for(self.admin_user).get(
+            "/Appointments/GetOpenAdoptionSlots/", {"isoDate": self.open_appt.iso_date}
+        )
+        self.assertStatus(resp, 200)
+
+        appts = resp.json()["slots"][0]["appts"]
+        self.assertEqual(sorted(a["ID"] for a in appts), sorted([unlocked.id, puppies.id]))
+        self.assertFalse(any(a["locked"] for a in appts))
+
+    def test_card_data_includes_date_and_time(self) -> None:
+        resp = self.client_for(self.admin_user).get(
+            "/Appointments/GetAppointmentCardData/", {"apptID": self.booked_appt.id}
+        )
+        self.assertStatus(resp, 200)
+
+        card = resp.json()["cardData"]
+        self.assertEqual(card["isoDate"], self.booked_appt.iso_date)
+        self.assertEqual(card["timeDisplay"], "02:00 PM")
