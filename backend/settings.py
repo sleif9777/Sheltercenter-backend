@@ -16,6 +16,7 @@ from pathlib import Path
 
 import django_on_heroku
 from django.utils.log import DEFAULT_LOGGING as LOGGING
+from django.urls import reverse_lazy
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -36,6 +37,9 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    # ADMIN THEME (must load before django.contrib.admin)
+    'unfold',
+    'unfold.contrib.filters',
     # DJANGO DEFAULT
     'django.contrib.admin',
     'django.contrib.auth',
@@ -240,3 +244,102 @@ FILE_UPLOAD_HANDLERS = [
 
 # Configure Django App for Heroku.
 django_on_heroku.settings(locals())
+
+
+# ADMIN THEME (UNFOLD)
+
+
+def _admin_nav_item(title: str, icon: str, url_name: str) -> dict:
+    return {"title": title, "icon": icon, "link": reverse_lazy(f"admin:{url_name}")}
+
+
+UNFOLD = {
+    "SITE_TITLE": "Saving Grace Admin",
+    "SITE_HEADER": "Saving Grace",
+    "SITE_SUBHEADER": "Scheduler Admin",
+    "SITE_SYMBOL": "pets",
+    "SHOW_VIEW_ON_SITE": False,
+    "COLORS": {
+        # Tailwind pink, to match the frontend's pink-700 accents
+        "primary": {
+            "50": "oklch(97.1% .014 343.198)",
+            "100": "oklch(94.8% .028 342.258)",
+            "200": "oklch(89.9% .061 343.231)",
+            "300": "oklch(82.3% .12 346.018)",
+            "400": "oklch(71.8% .202 349.761)",
+            "500": "oklch(65.6% .241 354.308)",
+            "600": "oklch(59.2% .249 .584)",
+            "700": "oklch(52.5% .223 3.958)",
+            "800": "oklch(45.9% .187 3.815)",
+            "900": "oklch(40.8% .153 2.432)",
+            "950": "oklch(28.4% .109 3.907)",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": True,
+        "navigation": [
+            {
+                "title": "People",
+                "items": [
+                    _admin_nav_item("Adopters", "person", "adopters_adopter_changelist"),
+                    _admin_nav_item(
+                        "Adopter upload events",
+                        "upload_file",
+                        "adopters_adopteruploadevent_changelist",
+                    ),
+                    _admin_nav_item("User profiles", "badge", "users_userprofile_changelist"),
+                    _admin_nav_item("Groups", "group", "auth_group_changelist"),
+                ],
+            },
+            {
+                "title": "Dogs",
+                "items": [
+                    _admin_nav_item("Dogs", "pets", "dogs_dog_changelist"),
+                ],
+            },
+            {
+                "title": "Scheduling",
+                "items": [
+                    _admin_nav_item("Appointments", "event", "appointments_appointment_changelist"),
+                    _admin_nav_item("Bookings", "event_available", "bookings_booking_changelist"),
+                    _admin_nav_item(
+                        "Appointment templates",
+                        "calendar_month",
+                        "appointment_bases_appointmentbase_changelist",
+                    ),
+                    _admin_nav_item(
+                        "Closed dates",
+                        "event_busy",
+                        "closed_dates_closeddate_changelist",
+                    ),
+                ],
+            },
+            {
+                "title": "Adoptions",
+                "items": [
+                    _admin_nav_item(
+                        "Pending adoptions",
+                        "favorite",
+                        "pending_adoptions_pendingadoption_changelist",
+                    ),
+                    _admin_nav_item(
+                        "Pending adoption updates",
+                        "history",
+                        "pending_adoption_updates_pendingadoptionupdate_changelist",
+                    ),
+                ],
+            },
+            {
+                "title": "System",
+                "items": [
+                    _admin_nav_item(
+                        "Environment settings",
+                        "settings",
+                        "environment_settings_environmentsettings_changelist",
+                    ),
+                ],
+            },
+        ],
+    },
+}
