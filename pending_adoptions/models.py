@@ -74,15 +74,7 @@ class PendingAdoption(models.Model):
         self.save()
 
     def __str__(self):
-        # dog, adopter name, status, id
-        adopter_name = self.adopter.user_profile.full_name
-
-        name = "{0} - {1}, {2} [{3}]".format(self.dog, adopter_name, self.status_display, self.id)
-
-        return name
-
-    def __repr__(self):
-        return self.__str__()
+        return "{0} - {1}".format(self.dog, self.status_display)
 
     class Meta:
         verbose_name = "pending adoption"

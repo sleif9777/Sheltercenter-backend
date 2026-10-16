@@ -39,11 +39,8 @@ class Dog(models.Model):
     def available_now(self):
         return self.status == DogStatus.AVAILABLE_NOW
 
-    def __repr__(self):
-        return self.name
-
     def __str__(self):
-        return f"{self.name} [{self.id}, SL-{self.shelterluv_id}]"
+        return f"{self.name} (SL-{self.shelterluv_id})"
 
     class Meta:
         verbose_name = "dog"

@@ -29,6 +29,9 @@ class EnvironmentSettings(models.Model):
     def last_dog_import_iso(self):
         return self.last_dog_import.isoformat()
 
+    def __str__(self):
+        return "{0} environment settings".format(self.get_environment_type_display())
+
     class Meta:
         verbose_name = "environment settings"
         verbose_name_plural = "environment settings"

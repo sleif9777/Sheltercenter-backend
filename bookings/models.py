@@ -60,23 +60,7 @@ class Booking(models.Model):
     sent_x_in_queue = models.BooleanField(default=False)
 
     def __str__(self):
-        # Adopter Name, status, instant display,
-        adopter_name = self.adopter.user_profile.disambiguated_name
-
-        name = "{0} - {1} ({2}) [{3}; APPT {4}; ADPT {5}; USER {6}]".format(
-            adopter_name,
-            self.appointment.instant_display,
-            self.status_display,
-            self.id,
-            self.appointment.id,
-            self.adopter.id,
-            self.adopter.user_profile.id,
-        )
-
-        return name
-
-    def __repr__(self):
-        return self.__str__()
+        return "{0} booking created {1}".format(self.status_display, self.created_display)
 
     class Meta:
         verbose_name = "booking"

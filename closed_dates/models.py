@@ -5,11 +5,8 @@ from django.db import models
 class ClosedDate(models.Model):
     date = models.DateField(null=False, blank=False)
 
-    def __repr__(self):
-        return f"Closed Date {self.date.strftime('%-m/%-d/%y')} [{self.id}]"
-
     def __str__(self):
-        return self.__repr__()
+        return f"Closed Date {self.date.strftime('%-m/%-d/%y')}"
 
     def exists_for_date(cls, date):
         return cls.objects.filter(date=date).exists()

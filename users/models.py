@@ -138,11 +138,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
     email_signature = models.TextField(default="", null=True, blank=True)
 
     # OTHER RELATIONAL FIELDS
-    def __repr__(self):
-        return self.disambiguated_name
-
     def __str__(self):
-        return self.disambiguated_name + " [{0}]".format(self.id)
+        return self.disambiguated_name
 
     # ADMINISTRATIVE METHODS
     def update_email(self, new_email):

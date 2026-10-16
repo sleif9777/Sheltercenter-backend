@@ -201,24 +201,16 @@ class Appointment(models.Model):
     )
 
     # OTHER RELATIONAL FIELDS
-    def __repr__(self):
-        return str(self)
-
     def __str__(self):
-        desc = self.description
-
-        if desc == "OPEN":
-            desc += " ({0})".format(self.type_display)
+        name = "{0} - {1}".format(self.type_display, self.instant_display)
 
         if self.outcome is not None:
-            return "{0} - {1} ({2}) [{3}]".format(
-                desc, self.instant_display, self.outcome_value_display, self.id
-            )
+            name += " ({0})".format(self.outcome_value_display)
 
-        id_display = "{0}".format(self.id)
-        id_display += " - SOFT DELETED" if self.soft_deleted else ""
+        if self.soft_deleted:
+            name += " - SOFT DELETED"
 
-        return "{0} - {1} [{2}]".format(desc, self.instant_display, id_display)
+        return name
 
     # ADMINISTRATIVE METHODS
     def check_in(self, request_data):

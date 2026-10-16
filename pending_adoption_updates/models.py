@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from pending_adoptions.models import PendingAdoption
 
 
@@ -17,12 +18,9 @@ class PendingAdoptionUpdate(models.Model):
     def instant_iso(self):
         return self.instant.isoformat()
 
-    def __repr__(self):
-        ts = self.instant.strftime("%-m/%-d/%y %-I:%M %p")
-        return f"Update at {ts} [{self.id}; ADOPTION {self.adoption_id}]"
-
     def __str__(self):
-        return self.__repr__()
+        ts = timezone.localtime(self.instant).strftime("%-m/%-d/%y %-I:%M %p")
+        return f"Update at {ts}"
 
     class Meta:
         verbose_name = "pending adoption update"

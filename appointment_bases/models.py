@@ -23,13 +23,10 @@ class AppointmentBase(models.Model):
     def time_display(self):
         return self.time.strftime("%-I:%M %p")
 
-    def __repr__(self):
-        return "{0} ({1} at {2}) [{3}]".format(
-            self.get_type_display(), self.get_weekday_display(), self.print_time(), self.id
-        )
-
     def __str__(self):
-        return self.__repr__()
+        return "{0} ({1} at {2})".format(
+            self.get_type_display(), self.get_weekday_display(), self.print_time()
+        )
 
     def print_time(self):
         return self.time.strftime("%-I:%M %p")
