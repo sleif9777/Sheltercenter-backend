@@ -7,7 +7,8 @@ def seed_upload_events(apps, _schema_editor):
     Adopter = apps.get_model("adopters", "Adopter")
     AdopterUploadEvent = apps.get_model("adopters", "AdopterUploadEvent")
     events = []
-    for adopter in Adopter.objects.filter(last_uploaded__isnull=False):
+    # order_by() clears Meta.ordering, which references user_profile (not yet migrated here)
+    for adopter in Adopter.objects.filter(last_uploaded__isnull=False).order_by():
         events.append(
             AdopterUploadEvent(
                 adopter=adopter,
