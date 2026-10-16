@@ -84,14 +84,17 @@ def build_xlsx(rows: list[list[object]]) -> bytes:
 
 
 class SpreadsheetUploadTests(SmokeTestCase):
-    def upload(self, rows: list[list[object]]) -> dict:
+    def upload(self, rows: list[list[object]], skip_approval_emails: bool | None = None) -> dict:
         upload = SimpleUploadedFile(
             "applications.xlsx",
             build_xlsx(rows),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
+        data: dict[str, object] = {"importFile": upload}
+        if skip_approval_emails is not None:
+            data["skipApprovalEmails"] = "true" if skip_approval_emails else "false"
         resp = self.client_for(self.admin_user).post(
-            "/UserProfiles/ImportSpreadsheetBatch/", {"importFile": upload}, format="multipart"
+            "/UserProfiles/ImportSpreadsheetBatch/", data, format="multipart"
         )
         self.assertLess(resp.status_code, 300, resp.content[:500])
         return resp.json()
@@ -162,3 +165,21 @@ class SpreadsheetUploadTests(SmokeTestCase):
         # One week after the first email, even though the last upload was a day ago
         upload_at(datetime.timedelta(days=7, hours=1))
         self.assertEqual(len(mail.outbox), 2)
+
+    def test_skip_approval_emails_imports_without_sending(self) -> None:
+        body = self.upload([ACCEPTED, PENDING_WITH_BLANKS], skip_approval_emails=True)
+        results = body.get("results", body)
+        self.assertEqual(results["successes"], 2)
+        self.assertEqual(len(mail.outbox), 0)
+
+        # Left pending, so a later upload (or the pending-emails job) still sends it
+        jordan = UserProfile.objects.get(primary_email="jordan.rivers@example.invalid")
+        self.assertFalse(jordan.adopter_profile.approval_emailed)
+        self.assertIsNone(jordan.adopter_profile.approval_window_started_at)
+
+        self.upload([ACCEPTED])
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_skip_approval_emails_false_still_sends(self) -> None:
+        self.upload([ACCEPTED], skip_approval_emails=False)
+        self.assertEqual(len(mail.outbox), 1)

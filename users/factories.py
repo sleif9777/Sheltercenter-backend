@@ -47,7 +47,10 @@ class UserFactory:
 class UserSpreadsheetFactory(UserFactory):
     rows = None
 
-    def __init__(self, file: UploadedFile):
+    def __init__(self, file: UploadedFile, send_approval_emails: bool = True):
+        # When False, approval_emailed stays untouched so a later upload or
+        # send_pending_approval_emails still delivers the email
+        self.send_approval_emails = send_approval_emails
         file_type = self.get_file_type(file.name)
 
         match file_type:
@@ -194,7 +197,8 @@ class UserSpreadsheetFactory(UserFactory):
             return None, False, False
 
         try:
-            self.send_approval_email(adopter)
+            if self.send_approval_emails:
+                self.send_approval_email(adopter)
         except Exception:
             logger.exception(
                 "Failed to send approval email for %s; approval_emailed stays False "

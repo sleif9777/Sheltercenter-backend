@@ -81,8 +81,11 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         query.is_valid(raise_exception=True)
 
         import_file = query.validated_data["importFile"]
+        skip_approval_emails: bool = query.validated_data["skipApprovalEmails"]
 
-        upload_result = UserSpreadsheetFactory(import_file).run_import_batch()
+        upload_result = UserSpreadsheetFactory(
+            import_file, send_approval_emails=not skip_approval_emails
+        ).run_import_batch()
 
         return JsonResponse(upload_result, status=status.HTTP_200_OK)
 

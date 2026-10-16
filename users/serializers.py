@@ -9,6 +9,7 @@ from rest_framework import serializers
 
 class ImportSpreadsheetBatchRequestSerializer(serializers.Serializer):
     importFile = serializers.FileField()
+    skipApprovalEmails = serializers.BooleanField(required=False, default=False)
 
     def validate_importFile(self, file):
         if not file.name.lower().endswith((".xlsx", ".csv")):
