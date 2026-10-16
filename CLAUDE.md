@@ -142,7 +142,7 @@ Configured in `pyproject.toml`:
 
 ## Stack
 
-- Django 5.1 + Django REST Framework 3.15
+- Django 5.2 LTS + Django REST Framework 3.18
 - JWT auth via `djangorestframework-simplejwt` (7-day access and refresh tokens; see `SIMPLE_JWT` in settings)
 - Email via Mailgun (`django-anymail`)
 - PostgreSQL (prod) / SQLite (local)

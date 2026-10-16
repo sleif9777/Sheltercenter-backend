@@ -1,16 +1,16 @@
 # Direct dependencies. Edit this file, then regenerate the pinned lock with:
 #   pip-compile --strip-extras requirements.in
-Django==5.1.4
-djangorestframework==3.15.2
-djangorestframework-simplejwt==5.4.0
-django-anymail[mailgun]==10.3
-django-cors-headers==4.6.0
-django-unfold==0.96.0
-dj-database-url==2.3.0
-whitenoise==6.8.2
-gunicorn==23.0.0
+Django==5.2.18
+djangorestframework==3.18.3
+djangorestframework-simplejwt==5.5.1
+django-anymail[mailgun]==15.2
+django-cors-headers==4.9.0
+django-unfold==0.110.0
+dj-database-url==3.1.2
+whitenoise==6.12.0
+gunicorn==26.2.0
 psycopg[binary]==3.3.6
 openpyxl==3.1.5
-requests==2.32.5
-python-dotenv==1.0.1
-tzdata==2024.2
+requests==2.34.2
+python-dotenv==1.2.4
+tzdata==2026.5
