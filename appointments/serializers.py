@@ -141,6 +141,15 @@ class CreateAppointmentRequestSerializer(ISODateRequestSerializer, TimeRequestSe
     surrenderDogName = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
+class RescheduleAppointmentRequestSerializer(AppointmentIDRequestSerializer):
+    newApptID = serializers.IntegerField()
+
+    def validate_newApptID(self, value: str) -> int:
+        if not Appointment.objects.filter(pk=int(value)).exists():
+            raise serializers.ValidationError("Appointment does not exist.")
+        return value
+
+
 class ScheduleAppointmentRequestSerializer(
     AppointmentIDRequestSerializer, AdopterPreferencesRequestSerializer
 ):

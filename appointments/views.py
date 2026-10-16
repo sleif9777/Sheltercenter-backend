@@ -168,6 +168,35 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @action(detail=False, methods=["GET"], url_path="GetOpenAdoptionSlots", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
+    def GetOpenAdoptionSlots(self, request):
+        date, date_key = AppointmentViewSet.GetISODateFromISODateRequest(request.query_params)
+
+        appts = Appointment.objects.filter(
+            instant__range=DateTimeUtils.get_range_for_date(date),
+            instant__gte=timezone.now(),
+            soft_deleted=False,
+        ).order_by("instant", "type")
+
+        slots: dict[int, dict] = {}
+        for appt in appts:
+            if not appt.is_adoption_appointment or appt.has_current_booking:
+                continue
+
+            local_dt = appt.local_dt
+            key = (local_dt.hour * 100) + local_dt.minute
+            slot = slots.setdefault(
+                key, {"key": key, "label": appt.time_display.lstrip("0"), "appts": []}
+            )
+            slot["appts"].append(
+                {"ID": appt.id, "typeDisplay": appt.type_display, "locked": appt.locked}
+            )
+
+        return JsonResponse(
+            {"isoDate": date_key, "slots": list(slots.values())},
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=False, methods=["GET"], url_path="GetRecentAdoptions")
     def GetRecentAdoptions(self, request):
         adoption_outcome_appts = Appointment.objects.filter(
@@ -552,6 +581,44 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         booking: Optional["Booking"] = appt.get_current_booking()
 
         booking.mark_template_sent(template_id)
+
+        return JsonResponse({}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["POST"], url_path="RescheduleAppointment", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
+    @transaction.atomic
+    def RescheduleAppointment(self, request):
+        query = RescheduleAppointmentRequestSerializer(data=request.data)
+        query.is_valid(raise_exception=True)
+
+        # Lock both rows so the target slot can't be booked out from under us
+        old_appt = Appointment.objects.select_for_update().get(pk=query.validated_data["apptID"])
+        new_appt = Appointment.objects.select_for_update().get(
+            pk=query.validated_data["newApptID"]
+        )
+
+        booking = Booking.objects.filter(appointment=old_appt, status=BookingStatus.ACTIVE).first()
+
+        if booking is None or old_appt.check_in_time is not None or old_appt.outcome is not None:
+            return JsonResponse(
+                {"error": "This appointment can no longer be rescheduled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if (
+            new_appt.pk == old_appt.pk
+            or new_appt.soft_deleted
+            or not new_appt.is_adoption_appointment
+            or new_appt.instant < timezone.now()
+            or new_appt.get_current_booking() is not None
+        ):
+            return JsonResponse(
+                {"error": "That timeslot is no longer available."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        booking.reschedule_to(new_appt)
+
+        EmailViewSet().AppointmentRescheduled(old_appt, new_appt)
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 

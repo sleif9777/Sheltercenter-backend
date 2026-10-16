@@ -1,0 +1,41 @@
+{% extends 'email_templates/base.html' %}
+
+{% block text_header %}
+    Your appointment has been rescheduled!
+{% endblock %}
+
+{% block content %}
+    <div>
+        <p>
+            Hi {{appointment.get_current_booking.adopter.user_profile.first_name}},
+        </p>
+    </div>
+    <div>
+        <p>
+            Your appointment has been moved to a new time. Your previous appointment on <s>{{previous_appointment.long_instant_display}}</s> is no longer reserved for you.
+        </p>
+        <p class="center">
+            <b>New appointment: {{appointment.long_instant_display}}</b>
+        </p>
+        <p>
+            We look forward to helping you find your next pet. Please review the Visiting Instructions below before you arrive for your appointment, as they will help you make the most of your visit and allow us to assist you in the best way possible.
+        </p>
+        <p>
+            Our counselors are excited to meet you and have set aside time to be on-site volunteering. If you can no longer make your new appointment, we kindly request that you cancel so we can open your spot for another potential adopter.
+        </p>
+        {% if cancel_token %}
+        <p class="center">
+            <a class="btn" href="https://savinggracencscheduler.com/cancel?token={{ cancel_token }}" target="_blank">Cancel my appointment</a>
+        </p>
+        {% else %}
+        <p>
+            Please visit <a href="https://savinggracencscheduler.com" target="_blank">savinggracencscheduler.com</a> to cancel.
+        </p>
+        {% endif %}
+    </div>
+    {% include 'email_templates/signature.html' %}
+    <hr />
+    {% with show_dog_availability=True %}
+    {% include 'email_templates/visitor_instructions.html' %}
+    {% endwith %}
+{% endblock %}

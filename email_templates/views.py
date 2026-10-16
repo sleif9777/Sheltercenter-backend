@@ -64,6 +64,25 @@ class EmailViewSet(viewsets.ViewSet):
         )
         email.send()
 
+    def AppointmentRescheduled(self, previous_appointment, appointment):
+        booking = appointment.get_current_booking()
+        subject = EmailService.subject_with_comments(
+            "Your appointment has been rescheduled: {0}".format(booking.adopter.user_profile.full_name.upper()),
+            booking.adopter.application_comments,
+        )
+
+        email = EmailService(
+            subject,
+            "appointment_rescheduled",
+            {
+                "previous_appointment": previous_appointment,
+                "appointment": appointment,
+                "cancel_token": booking.cancel_token,
+            },
+            booking.adopter.user_profile.primary_email,
+        )
+        email.send()
+
     def AppointmentReminder(self, appointment):
         booking = appointment.get_current_booking()
         adopter = booking.adopter

@@ -59,6 +59,16 @@ class Booking(models.Model):
     sent_dogs_not_here_yet = models.BooleanField(default=False)
     sent_x_in_queue = models.BooleanField(default=False)
 
+    SENT_FLAG_FIELDS = (
+        "sent_limited_puppies",
+        "sent_limited_small_puppies",
+        "sent_limited_hypo",
+        "sent_limited_fun_size",
+        "sent_dogs_were_adopted",
+        "sent_dogs_not_here_yet",
+        "sent_x_in_queue",
+    )
+
     def __str__(self):
         return "{0} booking created {1}".format(self.status_display, self.created_display)
 
@@ -69,6 +79,18 @@ class Booking(models.Model):
         self.status = status
         self.modified = timezone.now()
         self.save()
+
+    def reschedule_to(self, appointment: Appointment) -> "Booking":
+        new_booking = Booking.create_active(self.adopter, appointment)
+
+        # Carry over message flags so staff don't resend the same template
+        for field in self.SENT_FLAG_FIELDS:
+            setattr(new_booking, field, getattr(self, field))
+        new_booking.save()
+
+        self.mark_status(BookingStatus.RESCHEDULED)
+
+        return new_booking
 
     def mark_template_sent(self, template: BookingMessageTemplate):
         match template:

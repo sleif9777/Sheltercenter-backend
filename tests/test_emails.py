@@ -25,6 +25,9 @@ class EmailRenderingTests(SmokeTestCase):
         cases = {
             "ApplicationApproved": lambda: emails.ApplicationApproved(self.adopter),
             "AppointmentScheduled": lambda: emails.AppointmentScheduled(self.booked_appt),
+            "AppointmentRescheduled": lambda: emails.AppointmentRescheduled(
+                self.open_appt, self.booked_appt
+            ),
             "AppointmentReminder": lambda: emails.AppointmentReminder(self.booked_appt),
             "AppointmentCanceled": lambda: emails.AppointmentCanceled(self.booked_appt),
             "DogChosen": lambda: emails.DogChosen(self.booked_appt),
