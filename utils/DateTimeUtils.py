@@ -1,9 +1,11 @@
 import datetime
 import string
 from typing import Union
+from zoneinfo import ZoneInfo
 
-import pytz
 from django.utils import timezone
+
+EASTERN = ZoneInfo("America/New_York")
 
 
 def get_today() -> datetime.date:
@@ -11,7 +13,7 @@ def get_today() -> datetime.date:
 
 
 def get_now() -> datetime.datetime:
-    return timezone.now().astimezone(tz=pytz.timezone("US/Eastern"))
+    return timezone.now().astimezone(tz=EASTERN)
 
 
 def get_local_instant(instant: datetime.datetime) -> datetime.datetime:
@@ -27,7 +29,6 @@ def get_range_for_date(
     instant: datetime.datetime | datetime.date, backdate_days=0, forwarddate_days=0
 ) -> Union[datetime.datetime, datetime.datetime]:
     min_date, max_date = None, None
-    eastern = pytz.timezone("US/Eastern")
 
     if backdate_days > 0:
         min_date = get_today() - datetime.timedelta(days=backdate_days)
@@ -36,8 +37,8 @@ def get_range_for_date(
         max_date = get_today() + datetime.timedelta(days=forwarddate_days)
 
     return (
-        datetime.datetime.combine((min_date or instant), datetime.time.min).astimezone(tz=eastern),
-        datetime.datetime.combine((max_date or instant), datetime.time.max).astimezone(tz=eastern),
+        datetime.datetime.combine((min_date or instant), datetime.time.min).astimezone(tz=EASTERN),
+        datetime.datetime.combine((max_date or instant), datetime.time.max).astimezone(tz=EASTERN),
     )
 
 def is_short_notice(

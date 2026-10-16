@@ -1,7 +1,5 @@
-import pytz
-
 from adopters.views import AdopterViewSet
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from django.db.models import Q
 from django.http import JsonResponse, QueryDict
 from django.utils import timezone
@@ -89,14 +87,7 @@ class DogsViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["GET"], url_path="GetDogSelectFieldOptions")
     def GetDogSelectFieldOptions(self, request):
-        eastern = pytz.timezone("America/New_York")
-        now = timezone.now()
-        cutoff_end = eastern.localize(datetime(2026, 4, 29, 18, 0, 0))
-
-        if now < cutoff_end:
-            cutoff_start = date(2026, 4, 23)
-        else:
-            cutoff_start = now.astimezone(eastern).date() - timedelta(days=2)
+        cutoff_start = timezone.localdate() - timedelta(days=2)
 
         dogs = Dog.objects.filter(
             Q(status=DogStatus.AVAILABLE_NOW) | Q(last_updated__gte=cutoff_start)
