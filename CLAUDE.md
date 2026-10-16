@@ -107,6 +107,28 @@ python manage.py run_reminders
 
 ---
 
+## Tests
+
+```bash
+python manage.py test tests
+```
+
+A smoke-test suite in `tests/` exercises every API endpoint, email, admin page, the adopter upload and the management commands. Network access is blocked and email uses Django's in-memory backend. Run it before and after any dependency upgrade.
+
+---
+
+## Dependencies
+
+`requirements.in` lists direct dependencies; `requirements.txt` is the pinned lock Heroku installs. After editing `requirements.in`:
+
+```bash
+pip install pip-tools
+pip-compile --strip-extras --no-header --annotation-style=line -o requirements.txt requirements.in
+pip-sync requirements.txt
+```
+
+---
+
 ## Code Style
 
 Configured in `pyproject.toml`:
@@ -121,12 +143,13 @@ Configured in `pyproject.toml`:
 ## Stack
 
 - Django 5.1 + Django REST Framework 3.15
-- JWT auth via `djangorestframework-simplejwt` (15-minute access tokens)
+- JWT auth via `djangorestframework-simplejwt` (7-day access and refresh tokens; see `SIMPLE_JWT` in settings)
 - Email via Mailgun (`django-anymail`)
 - PostgreSQL (prod) / SQLite (local)
-- Heroku deployment via `django-on-heroku` + Gunicorn
+- Heroku deployment via Gunicorn + WhiteNoise (Heroku settings are explicit in `backend/settings.py`)
+- PostgreSQL via psycopg 3
 - Shelterluv API integration (dog sync)
-- Pandas + OpenPyXL for Excel-based adopter imports
+- OpenPyXL for Excel-based adopter imports and spreadsheet exports
 
 ---
 
