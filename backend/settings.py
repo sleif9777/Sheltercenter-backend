@@ -14,7 +14,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
-import django_on_heroku
+import dj_database_url
 from django.utils.log import DEFAULT_LOGGING as LOGGING
 from django.urls import reverse_lazy
 
@@ -31,7 +31,8 @@ SECRET_KEY = str(os.environ.get("SECRET_KEY"))
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool(os.environ.get("DEBUG"))
 
-ALLOWED_HOSTS = []
+# Requests only reach the app through Heroku's router and the API is token-authenticated.
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -70,6 +71,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     # DJANGO DEFAULT
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -146,6 +148,12 @@ else:
     }
 }
 
+# Heroku Postgres provides DATABASE_URL, which takes precedence over the settings above.
+if "DATABASE_URL" in os.environ:
+    DATABASES["default"] = dj_database_url.config(
+        conn_max_age=int(os.environ.get("CONN_MAX_AGE", 600)), ssl_require=True
+    )
+
 # Rest framework configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -201,7 +209,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -234,9 +243,6 @@ MEDIA_URL = 'media/'
 FILE_UPLOAD_HANDLERS = [
     'django.core.files.uploadhandler.TemporaryFileUploadHandler',
 ]
-
-# Configure Django App for Heroku.
-django_on_heroku.settings(locals())
 
 
 # ADMIN THEME (UNFOLD)
