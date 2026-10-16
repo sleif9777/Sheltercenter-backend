@@ -9,7 +9,6 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('admin_appointments', '0001_initial'),
         ('adopters', '0001_initial'),
         ('appointments', '0001_initial'),
     ]
@@ -24,9 +23,9 @@ class Migration(migrations.Migration):
                 ('dog', models.CharField(default='', max_length=50)),
                 ('ready_to_roll_instant', models.DateTimeField(blank=True, null=True)),
                 ('adopter', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='adopters.adopter')),
-                ('paperwork_appointment', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='pending_adoption_paperwork', to='admin_appointments.adminappointment')),
+                ('paperwork_appointment', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='pending_adoption_paperwork', to='appointments.appointment')),
                 ('source_appointment', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='pending_adoption', to='appointments.appointment')),
-                ('source_appointment_admin', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='pending_adoption_source', to='admin_appointments.adminappointment')),
+                ('source_appointment_admin', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='pending_adoption_source', to='appointments.appointment')),
             ],
         ),
     ]

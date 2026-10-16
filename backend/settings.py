@@ -53,10 +53,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     # INTERNAL
-    'admin_appointment_bases',
-    'admin_appointments',
     'adopters',
-    'announcements',
     'appointment_bases',
     'appointments',
     'bookings',
@@ -64,13 +61,9 @@ INSTALLED_APPS = [
     'dogs',
     'email_templates',
     'environment_settings',
-    'litters',
-    'open_house_appointments',
     'pending_adoption_updates',
     'pending_adoptions',
-    'short_notice_notifications',
     'users',
-    'watchlist_entries',
 ]
 
 MIDDLEWARE = [
