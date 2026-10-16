@@ -143,6 +143,15 @@ class SmokeTestCase(TestCase):
             self.addCleanup(patcher.stop)
         assert requests  # imported so the patch targets resolve
 
+    @staticmethod
+    def make_staff(level: SecurityLevel) -> UserProfile:
+        return UserProfile.objects.create(
+            first_name="Staff",
+            last_name=level.name.title(),
+            primary_email=f"staff-{level.name.lower()}@example.invalid",
+            security_level=level,
+        )
+
     def client_for(self, user: UserProfile | None) -> APIClient:
         client = APIClient()
         if user is not None:

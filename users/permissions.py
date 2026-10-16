@@ -16,3 +16,21 @@ def MinSecurityLevel(level: SecurityLevel) -> type[BasePermission]:
 
     _Permission.__name__ = f"MinSecurityLevel_{level.name}"
     return _Permission
+
+
+def ExactSecurityLevel(level: SecurityLevel) -> type[BasePermission]:
+    """Factory returning a DRF permission class that requires exactly `level`.
+
+    Use when a higher number is a different role rather than more access (e.g. DASHBOARD).
+    """
+
+    class _Permission(BasePermission):
+        def has_permission(self, request: object, _view: object) -> bool:
+            return (
+                hasattr(request, "user")
+                and hasattr(request.user, "security_level")
+                and request.user.security_level == level
+            )
+
+    _Permission.__name__ = f"ExactSecurityLevel_{level.name}"
+    return _Permission

@@ -33,7 +33,7 @@ from rest_framework.permissions import AllowAny
 from utils import DateTimeUtils
 from users.enums import SecurityLevel
 from users.models import UserProfile
-from users.permissions import MinSecurityLevel
+from users.permissions import ExactSecurityLevel, MinSecurityLevel
 
 from .mapper import AppointmentHashMapper
 from .models import Appointment
@@ -168,7 +168,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=False, methods=["GET"], url_path="GetOpenAdoptionSlots", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
+    @action(detail=False, methods=["GET"], url_path="GetOpenAdoptionSlots", permission_classes=[ExactSecurityLevel(SecurityLevel.SUPERUSER)])
     def GetOpenAdoptionSlots(self, request):
         date, date_key = AppointmentViewSet.GetISODateFromISODateRequest(request.query_params)
 
@@ -231,7 +231,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return sorted(bookings, key=lambda b: (b.appointment.instant, b.created))
 
-    @action(detail=False, methods=["GET"], url_path="GetQueueForDate", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
+    @action(detail=False, methods=["GET"], url_path="GetQueueForDate", permission_classes=[ExactSecurityLevel(SecurityLevel.SUPERUSER)])
     def GetQueueForDate(self, request):
         date, date_key = AppointmentViewSet.GetISODateFromISODateRequest(request.query_params)
 
@@ -636,7 +636,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="RescheduleAppointment", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
+    @action(detail=False, methods=["POST"], url_path="RescheduleAppointment", permission_classes=[ExactSecurityLevel(SecurityLevel.SUPERUSER)])
     @transaction.atomic
     def RescheduleAppointment(self, request):
         query = RescheduleAppointmentRequestSerializer(data=request.data)
@@ -674,7 +674,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return JsonResponse({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="SendQueueEmails", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
+    @action(detail=False, methods=["POST"], url_path="SendQueueEmails", permission_classes=[ExactSecurityLevel(SecurityLevel.SUPERUSER)])
     def SendQueueEmails(self, request):
         query = SendQueueEmailsRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)

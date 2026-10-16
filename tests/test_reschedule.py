@@ -4,6 +4,7 @@ from appointment_bases.enums import AppointmentTypes
 from appointments.models import Appointment
 from bookings.enums import BookingStatus
 from bookings.models import Booking
+from users.enums import SecurityLevel
 
 from .base import SmokeTestCase, local_instant
 
@@ -60,8 +61,18 @@ class RescheduleTests(SmokeTestCase):
         self.booked_appt.check_in({})
         self.assertStatus(self.reschedule(self.open_appt), 400)
 
-    def test_requires_admin(self) -> None:
-        self.assertStatus(self.reschedule(self.open_appt, user=self.greeter_user), 403)
+    def test_requires_superuser(self) -> None:
+        for level in (SecurityLevel.GREETER, SecurityLevel.ADMIN, SecurityLevel.DASHBOARD):
+            with self.subTest(level=level.name):
+                user = self.make_staff(level)
+                self.assertStatus(self.reschedule(self.open_appt, user=user), 403)
+                self.assertStatus(
+                    self.client_for(user).get(
+                        "/Appointments/GetOpenAdoptionSlots/", {"isoDate": self.open_appt.iso_date}
+                    ),
+                    403,
+                )
+        self.assertEqual(self.open_appt.get_current_booking(), None)
 
     def test_open_slots_lists_only_unbooked_adoption_appts(self) -> None:
         Appointment.objects.create(type=AppointmentTypes.PAPERWORK, instant=local_instant(1, 16))

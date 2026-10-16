@@ -6,6 +6,7 @@ from django.utils import timezone
 from appointment_bases.enums import AppointmentTypes
 from appointments.models import Appointment
 from bookings.models import Booking
+from users.enums import SecurityLevel
 
 from .base import SmokeTestCase
 
@@ -89,12 +90,21 @@ class QueueEmailTests(SmokeTestCase):
         self.assertTrue(a.sent_x_in_queue)
         self.assertTrue(all(row["alreadySent"] for row in self.get_queue()))
 
-    def test_send_requires_admin(self) -> None:
+    def test_requires_superuser(self) -> None:
         a = self.book(12, name="a")
-        resp = self.client_for(self.greeter_user).post(
-            "/Appointments/SendQueueEmails/",
-            {"entries": [{"apptID": a.appointment.id, "position": 1}]},
-            format="json",
-        )
-        self.assertStatus(resp, 403)
+        iso_date = a.appointment.iso_date
+
+        for level in (SecurityLevel.GREETER, SecurityLevel.ADMIN, SecurityLevel.DASHBOARD):
+            with self.subTest(level=level.name):
+                client = self.client_for(self.make_staff(level))
+                resp = client.post(
+                    "/Appointments/SendQueueEmails/",
+                    {"entries": [{"apptID": a.appointment.id, "position": 1}]},
+                    format="json",
+                )
+                self.assertStatus(resp, 403)
+                self.assertStatus(
+                    client.get("/Appointments/GetQueueForDate/", {"isoDate": iso_date}), 403
+                )
+
         self.assertEqual(len(mail.outbox), 0)
