@@ -251,7 +251,7 @@ class EmailViewSet(viewsets.ViewSet):
     def PaperworkScheduled(self, appointment):
         subject = "Paperwork scheduled: {0} ({1})".format(
             appointment.paperwork_adoption.adopter.user_profile.full_name,
-            appointment.source_adoption.dog,
+            appointment.paperwork_adoption.dog,
         )
 
         email = EmailService(
