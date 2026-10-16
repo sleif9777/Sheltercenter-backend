@@ -118,6 +118,22 @@ class SpreadsheetUploadTests(SmokeTestCase):
         self.assertEqual(AdopterUploadEvent.objects.count(), 2)
         self.assertEqual(len(mail.outbox), 1, "only the accepted adopter gets an approval email")
 
+    def test_numeric_cells_are_stored_as_whole_numbers(self) -> None:
+        # pandas stored "55501.0" / "27587.0" whenever a numeric column had a blank cell
+        self.upload([ACCEPTED, PENDING_WITH_BLANKS, FOSTER])
+        jordan = UserProfile.objects.get(primary_email="jordan.rivers@example.invalid")
+        self.assertEqual(jordan.adopter_profile.shelterluv_app_id, "8250001")
+        self.assertEqual(jordan.adopter_profile.shelterluv_id, "55501")
+        self.assertEqual(jordan.postal_code, "27587")
+        self.assertEqual(jordan.phone_number, "9195550101")
+        casey = UserProfile.objects.get(primary_email="casey.lane@example.invalid")
+        self.assertEqual(casey.postal_code, "")
+
+    def test_blank_rows_are_skipped(self) -> None:
+        body = self.upload([ACCEPTED, [None] * COLUMNS, PENDING_WITH_BLANKS])
+        results = body.get("results", body)
+        self.assertEqual((results["successes"], results["failures"]), (2, 0))
+
     def test_reupload_updates_instead_of_duplicating(self) -> None:
         self.upload([ACCEPTED])
         body = self.upload([ACCEPTED])

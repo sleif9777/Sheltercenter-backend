@@ -4,12 +4,13 @@ import email.utils
 import io
 import logging
 
-import pandas
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.utils import timezone
 from mimetypes import guess_type
 from typing import TypedDict
+
+from openpyxl import load_workbook
 
 from adopters.models import Adopter, AdopterUploadEvent
 from adopters.enums import ApprovalStatus
@@ -55,12 +56,25 @@ class UserSpreadsheetFactory(UserFactory):
                 all_rows = list(csv.reader(io_string, delimiter=","))
                 self.rows = all_rows[1:]
             case ImportFileTypes.EXCEL:
-                decoded_file = pandas.read_excel(file)
-                decoded_file = decoded_file.fillna("")
-                all_rows = decoded_file.values.tolist()
-                self.rows = all_rows
+                self.rows = self.read_excel_rows(file)
 
         assert len(self.rows) > 0
+
+    @staticmethod
+    def read_excel_rows(file: UploadedFile) -> list[list[object]]:
+        # First sheet, header row skipped, empty cells as "", every row padded to full width
+        workbook = load_workbook(file, read_only=True, data_only=True)
+        try:
+            header, *data = workbook.worksheets[0].iter_rows(values_only=True)
+        finally:
+            workbook.close()
+
+        rows = [list(row) for row in data if any(cell is not None for cell in row)]
+        width = max([len(header)] + [len(row) for row in rows])
+        return [
+            ["" if cell is None else cell for cell in row] + [""] * (width - len(row))
+            for row in rows
+        ]
 
     def get_file_type(self, file_name) -> ImportFileTypes:
         mime_type, _ = guess_type(file_name) or (None, None)
@@ -148,7 +162,7 @@ class UserSpreadsheetFactory(UserFactory):
 
         for i in validate_length:
             value = row_data[i]
-            if pandas.isna(value) or len(str(value).strip()) < 1:
+            if value is None or len(str(value).strip()) < 1:
                 print(f"Row {index} failed validation at index {i}: {value}")
                 return False
 
