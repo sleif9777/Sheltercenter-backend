@@ -49,7 +49,9 @@ class RescheduleTests(SmokeTestCase):
         paperwork = Appointment.objects.create(
             type=AppointmentTypes.PAPERWORK, instant=local_instant(1, 16)
         )
-        past = Appointment.objects.create(type=AppointmentTypes.ADULTS, instant=local_instant(-1, 12))
+        past = Appointment.objects.create(
+            type=AppointmentTypes.ADULTS, instant=local_instant(-1, 12)
+        )
 
         self.assertStatus(self.reschedule(paperwork), 409)
         self.assertStatus(self.reschedule(past), 409)

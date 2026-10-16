@@ -6,6 +6,7 @@ from dogs.models import Dog
 from environment_settings.models import EnvironmentSettings
 from pending_adoptions.enums import CircumstanceOptions
 from rest_framework import viewsets
+from utils import DateTimeUtils
 
 from .services import EmailService
 
@@ -120,6 +121,32 @@ class EmailViewSet(viewsets.ViewSet):
                 "appointment": appointment,
             },
             booking.adopter.user_profile.primary_email,
+        )
+        email.send()
+
+    def XInQueue(self, appointment, position: int, signature: str):
+        booking = appointment.get_current_booking()
+        adopter = booking.adopter
+
+        days_away = (appointment.local_dt.date() - DateTimeUtils.get_today()).days
+        if days_away == 0:
+            day_phrase = "today"
+        elif days_away == 1:
+            day_phrase = "tomorrow"
+        else:
+            day_phrase = "on {0}".format(appointment.local_dt.strftime("%A, %B %-d"))
+
+        email = EmailService(
+            "Your place in the queue: {0}".format(adopter.user_profile.full_name.upper()),
+            "x_in_queue",
+            {
+                "adopter": adopter,
+                "appointment": appointment,
+                "day_phrase": day_phrase,
+                "position": position,
+                "signature": signature,
+            },
+            self._adopter_recipients(adopter),
         )
         email.send()
 

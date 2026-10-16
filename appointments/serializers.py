@@ -150,6 +150,14 @@ class RescheduleAppointmentRequestSerializer(AppointmentIDRequestSerializer):
         return value
 
 
+class QueueEmailEntrySerializer(AppointmentIDRequestSerializer):
+    position = serializers.IntegerField(min_value=1)
+
+
+class SendQueueEmailsRequestSerializer(serializers.Serializer):
+    entries = QueueEmailEntrySerializer(many=True, allow_empty=False)
+
+
 class ScheduleAppointmentRequestSerializer(
     AppointmentIDRequestSerializer, AdopterPreferencesRequestSerializer
 ):

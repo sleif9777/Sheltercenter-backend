@@ -197,6 +197,58 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    QUEUE_CUTOFF_KEY = 1600
+
+    @staticmethod
+    def _get_queue_bookings_for_date(date: datetime.date) -> list[Booking]:
+        """Active adoption bookings for the X-in-Queue email, in default queue order.
+
+        The queue runs through the 4:00 PM slot, or the first slot after it when there
+        is no 4:00 PM slot, or the last slot when the day ends earlier.
+        """
+        appts = [
+            appt
+            for appt in Appointment.objects.filter(
+                instant__range=DateTimeUtils.get_range_for_date(date), soft_deleted=False
+            ).order_by("instant")
+            if appt.is_adoption_appointment
+        ]
+
+        def slot_key(appt: Appointment) -> int:
+            return (appt.local_dt.hour * 100) + appt.local_dt.minute
+
+        keys = sorted({slot_key(appt) for appt in appts})
+        if not keys:
+            return []
+
+        later_keys = [k for k in keys if k >= AppointmentViewSet.QUEUE_CUTOFF_KEY]
+        cutoff = later_keys[0] if later_keys else keys[-1]
+
+        bookings = Booking.objects.filter(
+            appointment__in=[appt for appt in appts if slot_key(appt) <= cutoff],
+            status=BookingStatus.ACTIVE,
+        ).select_related("appointment", "adopter__user_profile")
+
+        return sorted(bookings, key=lambda b: (b.appointment.instant, b.created))
+
+    @action(detail=False, methods=["GET"], url_path="GetQueueForDate", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
+    def GetQueueForDate(self, request):
+        date, date_key = AppointmentViewSet.GetISODateFromISODateRequest(request.query_params)
+
+        queue = [
+            {
+                "apptID": booking.appointment.id,
+                "adopterName": booking.adopter.user_profile.full_name,
+                "timeDisplay": booking.appointment.time_display.lstrip("0"),
+                "typeDisplay": booking.appointment.type_display,
+                "bookedDisplay": booking.created_display,
+                "alreadySent": booking.sent_x_in_queue,
+            }
+            for booking in self._get_queue_bookings_for_date(date)
+        ]
+
+        return JsonResponse({"isoDate": date_key, "queue": queue}, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=["GET"], url_path="GetRecentAdoptions")
     def GetRecentAdoptions(self, request):
         adoption_outcome_appts = Appointment.objects.filter(
@@ -621,6 +673,32 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         EmailViewSet().AppointmentRescheduled(old_appt, new_appt)
 
         return JsonResponse({}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["POST"], url_path="SendQueueEmails", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
+    def SendQueueEmails(self, request):
+        query = SendQueueEmailsRequestSerializer(data=request.data)
+        query.is_valid(raise_exception=True)
+
+        signature = request.user.full_name.strip() or "The Adoptions Team"
+        sent, failed = 0, []
+
+        for entry in query.validated_data["entries"]:
+            appt = Appointment.objects.get(pk=entry["apptID"])
+            booking = Booking.objects.filter(appointment=appt, status=BookingStatus.ACTIVE).first()
+
+            if booking is None:
+                failed.append(appt.description)
+                continue
+
+            try:
+                EmailViewSet().XInQueue(appt, entry["position"], signature)
+                booking.mark_template_sent(BookingMessageTemplate.X_IN_QUEUE)
+                sent += 1
+            except Exception:
+                logger.exception("Failed to send X-in-Queue email for appointment %s", appt.id)
+                failed.append(appt.description)
+
+        return JsonResponse({"sent": sent, "failed": failed}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["POST"], url_path="ScheduleAppointment")
     @transaction.atomic

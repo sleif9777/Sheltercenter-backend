@@ -30,6 +30,7 @@ class EmailRenderingTests(SmokeTestCase):
             ),
             "AppointmentReminder": lambda: emails.AppointmentReminder(self.booked_appt),
             "AppointmentCanceled": lambda: emails.AppointmentCanceled(self.booked_appt),
+            "XInQueue": lambda: emails.XInQueue(self.booked_appt, 3, "Ada Admin"),
             "DogChosen": lambda: emails.DogChosen(self.booked_appt),
             "DogNoLongerAvailable": lambda: emails.DogNoLongerAvailable(self.adopter, self.dog),
             "DogTemporarilyUnavailable": lambda: emails.DogTemporarilyUnavailable(
