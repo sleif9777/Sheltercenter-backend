@@ -61,8 +61,8 @@ class RescheduleTests(SmokeTestCase):
         self.booked_appt.check_in({})
         self.assertStatus(self.reschedule(self.open_appt), 400)
 
-    def test_requires_superuser(self) -> None:
-        for level in (SecurityLevel.GREETER, SecurityLevel.ADMIN, SecurityLevel.DASHBOARD):
+    def test_requires_admin_or_superuser(self) -> None:
+        for level in (SecurityLevel.GREETER, SecurityLevel.DASHBOARD):
             with self.subTest(level=level.name):
                 user = self.make_staff(level)
                 self.assertStatus(self.reschedule(self.open_appt, user=user), 403)
@@ -73,6 +73,17 @@ class RescheduleTests(SmokeTestCase):
                     403,
                 )
         self.assertEqual(self.open_appt.get_current_booking(), None)
+
+    def test_allows_admin(self) -> None:
+        admin = self.make_staff(SecurityLevel.ADMIN)
+        self.assertStatus(
+            self.client_for(admin).get(
+                "/Appointments/GetOpenAdoptionSlots/", {"isoDate": self.open_appt.iso_date}
+            ),
+            200,
+        )
+        self.assertStatus(self.reschedule(self.open_appt, user=admin), 200)
+        self.assertEqual(self.open_appt.get_current_booking().adopter, self.adopter)
 
     def test_open_slots_lists_only_unbooked_adoption_appts(self) -> None:
         Appointment.objects.create(type=AppointmentTypes.PAPERWORK, instant=local_instant(1, 16))

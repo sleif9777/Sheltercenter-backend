@@ -90,11 +90,11 @@ class QueueEmailTests(SmokeTestCase):
         self.assertTrue(a.sent_x_in_queue)
         self.assertTrue(all(row["alreadySent"] for row in self.get_queue()))
 
-    def test_requires_superuser(self) -> None:
+    def test_requires_admin_or_superuser(self) -> None:
         a = self.book(12, name="a")
         iso_date = a.appointment.iso_date
 
-        for level in (SecurityLevel.GREETER, SecurityLevel.ADMIN, SecurityLevel.DASHBOARD):
+        for level in (SecurityLevel.GREETER, SecurityLevel.DASHBOARD):
             with self.subTest(level=level.name):
                 client = self.client_for(self.make_staff(level))
                 resp = client.post(
@@ -108,3 +108,18 @@ class QueueEmailTests(SmokeTestCase):
                 )
 
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_allows_admin(self) -> None:
+        a = self.book(12, name="a")
+        client = self.client_for(self.make_staff(SecurityLevel.ADMIN))
+
+        self.assertStatus(
+            client.get("/Appointments/GetQueueForDate/", {"isoDate": a.appointment.iso_date}), 200
+        )
+        resp = client.post(
+            "/Appointments/SendQueueEmails/",
+            {"entries": [{"apptID": a.appointment.id, "position": 1}]},
+            format="json",
+        )
+        self.assertStatus(resp, 200)
+        self.assertEqual(len(mail.outbox), 1)
