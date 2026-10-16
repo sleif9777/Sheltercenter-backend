@@ -18,6 +18,7 @@ class Command(BaseCommand):
                 adopter.approved_until = Adopter.get_default_approval_date()
                 adopter.save(update_fields=["approved_until"])
                 EmailViewSet().ApplicationApproved(adopter)
+                adopter.start_approval_window()
                 sent += 1
             except Exception as e:
                 self.stderr.write(f"Failed for {adopter.primary_email}: {e}")

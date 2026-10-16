@@ -31,6 +31,8 @@ class Adopter(models.Model):
     shelterluv_app_id = models.CharField(default="", max_length=50, null=True, blank=True)
     shelterluv_id = models.CharField(default="", max_length=50, null=True, blank=True)
     approval_emailed = models.BooleanField(default=False)
+    # Set when an upload/job sends the approval email; manual resends don't move it
+    approval_window_started_at = models.DateTimeField(null=True, blank=True)
 
     approved_until = models.DateField(null=False, blank=False)
 
@@ -59,12 +61,16 @@ class Adopter(models.Model):
             return False
 
         if self.approval_emailed:
-            if self.last_uploaded is None:
+            if self.approval_window_started_at is None:
                 return True
-            two_days_ago = timezone.now() - datetime.timedelta(hours=48)
-            return self.last_uploaded < two_days_ago
+            one_week_ago = timezone.now() - datetime.timedelta(weeks=1)
+            return self.approval_window_started_at < one_week_ago
 
         return True
+
+    def start_approval_window(self):
+        self.approval_window_started_at = timezone.now()
+        self.save(update_fields=["approval_window_started_at"])
 
     # HOUSING ENVIRONMENT ITEMS
     homeowner = models.IntegerField(choices=HomeownershipOptons.choices, null=True, blank=True)

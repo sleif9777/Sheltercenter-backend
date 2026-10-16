@@ -4,10 +4,13 @@ The expected values below record how the importer stores each cell today, so the
 pandas -> openpyxl rewrite can be checked against identical behavior.
 """
 
+import datetime
 import io
+from unittest import mock
 
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 from openpyxl import Workbook
 
 from adopters.enums import ApprovalStatus
@@ -143,3 +146,19 @@ class SpreadsheetUploadTests(SmokeTestCase):
             UserProfile.objects.filter(primary_email="jordan.rivers@example.invalid").count(), 1
         )
         self.assertEqual(AdopterUploadEvent.objects.count(), 2)
+
+    def test_approval_email_window_does_not_slide_on_reupload(self) -> None:
+        start = timezone.now()
+
+        def upload_at(offset: datetime.timedelta) -> None:
+            with mock.patch("django.utils.timezone.now", return_value=start + offset):
+                self.upload([ACCEPTED])
+
+        upload_at(datetime.timedelta(0))
+        upload_at(datetime.timedelta(days=4))
+        upload_at(datetime.timedelta(days=6))
+        self.assertEqual(len(mail.outbox), 1, "re-uploads inside the window send nothing")
+
+        # One week after the first email, even though the last upload was a day ago
+        upload_at(datetime.timedelta(days=7, hours=1))
+        self.assertEqual(len(mail.outbox), 2)

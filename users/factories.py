@@ -41,6 +41,7 @@ class UserFactory:
             return
 
         EmailViewSet().ApplicationApproved(adopter)
+        adopter.start_approval_window()
 
 
 class UserSpreadsheetFactory(UserFactory):
