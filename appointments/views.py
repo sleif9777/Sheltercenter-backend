@@ -174,13 +174,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             instant__range=DateTimeUtils.get_range_for_date(timezone.now(), backdate_days=10),
             outcome__in=[OutcomeTypes.ADOPTION, OutcomeTypes.FTA],
             soft_deleted=False,
-        ).prefetch_related("bookings__adopter").select_related("chosen_dog")
+        ).prefetch_related("bookings__adopter")
 
         paperwork_appts = Appointment.objects.filter(
             instant__range=DateTimeUtils.get_range_for_date(timezone.now(), backdate_days=10),
             type=AppointmentTypes.PAPERWORK,
             soft_deleted=False,
-        ).select_related("paperwork_adoption__adopter", "paperwork_adoption__dog")
+        ).select_related("paperwork_adoption__adopter")
 
         all_serialized_adoptions = [
             {
