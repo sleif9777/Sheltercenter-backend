@@ -68,9 +68,9 @@ class EmailViewSet(viewsets.ViewSet):
         booking = appointment.get_current_booking()
         adopter = booking.adopter
 
-        watchlist_entries = adopter.watchlistentry_set.select_related("dog").all()
-        watchlist_available = [e.dog for e in watchlist_entries if e.dog.status == DogStatus.AVAILABLE_NOW]
-        watchlist_unavailable = [e.dog for e in watchlist_entries if e.dog.status != DogStatus.AVAILABLE_NOW]
+        watchlist_dogs = Dog.objects.filter(interest_adopters=adopter)
+        watchlist_available = [d for d in watchlist_dogs if d.status == DogStatus.AVAILABLE_NOW]
+        watchlist_unavailable = [d for d in watchlist_dogs if d.status != DogStatus.AVAILABLE_NOW]
 
         subject = "Reminder: Your Upcoming Appointment with Saving Grace"
 
