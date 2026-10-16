@@ -585,16 +585,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Send email to the adopter
         EmailViewSet().AppointmentScheduled(appt)
 
-        # TODO: If short notice, create a short notice notification
-        # NOTE: This is mostly done, but needs testing on a weekday night
-        # if ShortNoticeNotification.is_short_notice(appointment.instant):
-        # short_notice = ShortNoticeNotification.objects.create(
-        #     target_booking=booking,
-        #     type=ShortNoticeNotificationTypes.ADD,
-        # )
-
-        # TODO: Email the short notice to adoptions
-
         # Return success status.
         return JsonResponse({}, status=status.HTTP_201_CREATED)
 
