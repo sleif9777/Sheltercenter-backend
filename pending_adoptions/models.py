@@ -73,6 +73,18 @@ class PendingAdoption(models.Model):
         self.heartworm_positive = new_hw
         self.save()
 
+    @staticmethod
+    def adopter_has_open_adoption(adopter: Adopter, exclude_id: int | None = None) -> bool:
+        """True if the adopter has an adoption that is neither canceled nor completed."""
+        adoptions = PendingAdoption.objects.filter(adopter=adopter).exclude(
+            status__in=[PendingAdoptionStatus.CANCELED, PendingAdoptionStatus.COMPLETED]
+        )
+
+        if exclude_id is not None:
+            adoptions = adoptions.exclude(pk=exclude_id)
+
+        return adoptions.exists()
+
     def __str__(self):
         return "{0} - {1}".format(self.dog, self.status_display)
 

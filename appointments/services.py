@@ -47,6 +47,7 @@ class ContinuityAccessSpreadsheetService:
         appts = Appointment.objects.filter(
             instant__range=DateTimeUtils.get_range_for_date(self.date),
             soft_deleted=False,
+            primary_appointment__isnull=True,
         ).order_by("instant")
 
         schedule_data = []

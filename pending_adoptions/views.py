@@ -1,6 +1,7 @@
 from adopters.models import Adopter
 from adopters.serializers import AdopterIDRequestSerializer
 from appointments.enums import OutcomeTypes
+from bookings.enums import BookingStatus
 from django.http import JsonResponse
 from django.utils import timezone
 from adopters.views import AdopterViewSet
@@ -181,16 +182,30 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
         send_email = query.validated_data.get("sendEmail", True)
 
         adoption = query.get_adoption()
+        previous_status = adoption.status
         adoption.mark_status(new_status)
 
         if new_status == PendingAdoptionStatus.READY_TO_ROLL and send_email:
             EmailViewSet().ReadyToRoll(adoption, message)
 
         if new_status == PendingAdoptionStatus.CANCELED and adoption.source_appointment:
-            if adoption.status != PendingAdoptionStatus.COMPLETED:
+            # Keep the calendar locked while another dog (e.g. a second dog from the same
+            # visit) is still pending
+            if previous_status != PendingAdoptionStatus.COMPLETED and not (
+                PendingAdoption.adopter_has_open_adoption(adoption.adopter)
+            ):
                 adoption.adopter.restrict_calendar(restrict=False)
-            adoption.source_appointment.outcome = OutcomeTypes.NO_DECISION
-            adoption.source_appointment.chosen_dog = ""
-            adoption.source_appointment.save()
+
+            source_appointment = adoption.source_appointment
+            if source_appointment.is_second_dog_appointment:
+                # The placeholder only exists to hold this dog, so hide it
+                booking = source_appointment.get_current_booking()
+                if booking is not None:
+                    booking.mark_status(BookingStatus.CANCELLED)
+                source_appointment.soft_delete()
+            else:
+                source_appointment.outcome = OutcomeTypes.NO_DECISION
+                source_appointment.chosen_dog = ""
+                source_appointment.save()
 
         return JsonResponse({}, status=status.HTTP_200_OK)

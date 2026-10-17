@@ -32,7 +32,7 @@ class AppointmentAdmin(ModelAdmin):
         "chosen_dog",
         "surrendered_dog",
     )
-    autocomplete_fields = ("surrendered_dog_instance",)
+    autocomplete_fields = ("surrendered_dog_instance", "primary_appointment")
     date_hierarchy = "instant"
     ordering = ("-instant",)
 

@@ -102,7 +102,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         date, date_key = AppointmentViewSet.GetISODateFromISODateRequest(request.query_params)
 
         appts = Appointment.objects.filter(
-            instant__range=DateTimeUtils.get_range_for_date(date), soft_deleted=False
+            instant__range=DateTimeUtils.get_range_for_date(date),
+            soft_deleted=False,
+            primary_appointment__isnull=True,
         )
 
         appt_hash = AppointmentHashMapper.map_appointments(appts) if appts.count() > 0 else None
@@ -314,7 +316,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def CancelAllAndClose(self, request):
         date, _ = AppointmentViewSet.GetISODateFromISODateRequest(request.data)
         dateRange = DateTimeUtils.get_range_for_date(date)
-        appts = Appointment.objects.filter(instant__range=dateRange)
+        appts = Appointment.objects.filter(
+            instant__range=dateRange, primary_appointment__isnull=True
+        )
 
         for appt in appts:
             booking = appt.get_current_booking()
@@ -405,6 +409,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return JsonResponse({}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["POST"], url_path="CheckOutAppointment")
+    @transaction.atomic
     def CheckOutAppointment(self, request):
         query = CheckOutAppointmentRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -413,27 +418,73 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         outcome = query.validated_data["outcome"]
         dogID = query.validated_data["dogID"]
         no_decision_email_option = query.validated_data["noDecisionEmailOption"]
-
-        dog = Dog.objects.get(pk=dogID).name if dogID else ""
+        second_outcome = query.validated_data.get("secondOutcome")
+        second_dog_id = query.validated_data.get("secondDogID")
 
         appt = Appointment.objects.get(pk=id)
+
+        if appt.is_second_dog_appointment:
+            return JsonResponse(
+                {"detail": "Edit the second dog from the original appointment."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        existing_second_dog_appt = appt.get_second_dog_appointment()
+        second_dog_adoption_canceled = False
+
+        if (
+            second_dog_id is not None
+            and outcome == OutcomeTypes.NO_DECISION
+            and existing_second_dog_appt is None
+        ):
+            return JsonResponse(
+                {"secondDogID": [SECOND_DOG_NEEDS_DOG_CHOICE]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Remove a second dog that was unchecked before processing the first dog, so the
+        # calendar-unlock check for the first dog doesn't see the second dog's adoption.
+        if second_dog_id is None and existing_second_dog_appt is not None:
+            second_dog_adoption_canceled = AppointmentViewSet._remove_second_dog_appointment(
+                existing_second_dog_appt
+            )
+
+        AppointmentViewSet._check_out_with_outcome(
+            appt,
+            outcome,
+            dogID,
+            no_decision_email_option,
+            adoption_canceled_elsewhere=second_dog_adoption_canceled,
+        )
+
+        if second_dog_id is not None:
+            second_dog_appt = (
+                existing_second_dog_appt or AppointmentViewSet._create_second_dog_appointment(appt)
+            )
+            AppointmentViewSet._check_out_with_outcome(
+                second_dog_appt, second_outcome, second_dog_id, NoDecisionEmailOption.NO_EMAIL
+            )
+
+        return JsonResponse({}, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def _check_out_with_outcome(
+        appt: Appointment,
+        outcome: int,
+        dogID: Optional[int],
+        no_decision_email_option: int,
+        adoption_canceled_elsewhere: bool = False,
+    ) -> None:
+        dog = Dog.objects.get(pk=dogID).name if dogID else ""
         appt.check_out(outcome, dog, dogID)
+        adopter = appt.get_current_booking().adopter
 
         if outcome == OutcomeTypes.CHOSEN:
             # create pending adoption
             pending_adoption, created = PendingAdoption.objects.update_or_create(
                 source_appointment=appt,
                 defaults={
-                    "adopter": appt.get_current_booking().adopter,
-                    "circumstance": CircumstanceOptions.APPOINTMENT,
-                    "created_instant": timezone.now(),
-                    "dog": dog,
-                    "dogID": dogID,
-                    "source_appointment": appt,
-                    "status": PendingAdoptionStatus.CHOSEN,
-                },
-                create_defaults={
-                    "adopter": appt.get_current_booking().adopter,
+                    "adopter": adopter,
                     "circumstance": CircumstanceOptions.APPOINTMENT,
                     "created_instant": timezone.now(),
                     "dog": dog,
@@ -446,26 +497,65 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             # email confirmation and lock calendar
             if created:
                 EmailViewSet().DogChosen(appt)
-                appt.get_current_booking().adopter.restrict_calendar()
+                adopter.restrict_calendar()
         elif outcome == OutcomeTypes.NO_DECISION:
-            try:
-                # find pending adoption and mark canceled
-                pending_adoption = PendingAdoption.objects.get_or_create(source_appointment=appt)
-                pending_adoption.status = PendingAdoptionStatus.CANCELED
-                pending_adoption.save()
+            # find pending adoption and mark canceled
+            canceled = AppointmentViewSet._cancel_open_adoption(appt) or adoption_canceled_elsewhere
 
-                # restore calendar access
-                pending_adoption.adopter.restrict_calendar(restrict=False)
-            except Exception:
-                logger.exception("Error canceling pending adoption on NO_DECISION checkout for appt %s", appt.id)
+            # restore calendar access unless another dog is still pending
+            if canceled and not PendingAdoption.adopter_has_open_adoption(adopter):
+                adopter.restrict_calendar(restrict=False)
 
             if no_decision_email_option != NoDecisionEmailOption.NO_EMAIL:
                 send_sleepover_info = no_decision_email_option == NoDecisionEmailOption.WITH_SLEEPOVER
                 EmailViewSet().NoDecision(appt, send_sleepover_info)
         elif outcome in [OutcomeTypes.ADOPTION, OutcomeTypes.FTA]:
-            appt.get_current_booking().adopter.restrict_calendar()
+            adopter.restrict_calendar()
 
-        return JsonResponse({}, status=status.HTTP_200_OK)
+    @staticmethod
+    def _cancel_open_adoption(appt: Appointment) -> bool:
+        adoption = (
+            PendingAdoption.objects.filter(source_appointment=appt)
+            .exclude(status__in=[PendingAdoptionStatus.CANCELED, PendingAdoptionStatus.COMPLETED])
+            .first()
+        )
+
+        if adoption is None:
+            return False
+
+        adoption.mark_status(PendingAdoptionStatus.CANCELED)
+        return True
+
+    @staticmethod
+    def _create_second_dog_appointment(primary: Appointment) -> Appointment:
+        second_dog_appt = Appointment.objects.create(
+            type=primary.type,
+            instant=primary.instant,
+            locked=True,
+            primary_appointment=primary,
+            check_in_time=primary.check_in_time,
+            clothing_description=primary.clothing_description,
+            counselor=primary.counselor,
+        )
+        Booking.create_active(primary.get_current_booking().adopter, second_dog_appt)
+
+        return second_dog_appt
+
+    @staticmethod
+    def _remove_second_dog_appointment(second_dog_appt: Appointment) -> bool:
+        """Cancels the second dog's adoption and hides the placeholder.
+
+        Returns True if an adoption was canceled.
+        """
+        canceled = AppointmentViewSet._cancel_open_adoption(second_dog_appt)
+
+        booking = second_dog_appt.get_current_booking()
+        if booking is not None:
+            booking.mark_status(BookingStatus.CANCELLED)
+
+        second_dog_appt.soft_delete()
+
+        return canceled
 
     @action(detail=False, methods=["POST"], url_path="CreateAppointment")
     def CreateAppointment(self, request):
@@ -806,6 +896,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appts_qs = Appointment.objects.filter(
                 type__in=adoption_types,
                 soft_deleted=False,
+                primary_appointment__isnull=True,
                 outcome__isnull=False,
                 instant__date__gte=start,
                 instant__date__lte=end,
@@ -862,6 +953,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             Booking.objects.filter(
                 status=BookingStatus.COMPLETED,
                 adopter_id__in=adopted_adopter_ids,
+                appointment__primary_appointment__isnull=True,
             )
             .values("adopter_id")
             .annotate(count=Count("id"))
@@ -926,6 +1018,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             base_qs = Appointment.objects.filter(
                 type__in=adoption_types,
                 soft_deleted=False,
+                primary_appointment__isnull=True,
                 outcome__isnull=False,
                 instant__date__gte=start,
                 instant__date__lte=end,

@@ -38,18 +38,35 @@ class CheckInAppointmentRequestSerializer(AppointmentIDRequestSerializer):
     )
 
 
+DOG_CHOICE_OUTCOMES = [OutcomeTypes.ADOPTION, OutcomeTypes.FTA, OutcomeTypes.CHOSEN]
+SECOND_DOG_NEEDS_DOG_CHOICE = (
+    "A second dog requires an adoption, chosen or FTA outcome for the first dog."
+)
+
+
+def _parse_optional_dog_id(value):
+    if not value:
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        raise serializers.ValidationError("Must be a valid integer.")
+
+
 class CheckOutAppointmentRequestSerializer(AppointmentIDRequestSerializer):
     outcome = serializers.IntegerField()
     noDecisionEmailOption = serializers.IntegerField(default=NoDecisionEmailOption.WITH_SLEEPOVER)
     dogID = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
+    # Optional second dog chosen in the same visit
+    secondOutcome = serializers.IntegerField(required=False, allow_null=True)
+    secondDogID = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+
     def validate_dogID(self, value):
-        if not value:
-            return None
-        try:
-            return int(value)
-        except (ValueError, TypeError):
-            raise serializers.ValidationError("Must be a valid integer.")
+        return _parse_optional_dog_id(value)
+
+    def validate_secondDogID(self, value):
+        return _parse_optional_dog_id(value)
 
     def validate(self, data):
         outcome = data["outcome"]
@@ -57,6 +74,25 @@ class CheckOutAppointmentRequestSerializer(AppointmentIDRequestSerializer):
 
         if outcome < OutcomeTypes.NO_DECISION and not dogID:
             raise serializers.ValidationError({"dogID": "This field is required."})
+
+        second_dog_id = data.get("secondDogID")
+        second_outcome = data.get("secondOutcome")
+
+        if second_dog_id is None:
+            return data
+
+        # The first dog may be No Decision only when keeping an existing second dog
+        # (checked in the view, since it depends on the appointment)
+        if outcome not in DOG_CHOICE_OUTCOMES and outcome != OutcomeTypes.NO_DECISION:
+            raise serializers.ValidationError({"secondDogID": SECOND_DOG_NEEDS_DOG_CHOICE})
+
+        if second_outcome not in DOG_CHOICE_OUTCOMES:
+            raise serializers.ValidationError(
+                {"secondOutcome": "Must be an adoption, chosen or FTA outcome."}
+            )
+
+        if second_dog_id == dogID:
+            raise serializers.ValidationError({"secondDogID": "Must be a different dog."})
 
         return data
 
@@ -245,6 +281,14 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
             if instance.is_checked_out:
                 data["checkOutTime"] = instance.check_out_time_display
                 data["outcomeDisplay"] = instance.outcome_value_display
+
+                second_dog_appt = instance.get_second_dog_appointment()
+                if second_dog_appt is not None:
+                    data["secondDog"] = {
+                        "outcome": second_dog_appt.outcome,
+                        "chosenDog": second_dog_appt.chosen_dog,
+                        "chosenDogID": second_dog_appt.chosen_dog_id,
+                    }
 
         if instance.is_surrender_appointment and instance.surrendered_dog_instance:
             dog = instance.surrendered_dog_instance

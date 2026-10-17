@@ -179,7 +179,11 @@ class Appointment(models.Model):
 
         if self.has_adoption_outcome:
             outcome += ": {0}".format(self.chosen_dog)
-        
+
+        second_dog_appt = self.get_second_dog_appointment()
+        if second_dog_appt is not None and second_dog_appt.outcome is not None:
+            outcome += " + {0}".format(second_dog_appt.outcome_value_display)
+
         return outcome
 
     @property
@@ -200,12 +204,37 @@ class Appointment(models.Model):
         related_name="surrender_appointments",
     )
 
+    # SECOND DOG FIELDS
+    # When an adopter chooses two dogs in one visit, the second dog is recorded on a hidden
+    # placeholder appointment that points back to the real one. This keeps each PendingAdoption
+    # tied to exactly one source appointment.
+    primary_appointment = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="second_dog_appointments",
+    )
+
+    @property
+    def is_second_dog_appointment(self):
+        return self.primary_appointment_id is not None
+
+    def get_second_dog_appointment(self) -> Optional["Appointment"]:
+        if self.is_second_dog_appointment or not self.is_adoption_appointment:
+            return None
+
+        return self.second_dog_appointments.filter(soft_deleted=False).first()
+
     # OTHER RELATIONAL FIELDS
     def __str__(self):
         name = "{0} - {1}".format(self.type_display, self.instant_display)
 
         if self.outcome is not None:
             name += " ({0})".format(self.outcome_value_display)
+
+        if self.is_second_dog_appointment:
+            name += " - SECOND DOG"
 
         if self.soft_deleted:
             name += " - SOFT DELETED"
@@ -253,6 +282,9 @@ class Appointment(models.Model):
     def soft_delete(self):
         self.soft_deleted = True
         self.save()
+
+        for second_dog_appt in self.second_dog_appointments.filter(soft_deleted=False):
+            second_dog_appt.soft_delete()
 
     def toggle_lock(self, override: Optional[bool] = None):
         self.locked = override if override is not None else not self.locked

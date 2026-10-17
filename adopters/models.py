@@ -138,7 +138,8 @@ class Adopter(models.Model):
 
     @property
     def booking_history(self):
-        bookings = self.bookings
+        # Second-dog placeholder appointments aren't separate visits
+        bookings = self.bookings.filter(appointment__primary_appointment__isnull=True)
         completed = bookings.filter(status=BookingStatus.COMPLETED)
         no_show = bookings.filter(status=BookingStatus.NOSHOW)
         no_decision = [b for b in completed if b.appointment.outcome == OutcomeTypes.NO_DECISION]
