@@ -11,7 +11,9 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 logger = logging.getLogger(__name__)
 
 from appointments.models import Appointment
+from users.enums import SecurityLevel
 from users.factories import UserFormFactory, UserSpreadsheetFactory
+from users.permissions import MinSecurityLevel
 
 from .models import UserProfile
 from .serializers import *
@@ -75,7 +77,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             return JsonResponse({"isAuthenticated": False}, status=status.HTTP_401_UNAUTHORIZED)
 
     # POST methods
-    @action(detail=False, methods=["POST"], url_path="ImportSpreadsheetBatch")
+    @action(detail=False, methods=["POST"], url_path="ImportSpreadsheetBatch", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
     def ImportSpreadsheetBatch(self, request):
         query = ImportSpreadsheetBatchRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
@@ -89,7 +91,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
         return JsonResponse(upload_result, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"], url_path="SaveUserForm", permission_classes=[AllowAny])
+    @action(detail=False, methods=["POST"], url_path="SaveUserForm", permission_classes=[MinSecurityLevel(SecurityLevel.ADMIN)])
     def SaveUserForm(self, request):
         query = SaveUserFormRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
