@@ -210,6 +210,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     QUEUE_CUTOFF_KEY = 1600
 
+    # Mirrors DateTime.IsClosedForBooking on the frontend
+    ADOPTER_BOOKING_CUTOFF = datetime.timedelta(hours=2)
+
     @staticmethod
     def _get_queue_bookings_for_date(date: datetime.date) -> list[Booking]:
         """Active adoption bookings for the X-in-Queue email, in default queue order.
@@ -809,6 +812,17 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Fetch and lock the appointment and adopter rows to prevent concurrent bookings
         appt = Appointment.objects.select_for_update().get(pk=request.data["apptID"])
         adopter = Adopter.objects.select_for_update().get(pk=request.data["adopterID"])
+
+        # Adopters can't book inside the cutoff window; staff may still book late walk-ups
+        is_adopter = request.user.security_level == SecurityLevel.ADOPTER
+        if is_adopter and appt.instant - timezone.now() < self.ADOPTER_BOOKING_CUTOFF:
+            return JsonResponse(
+                {
+                    "error": "Appointments must be booked at least 2 hours in advance. "
+                    "Please choose a later time."
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
 
         # Update the adopter demographics
         if len(data.keys()) > 2:  # More than just apptID and adopterID
