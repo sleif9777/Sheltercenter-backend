@@ -175,6 +175,26 @@ class AdopterFlowTests(SmokeTestCase):
         self.booking.refresh_from_db()
         self.assertEqual(self.booking.status, BookingStatus.CANCELLED)
 
+    def test_repeat_cancel_by_token_is_rejected(self) -> None:
+        anon = self.client_for(None)
+        payload = {"token": str(self.booking.cancel_token)}
+        self.assertStatus(anon.post("/Appointments/CancelByToken/", payload, format="json"), 200)
+        self.assertStatus(anon.post("/Appointments/CancelByToken/", payload, format="json"), 404)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_repeat_cancel_is_rejected(self) -> None:
+        client = self.client_for(self.adopter_user)
+        payload = {"apptID": self.booked_appt.id}
+        self.assertStatus(
+            client.post("/Appointments/CancelAppointment/", payload, format="json"), 200
+        )
+        self.assertStatus(
+            client.post("/Appointments/CancelAppointment/", payload, format="json"), 404
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, BookingStatus.CANCELLED)
+
     def test_update_preferences(self) -> None:
         resp = self.client_for(self.adopter_user).post(
             "/Adopters/UpdateAdopterPreferences/",

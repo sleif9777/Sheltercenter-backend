@@ -339,9 +339,18 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return JsonResponse({}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["POST"], url_path="CancelAppointment")
+    @transaction.atomic
     def CancelAppointment(self, request):
         appt = self.GetAppointmentFromAppointmentIDRequest(request.data)
-        booking = Booking.objects.get(appointment=appt, status=BookingStatus.ACTIVE)
+
+        # Lock the active booking so a duplicate request can't cancel (and email) twice
+        booking = (
+            Booking.objects.select_for_update()
+            .filter(appointment=appt, status=BookingStatus.ACTIVE)
+            .first()
+        )
+        if booking is None:
+            return JsonResponse({}, status=status.HTTP_404_NOT_FOUND)
 
         # Email the adopter
         EmailViewSet().AppointmentCanceled(appt)
@@ -354,9 +363,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return JsonResponse({}, status=status.HTTP_200_OK)
 
     @staticmethod
-    def _get_active_booking_by_token(token: str) -> Optional[Booking]:
+    def _get_active_booking_by_token(token: str, for_update: bool = False) -> Optional[Booking]:
+        bookings = Booking.objects.select_related("appointment")
+        if for_update:
+            bookings = bookings.select_for_update(of=("self",))
+
         try:
-            return Booking.objects.select_related("appointment").get(
+            return bookings.get(
                 cancel_token=token,
                 status=BookingStatus.ACTIVE,
                 cancel_token_expires_at__gt=timezone.now(),
@@ -380,12 +393,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         )
 
     @action(detail=False, methods=["POST"], url_path="CancelByToken", permission_classes=[AllowAny])
+    @transaction.atomic
     def CancelByToken(self, request):
         token = request.data.get("token")
         if not token:
             return JsonResponse({}, status=status.HTTP_400_BAD_REQUEST)
 
-        booking = self._get_active_booking_by_token(token)
+        booking = self._get_active_booking_by_token(token, for_update=True)
         if booking is None:
             return JsonResponse({}, status=status.HTTP_404_NOT_FOUND)
 
