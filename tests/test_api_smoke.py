@@ -282,3 +282,28 @@ class RecentAdoptionsTests(SmokeTestCase):
         self.assertStatus(resp, 200)
         dogs = sorted(a["dog"] for a in resp.json()["adoptions"])
         self.assertEqual(dogs, sorted([self.dog.name, self.other_dog.name]))
+
+
+class DashboardTests(SmokeTestCase):
+    def ready_to_roll_cards(self) -> list[dict[str, object]]:
+        resp = self.client_for(self.admin_user).get("/Dogs/GetDashboardDogHash/")
+        self.assertStatus(resp, 200)
+        cards: list[dict[str, object]] = resp.json()["hash"]["chosen"]["readyToRoll"]
+        return cards
+
+    def test_ready_to_roll_includes_paperwork_appointment_once_booked(self) -> None:
+        self.pending_adoption.status = PendingAdoptionStatus.READY_TO_ROLL
+        self.pending_adoption.save()
+        [card] = self.ready_to_roll_cards()
+        self.assertIsNone(card["paperworkAppointmentInst"])
+
+        paperwork = Appointment.objects.create(
+            type=AppointmentTypes.PAPERWORK, instant=local_instant(2, 16)
+        )
+        self.pending_adoption.paperwork_appointment = paperwork
+        self.pending_adoption.save()
+        [card] = self.ready_to_roll_cards()
+        self.assertEqual(
+            datetime.datetime.fromisoformat(str(card["paperworkAppointmentInst"])),
+            paperwork.instant,
+        )

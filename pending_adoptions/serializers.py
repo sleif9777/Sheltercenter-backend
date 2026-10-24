@@ -54,6 +54,7 @@ class DashboardPendingAdoptionDogSerializer(serializers.Serializer):
     name = serializers.CharField(source="dog")
     photoURL = serializers.SerializerMethodField()
     unavailableDate = serializers.SerializerMethodField()
+    paperworkAppointmentInst = serializers.SerializerMethodField()
 
     def _get_dog(self, obj):
         if not hasattr(obj, "_cached_dog"):
@@ -75,6 +76,9 @@ class DashboardPendingAdoptionDogSerializer(serializers.Serializer):
         if dog:
             return dog.unavailable_date_iso
         return obj.source_appt_instant if obj.source_appointment else None
+
+    def get_paperworkAppointmentInst(self, obj):
+        return obj.paperwork_appt_instant if obj.paperwork_appointment else None
 
 
 class PendingAdoptionValueLabelPairSerializer(serializers.HyperlinkedModelSerializer):
