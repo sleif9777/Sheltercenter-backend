@@ -1,5 +1,5 @@
 from adopters.views import AdopterViewSet
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.db.models import Q
 from django.http import JsonResponse, QueryDict
 from django.utils import timezone
@@ -36,11 +36,10 @@ class DogsViewSet(viewsets.ModelViewSet):
         today = timezone.localdate()
         monday = today - timedelta(days=today.weekday())
 
-        # Convert monday to an aware datetime at midnight in the current timezone
-        monday_aware = timezone.make_aware(datetime.combine(monday, datetime.min.time()))
-
+        # unavailable_date is the adoption date for Healthy In Home dogs. last_updated moves on
+        # any Shelterluv edit, so it would pull long-adopted dogs back onto the board.
         newly_in_home = Dog.objects.filter(
-            status=DogStatus.HEALTHY_IN_HOME, last_updated__gte=monday_aware
+            status=DogStatus.HEALTHY_IN_HOME, unavailable_date__gte=monday
         )
 
         fta = Dog.objects.filter(status=DogStatus.FTA)

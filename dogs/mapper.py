@@ -17,6 +17,8 @@ SHELTERLUV_STATUS_MAP = {
     "Deceased": DogStatus.UNAVAILABLE,
 }
 
+# Statuses that take a dog off the available list. import_dogs sets unavailable_date when a
+# dog moves into one of these and keeps it until the dog is available again.
 STATUSES_REQUIRING_UNAVAILABLE_DATE = {
     DogStatus.UNAVAILABLE,
     DogStatus.HEALTHY_IN_HOME,
@@ -38,14 +40,6 @@ def parse_timestamp(value) -> datetime | None:
         return datetime.fromtimestamp(int(value), tz=dt_timezone.utc)
     except (ValueError, OSError):
         return None
-
-
-def parse_unavailable_date(status: DogStatus, last_updated: datetime | None) -> date | None:
-    if status not in STATUSES_REQUIRING_UNAVAILABLE_DATE:
-        return None
-    if last_updated:
-        return last_updated.date()
-    return date.today()
 
 
 def parse_fun_size(animal: dict) -> bool:
@@ -99,7 +93,6 @@ def map_dog(animal: dict) -> dict | None:
             "breed": animal.get("Breed", ""),
             "fun_size": parse_fun_size(animal),
             "available_date": parse_available_date(description),
-            "unavailable_date": parse_unavailable_date(status, last_updated),
             "last_updated": last_updated,
             "last_intake": last_intake,
             "status": status,

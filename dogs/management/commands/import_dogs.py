@@ -1,13 +1,15 @@
 import requests
 import os
 import time
+from datetime import timedelta
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from adopters.models import Adopter
 from dogs.enums import DogStatus
 from dogs.models import Dog
-from dogs.mapper import map_dog, parse_status
+from dogs.mapper import STATUSES_REQUIRING_UNAVAILABLE_DATE, map_dog, parse_status
+from dogs.shelterluv import fetch_adoption_date
 from dotenv import load_dotenv
 from email_templates.views import EmailViewSet
 from environment_settings.models import EnvironmentSettings
@@ -19,6 +21,10 @@ MIN_EXPECTED_ANIMALS = 15
 # If imported_ids covers less than this fraction of currently-active DB dogs,
 # treat it as a partial/failed import and skip deactivation.
 MIN_IMPORT_COVERAGE_RATIO = 0.5
+
+# A dog first seen already Healthy In Home and last edited longer ago than this can't have gone
+# home this week (an adoption bumps LastUpdated), so skip the events lookup and use LastUpdated.
+ADOPTION_LOOKUP_WINDOW_DAYS = 7
 
 
 class Command(BaseCommand):
@@ -259,7 +265,7 @@ class Command(BaseCommand):
                 f"parsed status={parsed.get('status')}"
             )
 
-            created, reactivated = self._upsert_dog(parsed)
+            created, reactivated = self._upsert_dog(parsed, animal_data.get("Internal-ID"))
             imported_ids.add(shelterluv_id)
             total_imported += 1
             if reactivated:
@@ -269,7 +275,7 @@ class Command(BaseCommand):
 
         return total_imported, total_reactivated, total_created
 
-    def _upsert_dog(self, parsed):
+    def _upsert_dog(self, parsed, internal_id):
         shelterluv_id = parsed.pop("shelterluv_id")
         previous = Dog.objects.filter(shelterluv_id=shelterluv_id).first()
         was_inactive = previous and not previous.publishable
@@ -282,11 +288,13 @@ class Command(BaseCommand):
             f"unavailable_date={unavailable_date}"
         )
 
+        parsed["unavailable_date"] = self._resolve_unavailable_date(previous, parsed, internal_id)
         dog, created = Dog.objects.update_or_create(shelterluv_id=shelterluv_id, defaults=parsed)
 
         self._debug_output(
             f"  DB state after upsert: created={created}, "
-            f"publishable={dog.publishable}, status={dog.status}"
+            f"publishable={dog.publishable}, status={dog.status}, "
+            f"unavailable_date={dog.unavailable_date}"
         )
 
         reactivated = not created and was_inactive and dog.publishable
@@ -302,9 +310,6 @@ class Command(BaseCommand):
         )
 
         if just_deactivated:
-            if dog.status != DogStatus.FOSTER:
-                dog.unavailable_date = timezone.localdate()
-            dog.save()
             dog = Dog.objects.prefetch_related("interest_adopters").get(pk=dog.pk)
             adopters = list(dog.interest_adopters.all())
             self._debug_output(
@@ -320,6 +325,33 @@ class Command(BaseCommand):
             self._notify_interested_adopters(dog)
 
         return created, reactivated
+
+    def _resolve_unavailable_date(self, previous, parsed, internal_id):
+        # unavailable_date is the day the dog last left the available list, or its adoption date
+        # once Healthy In Home. It is only set on a transition; Shelterluv bumps LastUpdated for
+        # any edit to the record, so it can't stand in for either date.
+        status = parsed["status"]
+        if status == DogStatus.FOSTER:
+            return None
+        if status not in STATUSES_REQUIRING_UNAVAILABLE_DATE and parsed["publishable"]:
+            return None
+        if status == DogStatus.HEALTHY_IN_HOME and (
+            previous is None or previous.status != DogStatus.HEALTHY_IN_HOME
+        ):
+            return self._went_home_date(previous, parsed, internal_id)
+        if previous and previous.unavailable_date:
+            return previous.unavailable_date
+        return timezone.localdate()
+
+    def _went_home_date(self, previous, parsed, internal_id):
+        last_updated = parsed.get("last_updated")
+        lookup_cutoff = timezone.now() - timedelta(days=ADOPTION_LOOKUP_WINDOW_DAYS)
+        if previous is None and last_updated and last_updated < lookup_cutoff:
+            return timezone.localtime(last_updated).date()
+
+        adoption_date = fetch_adoption_date(internal_id, self.headers) if internal_id else None
+        self._debug_output(f"  Went home: Internal-ID={internal_id}, adoption_date={adoption_date}")
+        return adoption_date or timezone.localdate()
 
     def _handle_reactivation(self, dog, unavailable_date):
         if unavailable_date and (timezone.now().date() - unavailable_date).days > 90:
@@ -374,9 +406,14 @@ class Command(BaseCommand):
             self._notify_interested_adopters(dog)
 
         base_qs = Dog.objects.filter(publishable=True).exclude(shelterluv_id__in=imported_ids)
+        non_foster_qs = base_qs.exclude(status=DogStatus.FOSTER)
 
-        deactivated_count = base_qs.exclude(status=DogStatus.FOSTER).update(
+        # Dogs already off the list (e.g. chosen) keep the date they left it.
+        deactivated_count = non_foster_qs.filter(unavailable_date__isnull=True).update(
             publishable=False, unavailable_date=timezone.localdate()
+        )
+        deactivated_count += non_foster_qs.filter(unavailable_date__isnull=False).update(
+            publishable=False
         )
         deactivated_count += base_qs.filter(status=DogStatus.FOSTER).update(
             publishable=False  # unavailable_date left as None for fosters
