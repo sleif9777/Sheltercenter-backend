@@ -72,6 +72,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def GetAppointmentCardData(self, request):
         appointment = self.GetAppointmentFromAppointmentIDRequest(request.query_params)
 
+        # Admin appointments carry internal details (e.g. who is visiting) adopters must not see
+        is_adopter = request.user.security_level == SecurityLevel.ADOPTER
+        if is_adopter and appointment.is_admin_appointment:
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
         serializer = AppointmentCardDataSerializer(appointment, context={"request": request})
 
         return JsonResponse({"cardData": serializer.data}, status=status.HTTP_200_OK)
@@ -598,26 +603,33 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         locked = query.validated_data["locked"]
         pending_adoption_id = query.validated_data.get("pendingAdoptionID", 0)
         surrender_dog_name = query.validated_data.get("surrenderDogName", "")
+        visit_adopter = query.validated_data.get("visitAdopter", "")
 
         adoption = None
         is_paperwork_appt = type == AppointmentTypes.PAPERWORK
         is_surrender_appt = type == AppointmentTypes.SURRENDER
+        is_visit_appt = type == AppointmentTypes.VISIT
 
-        if is_paperwork_appt and pending_adoption_id > 0:
+        if (is_paperwork_appt or is_visit_appt) and pending_adoption_id > 0:
             adoption = PendingAdoption.objects.get(pk=pending_adoption_id)
+
+        # A selected adoption overrides the free-text dog and adopter
+        if adoption is not None:
+            notes = adoption.dog
+            visit_adopter = adoption.adopter.user_profile.full_name
 
         appointment = Appointment.objects.create(
             locked=locked,
             type=type,
             instant=instant,
-            appointment_notes=(
-                adoption.dog if (is_paperwork_appt and adoption is not None) else notes or ""
-            ),
+            appointment_notes=notes or "",
             surrendered_dog=(surrender_dog_name if is_surrender_appt else ""),
             surrendered_dog_fka=(fka if is_surrender_appt else ""),
+            visit_adopter=((visit_adopter or "").strip() if is_visit_appt else ""),
+            visit_adoption=(adoption if is_visit_appt else None),
         )
 
-        if adoption:
+        if adoption is not None and is_paperwork_appt:
             adoption.paperwork_appointment = appointment
             adoption.save()
 

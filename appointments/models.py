@@ -36,6 +36,10 @@ class Appointment(models.Model):
         return self.type == AppointmentTypes.PAPERWORK
 
     @property
+    def is_visit_appointment(self):
+        return self.type == AppointmentTypes.VISIT
+
+    @property
     def is_donation_dropoff(self):
         return self.type == AppointmentTypes.DONATION_DROP_OFF
 
@@ -202,6 +206,18 @@ class Appointment(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="surrender_appointments",
+    )
+
+    # VISIT FIELDS
+    # The visiting dog is kept in appointment_notes (legacy visits only have that). The adopter
+    # is stored as a name so visits for adoptions not in the system can still record one.
+    visit_adopter = models.CharField(default="", max_length=1000, null=True, blank=True)
+    visit_adoption = models.ForeignKey(
+        "pending_adoptions.PendingAdoption",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="visit_appointments",
     )
 
     # SECOND DOG FIELDS

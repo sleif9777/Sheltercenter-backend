@@ -175,6 +175,7 @@ class CreateAppointmentRequestSerializer(ISODateRequestSerializer, TimeRequestSe
     notes = serializers.CharField(required=False, allow_null=True)
     pendingAdoptionID = serializers.IntegerField(required=False)
     surrenderDogName = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    visitAdopter = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
 class RescheduleAppointmentRequestSerializer(AppointmentIDRequestSerializer):
@@ -230,6 +231,7 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
 
     checkOutTime = serializers.CharField(read_only=True, allow_null=True)
     notes = serializers.CharField(source="appointment_notes", allow_null=True)
+    visitAdopter = serializers.CharField(source="visit_adopter", allow_null=True)
 
     class Meta:
         model = Appointment
@@ -254,6 +256,7 @@ class AppointmentCardDataSerializer(serializers.ModelSerializer):
             "chosenDog",
             "chosenDogID",
             "notes",
+            "visitAdopter",
         ]
 
     def to_representation(self, instance: Appointment):
