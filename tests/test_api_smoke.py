@@ -254,6 +254,33 @@ class StaffWorkflowTests(SmokeTestCase):
         self.pending_adoption.refresh_from_db()
         self.assertEqual(self.pending_adoption.status, PendingAdoptionStatus.NEEDS_WELL_CHECK)
 
+    def test_pending_adoption_create_sends_email_by_default(self) -> None:
+        resp = self.client_for(self.admin_user).post(
+            "/PendingAdoptions/CreatePendingAdoption/",
+            {
+                "adopterID": self.adopter.id,
+                "dogID": str(self.dog.id),
+                "circumstance": CircumstanceOptions.FOSTER,
+            },
+            format="json",
+        )
+        self.assertStatus(resp, 201)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_pending_adoption_create_can_skip_email(self) -> None:
+        resp = self.client_for(self.admin_user).post(
+            "/PendingAdoptions/CreatePendingAdoption/",
+            {
+                "adopterID": self.adopter.id,
+                "dogID": str(self.dog.id),
+                "circumstance": CircumstanceOptions.FOSTER,
+                "sendEmail": False,
+            },
+            format="json",
+        )
+        self.assertStatus(resp, 201)
+        self.assertEqual(len(mail.outbox), 0)
+
     def test_close_and_reopen_date(self) -> None:
         client = self.client_for(self.admin_user)
         date = (timezone.localdate() + datetime.timedelta(days=5)).isoformat()

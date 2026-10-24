@@ -144,6 +144,7 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
             dog = Dog.objects.get(pk=dogID).name
 
         circumstance = query.validated_data["circumstance"]
+        send_email = query.validated_data.get("sendEmail", True)
 
         pending_adoption = PendingAdoption.objects.create(
             dog=dog,
@@ -156,7 +157,8 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
 
         adopter.restrict_calendar()
 
-        EmailViewSet().AdoptionCreated(pending_adoption)
+        if send_email:
+            EmailViewSet().AdoptionCreated(pending_adoption)
 
         return JsonResponse({}, status=status.HTTP_201_CREATED)
 

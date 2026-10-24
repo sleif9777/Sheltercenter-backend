@@ -29,6 +29,7 @@ class CreatePendingAdoptionRequestSerializer(serializers.Serializer):
     dog = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     dogID = serializers.CharField(required=True)
     circumstance = serializers.IntegerField(required=True)
+    sendEmail = serializers.BooleanField(required=False, default=True)
 
 
 class CreatePendingAdoptionUpdateRequestSerializer(AdoptionIDRequestSerializer):
