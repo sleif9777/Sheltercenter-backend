@@ -2,7 +2,6 @@ import logging
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpRequest, JsonResponse
-from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -10,7 +9,6 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 logger = logging.getLogger(__name__)
 
-from appointments.models import Appointment
 from users.enums import SecurityLevel
 from users.factories import UserFormFactory, UserSpreadsheetFactory
 from users.permissions import MinSecurityLevel
@@ -33,11 +31,6 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
             access_token = AccessToken.for_user(user)
             refresh_token = RefreshToken.for_user(user)
-            current_appt: Appointment | None = None
-
-            if user.adopter_profile:
-                current_appt = user.adopter_profile.get_current_appointment()
-
             if user.adopter_profile is not None and user.adopter_profile.approval_expired:
                 return JsonResponse(
                     {},
@@ -54,13 +47,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                         "adopterID": user.adopter_profile.id if user.adopter_profile else None,
                         "security": user.security_level,
                         "currentAppt": (
-                            {
-                                "ID": current_appt.id,
-                                "isoDate": timezone.localtime(current_appt.instant).date().isoformat(),
-                                "isoInstant": timezone.localtime(current_appt.instant).isoformat(),
-                                "instantDisplay": current_appt.instant_display,
-                            }
-                            if current_appt
+                            user.adopter_profile.get_current_appointment_summary()
+                            if user.adopter_profile
                             else None
                         ),
                         "restrictCalendar": user.adoption_completed,

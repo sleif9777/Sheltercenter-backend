@@ -165,6 +165,20 @@ class Adopter(models.Model):
         except ObjectDoesNotExist:
             return None
 
+    def get_current_appointment_summary(self) -> dict[str, object] | None:
+        current_appt = self.get_current_appointment()
+
+        if not current_appt:
+            return None
+
+        local_instant = timezone.localtime(current_appt.instant)
+        return {
+            "ID": current_appt.id,
+            "isoDate": local_instant.date().isoformat(),
+            "isoInstant": local_instant.isoformat(),
+            "instantDisplay": current_appt.instant_display,
+        }
+
     def should_email_watchlist_updates(self) -> bool:
         current_appt = self.get_current_appointment()
         today = DateTimeUtils.get_today()

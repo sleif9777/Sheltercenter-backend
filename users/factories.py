@@ -15,6 +15,7 @@ from openpyxl import load_workbook
 from adopters.models import Adopter, AdopterUploadEvent
 from adopters.enums import ApprovalStatus
 from email_templates.views import EmailViewSet
+from pending_adoptions.models import PendingAdoption
 
 from .enums import *
 from .models import UserProfile
@@ -42,6 +43,17 @@ class UserFactory:
 
         EmailViewSet().ApplicationApproved(adopter)
         adopter.start_approval_window()
+
+    def restore_calendar_on_reapproval(self, adopter: Adopter) -> None:
+        # A past adoption locks the calendar for good; being approved again means they're coming back
+        # to adopt, so unlock it unless a dog is still pending
+        if not adopter.is_approved or not adopter.user_profile.adoption_completed:
+            return
+
+        if PendingAdoption.adopter_has_open_adoption(adopter):
+            return
+
+        adopter.restrict_calendar(restrict=False)
 
 
 class UserSpreadsheetFactory(UserFactory):
@@ -187,6 +199,7 @@ class UserSpreadsheetFactory(UserFactory):
             return None, False, False
 
         new_status, approval_averted = Adopter.get_application_status(row_data[4], row_data[27])
+        is_new_application = self.is_new_application(index)
 
         try:
             with transaction.atomic():
@@ -195,6 +208,9 @@ class UserSpreadsheetFactory(UserFactory):
         except Exception:
             logger.exception("Error processing spreadsheet row %s; record rolled back", index)
             return None, False, False
+
+        if is_new_application:
+            self.restore_calendar_on_reapproval(adopter)
 
         try:
             if self.send_approval_emails:
@@ -220,6 +236,17 @@ class UserSpreadsheetFactory(UserFactory):
 
     def is_foster_application(self, app_type: str):
         return "Foster" in app_type
+
+    def is_new_application(self, index: int) -> bool:
+        # Exports repeat old applications, so only a Shelterluv application ID this adopter has never
+        # had before counts as reapplying
+        app_id = str(self.rows[index][0]).strip()
+        adopter = Adopter.objects.filter(primary_email=str(self.rows[index][27]).lower()).first()
+
+        if not app_id or adopter is None or adopter.shelterluv_app_id == app_id:
+            return False
+
+        return not adopter.upload_events.filter(shelterluv_app_id=app_id).exists()
 
     def create_new_adopter(self, index: int, new_status: ApprovalStatus) -> tuple[Adopter, bool]:
         row_data = self.rows[index]
@@ -323,6 +350,7 @@ class UserFormFactory(UserFactory):
             return None, False, False
 
         if self.is_new_context or newly_approved:
+            self.restore_calendar_on_reapproval(adopter)
             try:
                 self.send_approval_email(adopter)
             except Exception:

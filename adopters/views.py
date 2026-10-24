@@ -152,7 +152,10 @@ class AdopterViewSet(viewsets.ModelViewSet):
             return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
 
         return JsonResponse(
-            {"restrictCalendar": adopter.user_profile.adoption_completed},
+            {
+                "restrictCalendar": adopter.user_profile.adoption_completed,
+                "currentAppt": adopter.get_current_appointment_summary(),
+            },
             status=status.HTTP_200_OK,
         )
 
