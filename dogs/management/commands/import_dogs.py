@@ -289,6 +289,10 @@ class Command(BaseCommand):
         )
 
         parsed["unavailable_date"] = self._resolve_unavailable_date(previous, parsed, internal_id)
+        # A dashboard hide only applies to the status it was hidden in (e.g. an FTA dog that's
+        # adopted should still show on Who Went Home).
+        if previous and previous.status != parsed["status"]:
+            parsed["dashboard_hidden"] = False
         dog, created = Dog.objects.update_or_create(shelterluv_id=shelterluv_id, defaults=parsed)
 
         self._debug_output(

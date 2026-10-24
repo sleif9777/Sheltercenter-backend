@@ -33,10 +33,15 @@ class DogValueLabelPairSerializer(serializers.HyperlinkedModelSerializer):
 class DashboardDogSerializer(DogValueLabelPairSerializer):
     photoURL = serializers.CharField(source="photo_url")
     unavailableDate = serializers.CharField(source="unavailable_date_iso", allow_null=True)
+    hidden = serializers.BooleanField(source="dashboard_hidden")
 
     class Meta:
         model = Dog
-        fields = ["ID", "name", "photoURL", "unavailableDate"]
+        fields = ["ID", "name", "photoURL", "unavailableDate", "hidden"]
+
+
+class SetDashboardHiddenRequest(DogIDRequestSerializer):
+    hidden = serializers.BooleanField()
 
 
 class DogSerializerBase(DogValueLabelPairSerializer):

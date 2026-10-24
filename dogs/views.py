@@ -9,6 +9,8 @@ from pending_adoptions.models import PendingAdoption
 from pending_adoptions.serializers import DashboardPendingAdoptionDogSerializer
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from users.enums import SecurityLevel
+from users.permissions import AnySecurityLevel
 
 from .enums import DogStatus
 from .models import Dog
@@ -20,6 +22,10 @@ class DogsViewSet(viewsets.ModelViewSet):
     queryset = Dog.objects.all()
 
     # Static methods
+    @staticmethod
+    def _can_hide_dashboard_dogs(request) -> bool:
+        return request.user.security_level in (SecurityLevel.ADMIN, SecurityLevel.SUPERUSER)
+
     @staticmethod
     def UnpackDogFromDogIDRequest(data: QueryDict) -> Dog:
         query = DogIDRequestSerializer(data=data)
@@ -43,6 +49,11 @@ class DogsViewSet(viewsets.ModelViewSet):
         )
 
         fta = Dog.objects.filter(status=DogStatus.FTA)
+
+        # Admins still get hidden dogs so they can unhide them; everyone else never sees them.
+        if not DogsViewSet._can_hide_dashboard_dogs(request):
+            newly_in_home = newly_in_home.filter(dashboard_hidden=False)
+            fta = fta.filter(dashboard_hidden=False)
 
         # Get dogs whose name matches a PendingAdoption with READY_TO_ROLL status
         ready_to_roll = PendingAdoption.objects.filter(status=PendingAdoptionStatus.READY_TO_ROLL)
@@ -175,6 +186,22 @@ class DogsViewSet(viewsets.ModelViewSet):
         )
 
     # POST commands
+    @action(
+        detail=False,
+        methods=["POST"],
+        url_path="SetDashboardHidden",
+        permission_classes=[AnySecurityLevel(SecurityLevel.ADMIN, SecurityLevel.SUPERUSER)],
+    )
+    def SetDashboardHidden(self, request):
+        query = SetDashboardHiddenRequest(data=request.data)
+        query.is_valid(raise_exception=True)
+
+        dog = Dog.objects.get(pk=int(query.validated_data["dogID"]))
+        dog.dashboard_hidden = query.validated_data["hidden"]
+        dog.save(update_fields=["dashboard_hidden"])
+
+        return JsonResponse({}, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=["POST"], url_path="AddDogToList")
     def AddDogToList(self, request: ListModificationRequest):
         adopter = AdopterViewSet.UnpackAdopterFromAdopterIDRequest(request.data)

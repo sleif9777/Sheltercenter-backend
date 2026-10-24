@@ -21,6 +21,8 @@ class Dog(models.Model):
     last_intake = models.DateField(null=True, blank=True)
     last_updated = models.DateField(null=True, blank=True)
     status = models.IntegerField(choices=DogStatus.choices, null=False, blank=False)
+    # Hidden from the Who Went Home and FTA dashboards for everyone but admins and superusers.
+    dashboard_hidden = models.BooleanField(default=False)
     interest_adopters = models.ManyToManyField(Adopter, blank=True)
 
     @property
