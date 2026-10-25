@@ -1,7 +1,7 @@
 {% extends 'email_templates/base.html' %}
 
 {% block text_header %}
-    Congratulations, your adoption request has been approved!
+    Congratulations, your adoption application has been approved!
 {% endblock %}
 
 {% block content %}
@@ -9,9 +9,30 @@
         <p>Hi {{ adopter.user_profile.first_name }},</p>
 
         <p>
-            Great news! Your Saving Grace adoption request has been reviewed and approved —
-            valid through <strong>{{ approved_until_display }}</strong>.
+            Great news! Your Saving Grace adoption application has been reviewed and approved.
         </p>
+
+        <p class="highlight">
+            Your approval is good for one year, through {{ approved_until_display }}.
+        </p>
+
+        <p>What this means for you:</p>
+        <ul>
+            <li>
+                <strong>You can adopt any of our dogs.</strong> Your approval is not tied to one dog.
+                You can use it to adopt any dog available at Saving Grace between now and
+                {{ approved_until_display }}.
+            </li>
+            <li>
+                <strong>You do not need to reapply during that year.</strong> This holds even if the dog
+                you first asked about is adopted by someone else, or you decide a different dog is a
+                better fit.
+            </li>
+            <li>
+                <strong>Only reapply once your approval expires.</strong> If you haven't adopted by
+                {{ approved_until_display }}, you'll need to submit a new application after that date.
+            </li>
+        </ul>
 
         <p>
             We've attached our <strong>Adoption Process Guide</strong> to this email.
