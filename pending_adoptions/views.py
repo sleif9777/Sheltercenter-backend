@@ -119,11 +119,17 @@ class PendingAdoptionViewSet(viewsets.ModelViewSet):
         query.is_valid(raise_exception=True)
         adoption = query.get_adoption()
 
-        adoption.dog = query.validated_data["newDog"]
+        new_dog = query.validated_data["newDog"]
+        if new_dog.lower() != adoption.dog.lower():
+            # The new name is free text, so the old dog's record no longer applies
+            adoption.dogID = None
+        adoption.dog = new_dog
         adoption.save()
 
-        adoption.source_appointment.chosen_dog = adoption.dog
-        adoption.source_appointment.save()
+        # Adoptions created from the Chosen Board have no source appointment to sync
+        if adoption.source_appointment:
+            adoption.source_appointment.chosen_dog = adoption.dog
+            adoption.source_appointment.save()
 
         return JsonResponse(
             PendingAdoptionsSerializer(adoption).data,
