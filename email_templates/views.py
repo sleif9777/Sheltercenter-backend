@@ -1,6 +1,7 @@
 from datetime import date
 
 from adopters.models import Adopter
+from django.db.models.functions import Lower
 from dogs.enums import DogStatus
 from dogs.models import Dog
 from environment_settings.models import EnvironmentSettings
@@ -182,7 +183,9 @@ class EmailViewSet(viewsets.ViewSet):
                 interest_adopters=adopter,
                 status=DogStatus.AVAILABLE_NOW,
                 publishable=True,
-            ).exclude(pk=exclude_dog.pk)
+            )
+            .exclude(pk=exclude_dog.pk)
+            .order_by(Lower("name"))
         )
 
     @staticmethod
