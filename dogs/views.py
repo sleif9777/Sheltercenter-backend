@@ -1,4 +1,6 @@
 from adopters.views import AdopterViewSet
+from dashboard_notes.models import DashboardNote
+from dashboard_notes.serializers import DashboardNoteSerializer
 from datetime import timedelta
 from django.db.models import Q
 from django.http import JsonResponse, QueryDict
@@ -65,6 +67,8 @@ class DogsViewSet(viewsets.ModelViewSet):
             status=PendingAdoptionStatus.NEEDS_WELL_CHECK
         ).difference(ready_to_roll)
 
+        DashboardNote.delete_expired()
+
         return JsonResponse(
             {
                 "hash": {
@@ -84,7 +88,11 @@ class DogsViewSet(viewsets.ModelViewSet):
                     },
                     "fta": [DashboardDogSerializer(dog).data for dog in fta],
                     "newlyInHome": [DashboardDogSerializer(dog).data for dog in newly_in_home],
-                }
+                },
+                "notes": [
+                    DashboardNoteSerializer(note).data
+                    for note in DashboardNote.objects.select_related("dog")
+                ],
             },
             status=status.HTTP_200_OK,
         )

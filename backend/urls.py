@@ -18,6 +18,7 @@ from adopters.views import AdopterViewSet
 from appointment_bases.views import AppointmentBaseViewSet
 from appointments.views import AppointmentViewSet
 from closed_dates.views import ClosedDateViewSet
+from dashboard_notes.views import DashboardNoteViewSet
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -33,6 +34,7 @@ router = routers.DefaultRouter()
 router.register(r'Adopters', AdopterViewSet)
 router.register(r'Appointments', AppointmentViewSet)
 router.register(r'ClosedDates', ClosedDateViewSet)
+router.register(r'DashboardNotes', DashboardNoteViewSet)
 router.register(r'Dogs', DogsViewSet)
 router.register(r'PendingAdoptions', PendingAdoptionViewSet)
 router.register(r'TemplateAppointments', AppointmentBaseViewSet)

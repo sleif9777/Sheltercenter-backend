@@ -176,6 +176,7 @@ Configured in `pyproject.toml`:
 | `watchlist_entries` | Adopter watchlists for specific dogs |
 | `email_templates` | Email content definitions and sending logic |
 | `closed_dates` | Dates when scheduling is blocked |
+| `dashboard_notes` | Short-lived notes shown on the dashboard's Notes tab (admin-managed, optional auto-expiry) |
 | `open_house_appointments` | Open house event scheduling |
 | `announcements` | Shelter-wide announcements |
 | `litters` | Dog litter records |
@@ -193,6 +194,7 @@ Base URL: `http://localhost:8000/`
 | `Adopters/` | Adopter CRUD |
 | `Appointments/` | Appointment CRUD |
 | `ClosedDates/` | Closed date CRUD |
+| `DashboardNotes/` | Add/remove dashboard notes (read via `Dogs/GetDashboardDogHash/`) |
 | `Dogs/` | Dog records |
 | `PendingAdoptions/` | Pending adoption CRUD |
 | `TemplateAppointments/` | Appointment base templates |

@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'appointments',
     'bookings',
     'closed_dates',
+    'dashboard_notes',
     'dogs',
     'email_templates',
     'environment_settings',
