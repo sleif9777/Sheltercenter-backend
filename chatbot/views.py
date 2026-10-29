@@ -53,8 +53,9 @@ class ChatbotViewSet(viewsets.GenericViewSet):
         return JsonResponse(
             {
                 "interactionID": interaction.id,
-                "answered": not interaction.bot_escalated,
+                # Shown to the adopter; may be set even when the message also went to staff
                 "answer": interaction.answer,
+                "sentToStaff": interaction.bot_escalated,
                 "questionsRemaining": ChatbotInteraction.questions_remaining_today(adopter),
             },
             status=status.HTTP_200_OK,

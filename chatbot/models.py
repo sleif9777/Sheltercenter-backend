@@ -48,8 +48,9 @@ class ChatbotInteraction(models.Model):
     """One adopter question and the chatbot's reply, kept for staff review and evals.
 
     An answer must cite at least one policy entry; an uncited answer is never shown to the adopter.
-    Instead the question goes to staff as a regular message and joins the backlog of questions the
-    knowledge base can't answer yet, until a policy entry covers it or it's dismissed.
+    Whatever the chatbot can't answer goes to staff as a regular message and joins the backlog of
+    questions the knowledge base can't answer yet, until a policy entry covers it or it's dismissed.
+    A partly answered message shows the adopter its answer and still goes to staff.
     """
 
     # Past these, the adopter is sent to the regular Message Adoptions form. None means no daily cap,
@@ -65,6 +66,8 @@ class ChatbotInteraction(models.Model):
     question = models.TextField()
     answer = models.TextField(default="", blank=True)
     category = models.CharField(default="", max_length=50, blank=True)
+    # The chatbot's one-sentence account of what it answered and what it left for staff
+    bot_reason = models.TextField(default="", blank=True)
     # Slugs of the policy entries the answer relied on
     cited_policies = models.JSONField(default=list, blank=True)
 

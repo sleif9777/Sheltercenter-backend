@@ -17,7 +17,13 @@ from .base import SmokeTestCase
 
 
 def fake_response(**reply: object) -> SimpleNamespace:
-    body = {"category": "other", "cited_policies": [], "can_answer": False, "answer": ""} | reply
+    body = {
+        "category": "other",
+        "cited_policies": [],
+        "answer": "",
+        "needs_staff": True,
+        "reason": "Not covered.",
+    } | reply
     return SimpleNamespace(
         stop_reason="end_turn",
         content=[SimpleNamespace(type="text", text=json.dumps(body))],
@@ -78,14 +84,14 @@ class ChatbotTests(SmokeTestCase):
         self.create.return_value = fake_response(
             category="adoption_process",
             cited_policies=["no-holds"],
-            can_answer=True,
+            needs_staff=False,
             answer="We don't hold dogs.",
         )
 
         with mock.patch.object(ChatbotInteraction, "DAILY_QUESTION_CAP", 5):
             body = self.ask()
 
-        self.assertTrue(body["answered"])
+        self.assertFalse(body["sentToStaff"])
         self.assertEqual(body["answer"], "We don't hold dogs.")
         self.assertEqual(body["questionsRemaining"], 4)
         self.assertEqual(len(mail.outbox), 0)
@@ -100,7 +106,7 @@ class ChatbotTests(SmokeTestCase):
         )
         self.create.return_value = fake_response(
             cited_policies=["no-holds"],
-            can_answer=True,
+            needs_staff=False,
             answer=(
                 "Use your [watchlist](/watchlist/). See [our FAQ](/faq/) or "
                 "[this site](https://example.invalid/)."
@@ -141,7 +147,7 @@ class ChatbotTests(SmokeTestCase):
 
         body = self.ask("Is Biscuit good with cats?")
 
-        self.assertFalse(body["answered"])
+        self.assertTrue(body["sentToStaff"])
         self.assertEqual(body["answer"], "")
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("Is Biscuit good with cats?", mail.outbox[0].body)
@@ -150,14 +156,48 @@ class ChatbotTests(SmokeTestCase):
         self.assertEqual(interaction.backlog_status, BacklogStatus.OPEN)
         self.assertEqual(interaction.category, "specific_dog")
 
+    def test_partly_answered_message_shows_answer_and_goes_to_staff(self) -> None:
+        self.create.return_value = fake_response(
+            category="appointments",
+            cited_policies=["no-holds"],
+            answer="We don't hold dogs.",
+            needs_staff=True,
+            reason="Answered the hold question; booking needs staff.",
+        )
+
+        body = self.ask("Can you hold Biscuit and book me for Friday?")
+
+        self.assertTrue(body["sentToStaff"])
+        self.assertEqual(body["answer"], "We don't hold dogs.")
+        interaction = ChatbotInteraction.objects.get()
+        self.assertTrue(interaction.bot_escalated)
+        self.assertEqual(interaction.backlog_status, BacklogStatus.OPEN)
+        self.assertEqual(interaction.bot_reason, "Answered the hold question; booking needs staff.")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("answered part of this", mail.outbox[0].body)
+        self.assertIn("hold dogs.", mail.outbox[0].body)
+
+    def test_send_to_staff_after_a_partial_answer_does_not_email_twice(self) -> None:
+        self.create.return_value = fake_response(
+            cited_policies=["no-holds"], answer="We don't hold dogs.", needs_staff=True
+        )
+        interaction_id = self.ask()["interactionID"]
+
+        resp = self.client_for(self.adopter_user).post(
+            "/Chatbot/SendToStaff/", {"interactionID": interaction_id}, format="json"
+        )
+
+        self.assertStatus(resp, 204)
+        self.assertEqual(len(mail.outbox), 1)
+
     def test_answer_without_a_real_citation_is_never_shown(self) -> None:
         self.create.return_value = fake_response(
-            cited_policies=["made-up-policy"], can_answer=True, answer="Sure, we'll hold him!"
+            cited_policies=["made-up-policy"], needs_staff=False, answer="Sure, we'll hold him!"
         )
 
         body = self.ask()
 
-        self.assertFalse(body["answered"])
+        self.assertTrue(body["sentToStaff"])
         self.assertEqual(body["answer"], "")
         self.assertEqual(ChatbotInteraction.objects.get().backlog_status, BacklogStatus.OPEN)
         self.assertEqual(len(mail.outbox), 1)
@@ -167,7 +207,7 @@ class ChatbotTests(SmokeTestCase):
 
         body = self.ask()
 
-        self.assertFalse(body["answered"])
+        self.assertTrue(body["sentToStaff"])
         self.create.assert_not_called()
         self.assertEqual(ChatbotInteraction.objects.get().backlog_status, BacklogStatus.OPEN)
         self.assertEqual(len(mail.outbox), 1)
@@ -178,19 +218,19 @@ class ChatbotTests(SmokeTestCase):
         with self.assertLogs("chatbot.services", level="ERROR"):
             body = self.ask()
 
-        self.assertFalse(body["answered"])
+        self.assertTrue(body["sentToStaff"])
         self.assertIsNone(ChatbotInteraction.objects.get().backlog_status)
         self.assertEqual(len(mail.outbox), 1)
 
     def test_refusal_goes_to_staff(self) -> None:
-        response = fake_response(cited_policies=["no-holds"], can_answer=True, answer="x")
+        response = fake_response(cited_policies=["no-holds"], needs_staff=False, answer="x")
         response.stop_reason = "refusal"
         self.create.return_value = response
 
         with self.assertLogs("chatbot.services", level="WARNING"):
             body = self.ask()
 
-        self.assertFalse(body["answered"])
+        self.assertTrue(body["sentToStaff"])
         self.assertEqual(len(mail.outbox), 1)
 
     @mock.patch.object(ChatbotInteraction, "DAILY_QUESTION_CAP", 3)
@@ -227,7 +267,7 @@ class ChatbotTests(SmokeTestCase):
 
     def test_send_to_staff_after_an_answer(self) -> None:
         self.create.return_value = fake_response(
-            cited_policies=["no-holds"], can_answer=True, answer="We don't hold dogs."
+            cited_policies=["no-holds"], needs_staff=False, answer="We don't hold dogs."
         )
         interaction_id = self.ask()["interactionID"]
         client = self.client_for(self.adopter_user)
