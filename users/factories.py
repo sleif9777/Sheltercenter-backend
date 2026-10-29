@@ -260,6 +260,7 @@ class UserSpreadsheetFactory(UserFactory):
                 "shelterluv_app_id": row_data[0],
                 "approved_until": Adopter.get_default_approval_date(),
                 "application_comments": application_comments,
+                "co_applicants": str(row_data[16]).strip(),
             },
             create_defaults={
                 "status": new_status,
@@ -267,6 +268,7 @@ class UserSpreadsheetFactory(UserFactory):
                 "shelterluv_app_id": row_data[0],
                 "approved_until": Adopter.get_default_approval_date(),
                 "application_comments": application_comments,
+                "co_applicants": str(row_data[16]).strip(),
             },
         )
 

@@ -124,6 +124,17 @@ class ChatbotTests(SmokeTestCase):
         self.assertIn("First name: Avery", user_message)
         self.assertIn(self.booked_appt.instant_display, user_message)
         self.assertIn("<question>\nWhen is my appointment?\n</question>", user_message)
+        self.assertIn("Other adults listed on their application: none on file", user_message)
+
+    def test_prompt_lists_other_adults_on_the_application(self) -> None:
+        self.adopter.co_applicants = "Sam Adopter"
+        self.adopter.save()
+        self.create.return_value = fake_response()
+
+        self.ask("Can my partner come instead?")
+
+        user_message = self.create.call_args.kwargs["messages"][0]["content"]
+        self.assertIn("Other adults listed on their application: Sam Adopter", user_message)
 
     def test_unanswerable_question_goes_to_staff_and_backlog(self) -> None:
         self.create.return_value = fake_response(category="specific_dog")

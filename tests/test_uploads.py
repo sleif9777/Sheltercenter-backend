@@ -37,6 +37,7 @@ ACCEPTED = make_row(
     c13=55501,  # Shelterluv person ID (numeric cell)
     c14="jordan",
     c15="rivers",
+    c16="Sam Rivers ",  # other adults on the application
     c17="12 oak st",
     c19="wake forest",
     c20="nc",
@@ -116,10 +117,12 @@ class SpreadsheetUploadTests(SmokeTestCase):
         self.assertEqual(jordan.secondary_email, "jr.alt@example.invalid")
         self.assertEqual(jordan.adopter_profile.status, ApprovalStatus.APPROVED)
         self.assertEqual(jordan.adopter_profile.application_comments, "Interested in hounds")
+        self.assertEqual(jordan.adopter_profile.co_applicants, "Sam Rivers")
 
         casey = UserProfile.objects.get(primary_email="casey.lane@example.invalid")
         self.assertEqual(casey.adopter_profile.status, ApprovalStatus.PENDING)
         self.assertEqual(casey.phone_number, "919-555-0102")
+        self.assertEqual(casey.adopter_profile.co_applicants, "")
 
         self.assertEqual(AdopterUploadEvent.objects.count(), 2)
         self.assertEqual(len(mail.outbox), 1, "only the accepted adopter gets an approval email")

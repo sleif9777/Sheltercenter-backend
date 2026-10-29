@@ -228,6 +228,9 @@ class ChatbotService:
                 if profile.adoption_completed
                 else "open"
             ),
+            # Blank for adopters uploaded before this was imported, so it can't rule anyone out
+            "Other adults listed on their application: "
+            + (adopter.co_applicants or "none on file (this doesn't mean nobody else is listed)"),
             "Adoption in progress: "
             + (f"{adoption.dog}, status {adoption.status_display}" if adoption else "none"),
         ]

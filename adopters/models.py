@@ -33,6 +33,9 @@ class Adopter(models.Model):
     approval_emailed = models.BooleanField(default=False)
     # Set when an upload/job sends the approval email; manual resends don't move it
     approval_window_started_at = models.DateTimeField(null=True, blank=True)
+    # Other adults listed on the application (column Q of the Shelterluv export), as exported. Only
+    # people listed here may attend an appointment, choose a dog and sign paperwork for this adopter
+    co_applicants = models.TextField(default="", blank=True)
 
     approved_until = models.DateField(null=False, blank=False)
 
