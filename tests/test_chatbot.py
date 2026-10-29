@@ -174,8 +174,8 @@ class ChatbotTests(SmokeTestCase):
         self.assertEqual(interaction.backlog_status, BacklogStatus.OPEN)
         self.assertEqual(interaction.bot_reason, "Answered the hold question; booking needs staff.")
         self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("answered part of this", mail.outbox[0].body)
-        self.assertIn("hold dogs.", mail.outbox[0].body)
+        self.assertIn("Can you hold Biscuit and book me for Friday?", mail.outbox[0].body)
+        self.assertNotIn("hold dogs.", mail.outbox[0].body)
 
     def test_send_to_staff_after_a_partial_answer_does_not_email_twice(self) -> None:
         self.create.return_value = fake_response(
@@ -279,7 +279,8 @@ class ChatbotTests(SmokeTestCase):
             self.assertStatus(resp, 204)
 
         self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("hold dogs.", mail.outbox[0].body)
+        self.assertIn("Can you hold Biscuit for me?", mail.outbox[0].body)
+        self.assertNotIn("hold dogs.", mail.outbox[0].body)
         self.assertTrue(ChatbotInteraction.objects.get().adopter_escalated)
 
     def test_send_to_staff_is_private_to_the_adopter(self) -> None:

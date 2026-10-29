@@ -106,7 +106,8 @@ class ChatbotService:
 
     The adopter only ever sees an answer grounded in at least one active policy entry. A message is
     either answered in full, answered in part and also emailed to staff, or emailed to staff with no
-    answer. Anything emailed to staff by the chatbot joins the backlog.
+    answer. Anything emailed to staff by the chatbot joins the backlog. The email carries only the
+    adopter's message; the chatbot's reply stays on the interaction in the admin.
     """
 
     def __init__(self, client: anthropic.Anthropic | None = None) -> None:
@@ -257,17 +258,8 @@ class ChatbotService:
         assert adopter is not None
         profile = adopter.user_profile
 
+        # Sent like any other Message Adoptions email: the adopter's words only, not the chatbot's reply
         message = linebreaksbr(interaction.question, autoescape=True)
-        if interaction.answer:
-            note = (
-                "They asked for a person after seeing this automated answer:"
-                if interaction.adopter_escalated
-                else "The chatbot answered part of this and told them our team would follow up on"
-                " the rest. It showed them:"
-            )
-            message += f"<br><br><em>{note}</em><br>" + linebreaksbr(
-                interaction.answer, autoescape=True
-            )
 
         EmailViewSet().GenericMessage(
             profile, "Message from " + profile.full_name, message, to_adoptions=True
