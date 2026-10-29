@@ -32,6 +32,7 @@ def fake_response(**reply: object) -> SimpleNamespace:
         "needs_staff": True,
         "reason": "Not covered.",
         "offer_appointment_id": 0,
+        "offer_cancel": False,
     } | reply
     return SimpleNamespace(
         stop_reason="end_turn",
@@ -367,6 +368,53 @@ class ChatbotTests(SmokeTestCase):
 
         self.assertStatus(self.accept(body["interactionID"], self.other_adopter.user_profile), 403)
         self.assertEqual(self.adopter.get_current_appointment(), self.booked_appt)
+
+    def ask_to_cancel(self) -> dict:
+        self.create.return_value = fake_response(
+            cited_policies=["no-holds"],
+            answer="You can cancel with the button below.",
+            needs_staff=False,
+            offer_cancel=True,
+        )
+        return self.ask("Please cancel my appointment.")
+
+    def test_offers_to_cancel_and_cancels(self) -> None:
+        body = self.ask_to_cancel()
+        self.assertIsNotNone(body["offerCancel"])
+        client = self.client_for(self.adopter_user)
+
+        resp = client.post(
+            "/Chatbot/AcceptCancellation/", {"interactionID": body["interactionID"]}, format="json"
+        )
+
+        self.assertStatus(resp, 200)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, BookingStatus.CANCELLED)
+        self.assertIsNone(self.adopter.get_current_appointment())
+        self.assertEqual(len(mail.outbox), 1, "the usual cancellation email to the adopter")
+        again = client.post(
+            "/Chatbot/AcceptCancellation/", {"interactionID": body["interactionID"]}, format="json"
+        )
+        self.assertStatus(again, 409)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_cancellation_is_private_to_the_adopter(self) -> None:
+        body = self.ask_to_cancel()
+
+        resp = self.client_for(self.other_adopter.user_profile).post(
+            "/Chatbot/AcceptCancellation/", {"interactionID": body["interactionID"]}, format="json"
+        )
+
+        self.assertStatus(resp, 403)
+        self.assertEqual(self.adopter.get_current_appointment(), self.booked_appt)
+
+    def test_no_cancel_offer_without_an_appointment(self) -> None:
+        self.booking.mark_status(BookingStatus.CANCELLED)
+
+        body = self.ask_to_cancel()
+
+        self.assertIsNone(body["offerCancel"])
+        self.assertFalse(ChatbotInteraction.objects.get().offered_cancellation)
 
     def test_staff_email_uses_the_message_as_written(self) -> None:
         self.create.return_value = fake_response()

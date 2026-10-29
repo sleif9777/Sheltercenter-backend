@@ -87,6 +87,10 @@ they can switch with the button below your answer; nothing changes until they pr
 for a time at least 2 hours from now that isn't listed, it isn't open: tell them so and mention any \
 listed times close to it. Otherwise set offer_appointment_id to 0.
 
+When the adopter asks to cancel their current appointment, set offer_cancel to true and tell them they \
+can cancel it with the button below your answer; nothing changes until they press it. Set it to false \
+if they have no current appointment or haven't asked to cancel.
+
 When you write an answer:
 - Answer what they asked directly, usually in two to four short sentences and never more than about \
 100 words. Don't repeat their situation back to them or explain more than they need.
@@ -118,6 +122,7 @@ OUTPUT_SCHEMA = {
         "needs_staff": {"type": "boolean"},
         "reason": {"type": "string"},
         "offer_appointment_id": {"type": "integer"},
+        "offer_cancel": {"type": "boolean"},
     },
     "required": [
         "category",
@@ -126,6 +131,7 @@ OUTPUT_SCHEMA = {
         "needs_staff",
         "reason",
         "offer_appointment_id",
+        "offer_cancel",
     ],
     "additionalProperties": False,
 }
@@ -139,6 +145,7 @@ class ChatbotReply:
     category: str
     reason: str
     offer_appointment_id: int = 0
+    offer_cancel: bool = False
 
 
 class ChatbotService:
@@ -150,7 +157,8 @@ class ChatbotService:
     adopter's message; the chatbot's reply stays on the interaction in the admin.
 
     A full answer can also offer to move the adopter's appointment to an open time of the same type at
-    least 2 hours away, which happens only when the adopter accepts it (accept_offer).
+    least 2 hours away, or to cancel it. Either happens only when the adopter accepts it (accept_offer,
+    accept_cancellation).
     """
 
     def __init__(self, client: anthropic.Anthropic | None = None) -> None:
@@ -181,6 +189,9 @@ class ChatbotService:
         if interaction.answer and reply is not None and not reply.needs_staff:
             offer = {slot.id: slot for slot in open_slots}.get(reply.offer_appointment_id)
             interaction.offered_appointment = offer
+            interaction.offered_cancellation = reply.offer_cancel and bool(
+                adopter.get_current_appointment()
+            )
             interaction.save()
             return interaction
 
@@ -249,6 +260,7 @@ class ChatbotService:
                 category=str(data["category"]),
                 reason=str(data["reason"]),
                 offer_appointment_id=int(data["offer_appointment_id"] or 0),
+                offer_cancel=bool(data["offer_cancel"]),
             )
         except (json.JSONDecodeError, KeyError, TypeError):
             logger.exception("Chatbot returned unreadable output")
@@ -417,6 +429,39 @@ class ChatbotService:
         interaction.save(update_fields=["offer_accepted_instant"])
         EmailViewSet().AppointmentRescheduled(old_slot, new_slot)
         return new_slot
+
+    @staticmethod
+    @transaction.atomic
+    def accept_cancellation(interaction: ChatbotInteraction) -> Appointment | None:
+        """Cancels the adopter's current appointment as offered, or returns None if it can't be."""
+        adopter = interaction.adopter
+        if (
+            adopter is None
+            or not interaction.offered_cancellation
+            or interaction.offer_accepted_instant is not None
+        ):
+            return None
+
+        # Lock the booking so a double click can't cancel (and email) twice
+        booking = (
+            Booking.objects.select_for_update()
+            .filter(adopter=adopter, status=BookingStatus.ACTIVE)
+            .select_related("appointment")
+            .first()
+        )
+        if booking is None or booking.appointment is None:
+            return None
+
+        appointment = booking.appointment
+        if appointment.check_in_time is not None or appointment.outcome is not None:
+            return None
+
+        # Same as the Cancel My Appointment button
+        EmailViewSet().AppointmentCanceled(appointment)
+        booking.mark_status(BookingStatus.CANCELLED)
+        interaction.offer_accepted_instant = timezone.now()
+        interaction.save(update_fields=["offer_accepted_instant"])
+        return appointment
 
     @staticmethod
     def user_message(details: list[str], question: str) -> str:

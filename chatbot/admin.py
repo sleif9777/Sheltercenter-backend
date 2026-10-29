@@ -52,6 +52,7 @@ class ChatbotInteractionAdmin(ModelAdmin):
         "category",
         "cited_policies",
         "offered_appointment",
+        "offered_cancellation",
         "offer_accepted_instant",
         "bot_escalated",
         "adopter_escalated",

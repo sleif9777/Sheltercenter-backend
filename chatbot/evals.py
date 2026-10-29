@@ -24,6 +24,8 @@ class EvalCase:
     max_words: int | None = None
     # The open time (its id in the details) the chatbot should offer to move the appointment to
     offer: int | None = None
+    # Whether the chatbot should offer to cancel the current appointment
+    offer_cancel: bool = False
 
 
 def details(
@@ -125,6 +127,14 @@ CASES = [
             recent="Oct 28, 04:30 PM, cancelled",
         ),
         expected={PARTIAL, STAFF},
+    ),
+    EvalCase(
+        name="cancel request",
+        message="Something came up and I can't make it Saturday. Please cancel my appointment, sorry!",
+        details=details("Wednesday, October 28, 2026, 9:15 AM", appointment="Oct 31, 01:00 PM"),
+        expected={ANSWER},
+        offer_cancel=True,
+        max_words=60,
     ),
     EvalCase(
         name="co-applicant listed",

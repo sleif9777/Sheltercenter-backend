@@ -74,10 +74,13 @@ class ChatbotInteraction(models.Model):
     # Slugs of the policy entries the answer relied on
     cited_policies = models.JSONField(default=list, blank=True)
 
-    # An open time the chatbot offered to move the adopter's appointment to, and when they accepted
+    # An open time the chatbot offered to move the adopter's appointment to
     offered_appointment = models.ForeignKey(
         Appointment, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
+    # The chatbot offered to cancel the adopter's current appointment
+    offered_cancellation = models.BooleanField(default=False)
+    # When the adopter accepted either offer; after that, neither can be accepted again
     offer_accepted_instant = models.DateTimeField(null=True, blank=True)
 
     # The chatbot handed the question to staff instead of answering

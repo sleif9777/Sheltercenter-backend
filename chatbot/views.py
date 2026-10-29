@@ -52,6 +52,7 @@ class ChatbotViewSet(viewsets.GenericViewSet):
             adopter, query.validated_data["question"].strip(), query.validated_data["message"]
         )
         offer = interaction.offered_appointment
+        current = adopter.get_current_appointment()
 
         return JsonResponse(
             {
@@ -61,6 +62,12 @@ class ChatbotViewSet(viewsets.GenericViewSet):
                 "sentToStaff": interaction.bot_escalated,
                 # An open time the adopter can move their appointment to with one click
                 "offer": {"label": ChatbotService.offer_label(offer)} if offer else None,
+                # The adopter's current appointment, when the chatbot offered to cancel it
+                "offerCancel": (
+                    {"label": ChatbotService.offer_label(current)}
+                    if interaction.offered_cancellation and current
+                    else None
+                ),
                 "questionsRemaining": ChatbotInteraction.questions_remaining_today(adopter),
             },
             status=status.HTTP_200_OK,
@@ -110,4 +117,28 @@ class ChatbotViewSet(viewsets.GenericViewSet):
                 "currentAppt": adopter.get_current_appointment_summary(),
             },
             status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["POST"], url_path="AcceptCancellation")
+    def AcceptCancellation(self, request: Request) -> JsonResponse:
+        query = InteractionIDRequestSerializer(data=request.data)
+        query.is_valid(raise_exception=True)
+
+        interaction = get_object_or_404(
+            ChatbotInteraction, pk=query.validated_data["interactionID"]
+        )
+        adopter = interaction.adopter
+
+        if adopter is None or not AdopterViewSet._is_own_adopter_or_staff(request, adopter):
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
+        canceled = ChatbotService.accept_cancellation(interaction)
+        if canceled is None:
+            return JsonResponse(
+                {"error": "Sorry, that appointment can no longer be canceled here."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return JsonResponse(
+            {"label": ChatbotService.offer_label(canceled)}, status=status.HTTP_200_OK
         )

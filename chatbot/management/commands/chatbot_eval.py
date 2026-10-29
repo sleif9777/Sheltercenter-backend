@@ -36,7 +36,13 @@ class Command(BaseCommand):
             open_ids = {int(i) for line in case.details for i in OPEN_TIME_ID.findall(line)}
             offer = reply.offer_appointment_id if reply and outcome == ANSWER else 0
             offer = offer if offer in open_ids else None
-            problems = self.problems(case, outcome, answer, offer)
+            has_appointment = not any(
+                line == "Current appointment: none booked" for line in case.details
+            )
+            offer_cancel = bool(
+                reply and outcome == ANSWER and reply.offer_cancel and has_appointment
+            )
+            problems = self.problems(case, outcome, answer, offer, offer_cancel)
             failures += bool(problems)
             input_tokens += interaction.input_tokens
             cache_read_tokens += interaction.cache_read_tokens
@@ -46,9 +52,10 @@ class Command(BaseCommand):
             self.stdout.write(style(f"{'FAIL' if problems else 'PASS'}  {case.name}"))
             for problem in problems:
                 self.stdout.write(f"      {problem}")
-            self.stdout.write(
-                f"      outcome: {outcome}" + (f", offers [{offer}]" if offer else "")
+            offers = (f", offers [{offer}]" if offer else "") + (
+                ", offers to cancel" if offer_cancel else ""
             )
+            self.stdout.write(f"      outcome: {outcome}{offers}")
             if reply is not None:
                 self.stdout.write(f"      cited: {', '.join(reply.cited_policies) or 'none'}")
                 self.stdout.write(f"      reason: {reply.reason}")
@@ -63,12 +70,16 @@ class Command(BaseCommand):
             raise CommandError(f"{failures} case(s) failed.")
 
     @staticmethod
-    def problems(case: EvalCase, outcome: str, answer: str, offer: int | None) -> list[str]:
+    def problems(
+        case: EvalCase, outcome: str, answer: str, offer: int | None, offer_cancel: bool
+    ) -> list[str]:
         problems = []
         if outcome not in case.expected:
             problems.append(f"expected {' or '.join(sorted(case.expected))}, got {outcome}")
         if offer != case.offer:
             problems.append(f"expected offer {case.offer}, got {offer}")
+        if offer_cancel != case.offer_cancel:
+            problems.append(f"expected offer to cancel: {case.offer_cancel}, got {offer_cancel}")
         for text in case.mentions:
             if answer and text.lower() not in answer.lower():
                 problems.append(f'answer doesn\'t mention "{text}"')
