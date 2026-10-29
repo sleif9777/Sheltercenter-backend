@@ -110,6 +110,10 @@ python manage.py run_reminders
 # Create or update a chatbot policy entry (body on stdin); --deactivate / --activate to hide or show it
 python manage.py upsert_policy <slug> --title "..." < body.md
 heroku run --no-tty -a sheltercenter-backend -- python manage.py upsert_policy <slug> --title "..." < body.md
+
+# Run the saved chatbot scenarios (chatbot/evals.py) against the live model and current policies.
+# Saves nothing and sends no email, but every case is a real, billed API call.
+heroku run --no-tty -a sheltercenter-backend -- python manage.py chatbot_eval [--case <name>]
 ```
 
 ---

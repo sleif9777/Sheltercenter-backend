@@ -3,13 +3,21 @@
 The Anthropic client is replaced with a fake, so no request leaves the machine.
 """
 
+import datetime
+import io
 import json
 from types import SimpleNamespace
 from unittest import mock
 
 import anthropic
 from django.core import mail
+from django.core.management import CommandError, call_command
+from django.utils import timezone
 
+from appointment_bases.enums import AppointmentTypes
+from appointments.models import Appointment
+from bookings.enums import BookingStatus
+from bookings.models import Booking
 from chatbot.enums import BacklogStatus
 from chatbot.models import ChatbotInteraction, PolicyEntry
 
@@ -131,6 +139,35 @@ class ChatbotTests(SmokeTestCase):
         self.assertIn(self.booked_appt.instant_display, user_message)
         self.assertIn("<question>\nWhen is my appointment?\n</question>", user_message)
         self.assertIn("Other adults listed on their application: none on file", user_message)
+
+    def test_prompt_has_the_time_and_recent_appointments(self) -> None:
+        missed = Appointment.objects.create(
+            type=AppointmentTypes.ADULTS, instant=timezone.now() - datetime.timedelta(days=2)
+        )
+        Booking.create_active(self.adopter, missed).mark_status(BookingStatus.NOSHOW)
+        self.create.return_value = fake_response()
+
+        self.ask("Sorry I missed it!")
+
+        user_message = self.create.call_args.kwargs["messages"][0]["content"]
+        self.assertIn(f"Now: {timezone.localtime().strftime('%A, %B %-d, %Y')}, ", user_message)
+        self.assertIn(
+            f"Other appointments in the last 14 days: {missed.instant_display}, no show",
+            user_message,
+        )
+
+    def test_eval_command_reports_passes_and_failures(self) -> None:
+        self.create.return_value = fake_response()
+        out = io.StringIO()
+
+        call_command("chatbot_eval", "--case", "thank-you", stdout=out)
+        self.assertIn("PASS  thank-you only", out.getvalue())
+
+        with self.assertRaises(CommandError):
+            call_command("chatbot_eval", "--case", "no-show", stdout=out)
+        self.assertIn("expected answer, got staff", out.getvalue())
+        self.assertEqual(ChatbotInteraction.objects.count(), 0)
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_prompt_lists_other_adults_on_the_application(self) -> None:
         self.adopter.co_applicants = "Sam Adopter"

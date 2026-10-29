@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import re
@@ -8,6 +9,7 @@ from django.template.defaultfilters import linebreaksbr
 from django.utils import timezone
 
 from adopters.models import Adopter
+from bookings.enums import BookingStatus
 from email_templates.views import EmailViewSet
 from pending_adoptions.enums import PendingAdoptionStatus
 from pending_adoptions.models import PendingAdoption
@@ -22,6 +24,8 @@ MODEL = "claude-opus-5-5"
 LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 # Heroku drops requests after 30 seconds, so give up early and hand the question to staff instead
 TIMEOUT_SECONDS = 20.0
+# How far back the adopter details list past appointments (no-shows, cancellations and so on)
+RECENT_APPOINTMENTS = datetime.timedelta(days=14)
 
 CATEGORIES = [
     "appointments",
@@ -40,8 +44,9 @@ NC. Adopters reach you through the "Message Adoptions" button on the shelter's s
 Staff read every message you pass to them, so passing a message to staff is always safe. A wrong \
 answer or a promise the shelter won't keep is not.
 
-Answer only from the policies below and the adopter details sent with the message. Put in answer only \
-what they clearly settle, and never fill a gap with a fact the policies don't state, even one that \
+Answer only from the policies below and the adopter details sent with the message. The adopter \
+details give the current local time, so you can work out how long it is until an appointment. Put in \
+answer only what they clearly settle, and never fill a gap with a fact the policies don't state, even one that \
 seems likely. A message can be partly settled: answer that part, and set needs_staff to true for the \
 rest. Set needs_staff to true whenever any part of the message is left over, in particular when:
 - answering it would take a fact the policies don't state;
@@ -51,8 +56,10 @@ given;
 - the message asks staff to do something, such as booking, changing or confirming arrangements.
 
 Leave answer empty, and set needs_staff to true, when the policies settle none of the message, or when \
-the adopter is upset, reports a problem or an emergency, or wants to surrender a dog. A message that \
-isn't a question, such as a greeting or a thank-you, also gets an empty answer and goes to staff.
+the adopter is upset, reports a problem or an emergency, or wants to surrender a dog. A message \
+doesn't have to be a question: when it describes a situation a policy covers, such as a missed \
+appointment, answer from that policy. A greeting or a thank-you with nothing else in it gets an empty \
+answer and goes to staff.
 
 Never promise or imply anything the policies don't promise: no guaranteed times, availability or \
 outcomes, and nothing about what staff will decide. Saving Grace never holds or reserves dogs for \
@@ -122,17 +129,16 @@ class ChatbotService:
             knowledge_base_version=PolicyEntry.knowledge_base_version(knowledge_base),
         )
 
-        reply = self._get_reply(interaction, knowledge_base) if knowledge_base else None
-        active_slugs = set(
-            PolicyEntry.objects.filter(is_active=True).values_list("slug", flat=True)
+        user_message = self.user_message(self.adopter_details(adopter), question)
+        reply = (
+            self._get_reply(interaction, knowledge_base, user_message) if knowledge_base else None
         )
 
         if reply is not None:
             interaction.category = reply.category
             interaction.bot_reason = reply.reason
-            interaction.cited_policies = [s for s in reply.cited_policies if s in active_slugs]
-            if reply.answer.strip() and interaction.cited_policies:
-                interaction.answer = self._keep_policy_links(reply.answer.strip(), knowledge_base)
+            interaction.cited_policies = self.active_citations(reply)
+            interaction.answer = self.shown_answer(reply, knowledge_base)
 
         if interaction.answer and reply is not None and not reply.needs_staff:
             interaction.save()
@@ -156,8 +162,9 @@ class ChatbotService:
         self._email_staff(interaction)
 
     def _get_reply(
-        self, interaction: ChatbotInteraction, knowledge_base: str
+        self, interaction: ChatbotInteraction, knowledge_base: str, user_message: str
     ) -> ChatbotReply | None:
+        """Asks Claude, recording token use on the interaction. None when the request fails."""
         try:
             if self.client is None:
                 self.client = anthropic.Anthropic(timeout=TIMEOUT_SECONDS, max_retries=0)
@@ -177,7 +184,7 @@ class ChatbotService:
                         "cache_control": {"type": "ephemeral"},
                     }
                 ],
-                messages=[{"role": "user", "content": self._user_message(interaction)}],
+                messages=[{"role": "user", "content": user_message}],
             )
         # AnthropicError also covers a missing API key, not just failed requests
         except anthropic.AnthropicError:
@@ -213,9 +220,21 @@ class ChatbotService:
         return LINK.sub(lambda m: m.group(0) if m.group(2) in allowed else m.group(1), answer)
 
     @staticmethod
-    def _user_message(interaction: ChatbotInteraction) -> str:
-        adopter = interaction.adopter
-        assert adopter is not None
+    def active_citations(reply: ChatbotReply) -> list[str]:
+        active_slugs = set(
+            PolicyEntry.objects.filter(is_active=True).values_list("slug", flat=True)
+        )
+        return [slug for slug in reply.cited_policies if slug in active_slugs]
+
+    @classmethod
+    def shown_answer(cls, reply: ChatbotReply | None, knowledge_base: str) -> str:
+        """What the adopter sees: empty unless the answer cites at least one active policy."""
+        if reply is None or not reply.answer.strip() or not cls.active_citations(reply):
+            return ""
+        return cls._keep_policy_links(reply.answer.strip(), knowledge_base)
+
+    @staticmethod
+    def adopter_details(adopter: Adopter) -> list[str]:
         profile = adopter.user_profile
 
         appointment = adopter.get_current_appointment()
@@ -225,12 +244,30 @@ class ChatbotService:
             .order_by("-id")
             .first()
         )
+        # Second-dog placeholder appointments aren't separate visits
+        recent = (
+            adopter.bookings.filter(
+                appointment__primary_appointment__isnull=True,
+                appointment__instant__gte=timezone.now() - RECENT_APPOINTMENTS,
+            )
+            .exclude(status=BookingStatus.ACTIVE)
+            .select_related("appointment")
+            .order_by("appointment__instant")
+        )
 
-        details = [
-            f"Today: {timezone.localdate().strftime('%A, %B %-d, %Y')}",
+        return [
+            f"Now: {timezone.localtime().strftime('%A, %B %-d, %Y, %-I:%M %p')}",
             f"First name: {profile.first_name}",
             "Current appointment: "
             + (appointment.instant_display if appointment else "none booked"),
+            "Other appointments in the last 14 days: "
+            + (
+                "; ".join(
+                    f"{b.appointment.instant_display}, {b.get_status_display().lower()}"
+                    for b in recent
+                )
+                or "none"
+            ),
             "Calendar access: "
             + (
                 "restricted, because they have chosen a dog or completed an adoption"
@@ -244,11 +281,13 @@ class ChatbotService:
             + (f"{adoption.dog}, status {adoption.status_display}" if adoption else "none"),
         ]
 
+    @staticmethod
+    def user_message(details: list[str], question: str) -> str:
         return (
             "<adopter_details>\n"
             + "\n".join(details)
             + "\n</adopter_details>\n\n<question>\n"
-            + interaction.question
+            + question
             + "\n</question>"
         )
 
