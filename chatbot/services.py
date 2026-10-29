@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from dataclasses import dataclass
 
 import anthropic
@@ -17,6 +18,8 @@ from .models import ChatbotInteraction, PolicyEntry
 logger = logging.getLogger(__name__)
 
 MODEL = "claude-opus-5-5"
+# A link in a policy or answer, written as [text](/path/)
+LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 # Heroku drops requests after 30 seconds, so give up early and hand the question to staff instead
 TIMEOUT_SECONDS = 20.0
 
@@ -52,7 +55,9 @@ outcomes. Saving Grace never holds or reserves dogs for anyone; adoptions are fi
 
 When you can answer:
 - Write for someone who may not be comfortable with computers: short, warm, plain sentences, under \
-about 120 words, in plain text with no markdown, headings or bullet symbols.
+about 120 words, in plain text with no markdown, headings or bullet symbols. The one exception is \
+links: when a policy you rely on has a link written as [text](/path/), you may include it exactly as \
+written. Never write any other link.
 - When a step happens on the website, name the button the way it appears, for example "Cancel My \
 Appointment".
 - Put the id of every policy you relied on in cited_policies. If you relied on none, you can't answer.
@@ -121,7 +126,7 @@ class ChatbotService:
             and reply.answer.strip()
             and interaction.cited_policies
         ):
-            interaction.answer = reply.answer.strip()
+            interaction.answer = self._keep_policy_links(reply.answer.strip(), knowledge_base)
             interaction.save()
             return interaction
 
@@ -191,6 +196,12 @@ class ChatbotService:
         except (json.JSONDecodeError, KeyError, TypeError):
             logger.exception("Chatbot returned unreadable output")
             return None
+
+    @staticmethod
+    def _keep_policy_links(answer: str, knowledge_base: str) -> str:
+        """Turns any link that doesn't appear in the policies back into plain text."""
+        allowed = {url for _, url in LINK.findall(knowledge_base)}
+        return LINK.sub(lambda m: m.group(0) if m.group(2) in allowed else m.group(1), answer)
 
     @staticmethod
     def _user_message(interaction: ChatbotInteraction) -> str:

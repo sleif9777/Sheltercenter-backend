@@ -94,6 +94,25 @@ class ChatbotTests(SmokeTestCase):
         self.assertIsNone(interaction.backlog_status)
         self.assertEqual(interaction.input_tokens, 120)
 
+    def test_answer_keeps_only_links_from_policies(self) -> None:
+        PolicyEntry.objects.filter(slug="no-holds").update(
+            body="We never hold dogs. Track them on your [watchlist](/watchlist/)."
+        )
+        self.create.return_value = fake_response(
+            cited_policies=["no-holds"],
+            can_answer=True,
+            answer=(
+                "Use your [watchlist](/watchlist/). See [our FAQ](/faq/) or "
+                "[this site](https://example.invalid/)."
+            ),
+        )
+
+        body = self.ask()
+
+        self.assertEqual(
+            body["answer"], "Use your [watchlist](/watchlist/). See our FAQ or this site."
+        )
+
     def test_prompt_carries_policies_and_adopter_details(self) -> None:
         self.create.return_value = fake_response()
 
