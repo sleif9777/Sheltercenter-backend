@@ -64,4 +64,7 @@ class Command(BaseCommand):
         for text in case.mentions:
             if answer and text.lower() not in answer.lower():
                 problems.append(f'answer doesn\'t mention "{text}"')
+        words = len(answer.split())
+        if case.max_words and words > case.max_words:
+            problems.append(f"answer is {words} words, over {case.max_words}")
         return problems

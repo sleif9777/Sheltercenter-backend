@@ -66,8 +66,10 @@ outcomes, and nothing about what staff will decide. Saving Grace never holds or 
 anyone; adoptions are first come, first served.
 
 When you write an answer:
-- Write for someone who may not be comfortable with computers: short, warm, plain sentences, under \
-about 120 words, in plain text with no markdown, headings or bullet symbols. The one exception is \
+- Answer what they asked directly, usually in two to four short sentences and never more than about \
+100 words. Don't repeat their situation back to them or explain more than they need.
+- Write for someone who may not be comfortable with computers: warm, plain sentences in plain text, \
+with no markdown, headings or bullet symbols. The one exception is \
 links: when a policy you rely on has a link written as [text](/path/), you may include it exactly as \
 written. Never write any other link.
 - When a step happens on the website, name the button the way it appears, for example "Cancel My \
@@ -268,6 +270,7 @@ class ChatbotService:
                 )
                 or "none"
             ),
+            f"Approved until: {adopter.approved_until.strftime('%B %-d, %Y')}",
             "Calendar access: "
             + (
                 "restricted, because they have chosen a dog or completed an adoption"

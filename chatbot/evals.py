@@ -20,12 +20,15 @@ class EvalCase:
     expected: set[str]
     # Each must appear in the shown answer, ignoring case
     mentions: list[str] = field(default_factory=list)
+    # Longest acceptable answer, for messages that only need a short reply
+    max_words: int | None = None
 
 
 def details(
     now: str,
     appointment: str = "none booked",
     recent: str = "none",
+    approved_until: str = "October 20, 2027",
     calendar: str = "open",
     co_applicants: str = "none on file (this doesn't mean nobody else is listed)",
     adoption: str = "none",
@@ -35,6 +38,7 @@ def details(
         "First name: Jamie",
         f"Current appointment: {appointment}",
         f"Other appointments in the last 14 days: {recent}",
+        f"Approved until: {approved_until}",
         f"Calendar access: {calendar}",
         f"Other adults listed on their application: {co_applicants}",
         f"Adoption in progress: {adoption}",
@@ -48,6 +52,29 @@ CASES = [
         details=details("Friday, October 23, 2026, 6:40 PM", recent="Oct 23, 04:00 PM, no show"),
         expected={ANSWER},
         mentions=["Book New Appointment"],
+        max_words=60,
+    ),
+    EvalCase(
+        name="booking more than two weeks ahead",
+        message=(
+            "I wasn't sure how long the adoption process would take so I submitted my application "
+            "a few days ago. I am happy I have been approved. I want to schedule an appointment in "
+            "November. We have a family event in Colorado that we are attending (planned several "
+            "months ago) and will be there from Nov. 11 - 16. I read in the information you sent "
+            "that a dog cannot be held. So it would be best for me to schedule a visit for when we "
+            "return. I saw that the schedule is only done 2 weeks out. I am checking to make sure "
+            "that it will be okay for me to schedule my visit when your calendar is updated. Look "
+            "forward to meeting the dogs! Thank you."
+        ),
+        details=details("Monday, October 26, 2026, 8:20 PM"),
+        expected={ANSWER},
+        max_words=60,
+    ),
+    EvalCase(
+        name="booking ahead, but approval runs out first",
+        message="I'm traveling until mid-January. Can I book a visit for when I get back?",
+        details=details("Monday, October 26, 2026, 8:20 PM", approved_until="December 17, 2026"),
+        expected={PARTIAL, STAFF},
     ),
     EvalCase(
         name="earlier slot, before the booking cutoff",

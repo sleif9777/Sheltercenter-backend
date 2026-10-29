@@ -155,6 +155,9 @@ class ChatbotTests(SmokeTestCase):
             f"Other appointments in the last 14 days: {missed.instant_display}, no show",
             user_message,
         )
+        self.assertIn(
+            f"Approved until: {self.adopter.approved_until.strftime('%B %-d, %Y')}", user_message
+        )
 
     def test_eval_command_reports_passes_and_failures(self) -> None:
         self.create.return_value = fake_response()
