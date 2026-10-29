@@ -61,6 +61,9 @@ MAILGUN_SENDER_DOMAIN="mg.savinggracenc.org"
 # Shelterluv API
 SHELTERLUV_API_KEY="..."
 
+# Claude API (Message Adoptions chatbot; without it every question goes to staff)
+ANTHROPIC_API_KEY="..."
+
 # PostgreSQL (omit all to use SQLite locally)
 POSTGRES_DB="..."
 POSTGRES_USER="..."
@@ -103,6 +106,10 @@ python manage.py import_dogs --dog-id <id>   # test against a single dog
 
 # Send day-prior appointment reminder emails
 python manage.py run_reminders
+
+# Create or update a chatbot policy entry (body on stdin); --deactivate / --activate to hide or show it
+python manage.py upsert_policy <slug> --title "..." < body.md
+heroku run --no-tty -a sheltercenter-backend -- python manage.py upsert_policy <slug> --title "..." < body.md
 ```
 
 ---
@@ -171,6 +178,7 @@ Configured in `pyproject.toml`:
 | `admin_appointments` | Admin-facing appointment views |
 | `admin_appointment_bases` | Admin-facing template views |
 | `bookings` | Adopter bookings against appointment slots |
+| `chatbot` | Message Adoptions chatbot: policy entries it answers from, logged questions, and the backlog of questions it couldn't answer. Gated per adopter by `Adopter.chatbot_enabled` |
 | `pending_adoptions` | Adoptions currently in progress |
 | `pending_adoption_updates` | Change history for pending adoptions |
 | `watchlist_entries` | Adopter watchlists for specific dogs |
@@ -193,6 +201,7 @@ Base URL: `http://localhost:8000/`
 |---|---|
 | `Adopters/` | Adopter CRUD |
 | `Appointments/` | Appointment CRUD |
+| `Chatbot/` | Ask the Message Adoptions chatbot, check its status, send an answered question to staff |
 | `ClosedDates/` | Closed date CRUD |
 | `DashboardNotes/` | Add/remove dashboard notes (read via `Dogs/GetDashboardDogHash/`) |
 | `Dogs/` | Dog records |

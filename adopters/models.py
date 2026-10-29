@@ -110,6 +110,10 @@ class Adopter(models.Model):
     max_weight_preference = models.IntegerField(null=True, blank=True)
     low_shedding = models.BooleanField(default=False)
 
+    # CHATBOT ITEMS
+    # Gates the Message Adoptions chatbot while it's being tested
+    chatbot_enabled = models.BooleanField(default=False)
+
     # VISIT LOGISTICS ITEMS
     mobility = models.BooleanField(default=False)
     bringing_dog = models.BooleanField(default=False)

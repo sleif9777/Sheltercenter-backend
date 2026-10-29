@@ -54,6 +54,7 @@ class AdopterAdmin(ModelAdmin):
         ApprovalExpiredFilter,
         "approval_emailed",
         "user_profile__adoption_completed",
+        "chatbot_enabled",
         ("approved_until", RangeDateFilter),
         ("last_uploaded", RangeDateTimeFilter),
     )

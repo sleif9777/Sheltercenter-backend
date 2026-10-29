@@ -17,6 +17,7 @@ Including another URLconf
 from adopters.views import AdopterViewSet
 from appointment_bases.views import AppointmentBaseViewSet
 from appointments.views import AppointmentViewSet
+from chatbot.views import ChatbotViewSet
 from closed_dates.views import ClosedDateViewSet
 from dashboard_notes.views import DashboardNoteViewSet
 from django.conf import settings
@@ -33,6 +34,7 @@ from users.views import UserProfileViewSet
 router = routers.DefaultRouter()
 router.register(r'Adopters', AdopterViewSet)
 router.register(r'Appointments', AppointmentViewSet)
+router.register(r'Chatbot', ChatbotViewSet)
 router.register(r'ClosedDates', ClosedDateViewSet)
 router.register(r'DashboardNotes', DashboardNoteViewSet)
 router.register(r'Dogs', DogsViewSet)
