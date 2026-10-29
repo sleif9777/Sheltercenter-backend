@@ -52,8 +52,9 @@ class ChatbotInteraction(models.Model):
     knowledge base can't answer yet, until a policy entry covers it or it's dismissed.
     """
 
-    # Past these, the adopter is sent to the regular Message Adoptions form
-    DAILY_QUESTION_CAP = 5
+    # Past these, the adopter is sent to the regular Message Adoptions form. None means no daily cap,
+    # which is only for testing on one account: set it back to 5 before enabling more adopters.
+    DAILY_QUESTION_CAP: int | None = None
     MAX_QUESTION_LENGTH = 1000
 
     created_instant = models.DateTimeField(auto_now_add=True)
@@ -95,7 +96,10 @@ class ChatbotInteraction(models.Model):
     )
 
     @classmethod
-    def questions_remaining_today(cls, adopter: Adopter) -> int:
+    def questions_remaining_today(cls, adopter: Adopter) -> int | None:
+        if cls.DAILY_QUESTION_CAP is None:
+            return None
+
         asked = cls.objects.filter(
             adopter=adopter, created_instant__date=timezone.localdate()
         ).count()

@@ -46,14 +46,20 @@ class ChatbotTests(SmokeTestCase):
         return resp.json()
 
     def test_status_reports_flag_and_remaining_questions(self) -> None:
-        resp = self.client_for(self.adopter_user).get(
-            "/Chatbot/GetStatus/", {"adopterID": self.adopter.id}
-        )
+        with mock.patch.object(ChatbotInteraction, "DAILY_QUESTION_CAP", 5):
+            resp = self.client_for(self.adopter_user).get(
+                "/Chatbot/GetStatus/", {"adopterID": self.adopter.id}
+            )
         self.assertStatus(resp, 200)
-        self.assertEqual(
-            resp.json(),
-            {"enabled": True, "questionsRemaining": ChatbotInteraction.DAILY_QUESTION_CAP},
-        )
+        self.assertEqual(resp.json(), {"enabled": True, "questionsRemaining": 5})
+
+    def test_status_without_a_cap(self) -> None:
+        with mock.patch.object(ChatbotInteraction, "DAILY_QUESTION_CAP", None):
+            resp = self.client_for(self.adopter_user).get(
+                "/Chatbot/GetStatus/", {"adopterID": self.adopter.id}
+            )
+        self.assertStatus(resp, 200)
+        self.assertEqual(resp.json(), {"enabled": True, "questionsRemaining": None})
 
     def test_status_is_private_to_the_adopter(self) -> None:
         resp = self.client_for(self.adopter_user).get(
@@ -76,11 +82,12 @@ class ChatbotTests(SmokeTestCase):
             answer="We don't hold dogs.",
         )
 
-        body = self.ask()
+        with mock.patch.object(ChatbotInteraction, "DAILY_QUESTION_CAP", 5):
+            body = self.ask()
 
         self.assertTrue(body["answered"])
         self.assertEqual(body["answer"], "We don't hold dogs.")
-        self.assertEqual(body["questionsRemaining"], ChatbotInteraction.DAILY_QUESTION_CAP - 1)
+        self.assertEqual(body["questionsRemaining"], 4)
         self.assertEqual(len(mail.outbox), 0)
         interaction = ChatbotInteraction.objects.get()
         self.assertEqual(interaction.cited_policies, ["no-holds"])
@@ -156,15 +163,25 @@ class ChatbotTests(SmokeTestCase):
         self.assertFalse(body["answered"])
         self.assertEqual(len(mail.outbox), 1)
 
+    @mock.patch.object(ChatbotInteraction, "DAILY_QUESTION_CAP", 3)
     def test_daily_cap(self) -> None:
         self.create.return_value = fake_response()
-        for _ in range(ChatbotInteraction.DAILY_QUESTION_CAP):
+        for _ in range(3):
             self.ask()
 
         body = self.ask(expected=429)
 
         self.assertEqual(body, {"questionsRemaining": 0})
-        self.assertEqual(self.create.call_count, ChatbotInteraction.DAILY_QUESTION_CAP)
+        self.assertEqual(self.create.call_count, 3)
+
+    @mock.patch.object(ChatbotInteraction, "DAILY_QUESTION_CAP", None)
+    def test_no_cap(self) -> None:
+        self.create.return_value = fake_response()
+        for _ in range(8):
+            body = self.ask()
+
+        self.assertIsNone(body["questionsRemaining"])
+        self.assertEqual(self.create.call_count, 8)
 
     def test_question_length_limit(self) -> None:
         self.ask("x" * (ChatbotInteraction.MAX_QUESTION_LENGTH + 1), expected=400)
