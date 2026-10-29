@@ -231,12 +231,18 @@ class EmailViewSet(viewsets.ViewSet):
 
     def NoDecision(self, appointment, send_sleepover_info: bool):
         booking = appointment.get_current_booking()
-        subject = "Hope to see you again soon! ({0})".format(booking.adopter.user_profile.full_name)
+        adopter = booking.adopter
+        subject = "Hope to see you again soon! ({0})".format(adopter.user_profile.full_name)
 
         email = EmailService(
             subject,
             "no_decision",
-            {"appointment": appointment, "host_weekend": send_sleepover_info},
+            {
+                "appointment": appointment,
+                "host_weekend": send_sleepover_info,
+                "approval_active": not adopter.approval_expired,
+                "approved_until_display": adopter.approved_until.strftime("%b %d, %Y"),
+            },
             booking.adopter.user_profile.primary_email,
         )
         email.send()

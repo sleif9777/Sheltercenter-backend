@@ -14,6 +14,16 @@
         <p>
             We're sorry we couldn't find the perfect match for you today. However, we're always welcoming new dogs into our program, and your new best friend might be here soon! If you would like to schedule another appointment, you are welcome to do so using our scheduling portal (<a href="https://savinggracencscheduler.com/" target="_blank">www.savinggracencscheduler.com</a>).
         </p>
+        {% if approval_active %}
+            <p class="highlight">
+                You do not need to reapply. Your approval is still good through {{ approved_until_display }}.
+            </p>
+            <p>
+                You can use it to adopt any dog available at Saving Grace between now and then. Just book
+                another appointment when you're ready. You'll only need to submit a new application if you
+                haven't adopted by {{ approved_until_display }}.
+            </p>
+        {% endif %}
         {% if host_weekend %}
             <p>
                 We also talked about the possibility of participating in our Host Weekend Sleepover program! This program runs most weekends, giving our long-term residents a much-needed break from the shelter. Here’s what to know before you sign up:
