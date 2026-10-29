@@ -31,6 +31,7 @@ def fake_response(**reply: object) -> SimpleNamespace:
         "answer": "",
         "needs_staff": True,
         "reason": "Not covered.",
+        "offer_appointment_id": 0,
     } | reply
     return SimpleNamespace(
         stop_reason="end_turn",
@@ -297,13 +298,100 @@ class ChatbotTests(SmokeTestCase):
         self.ask("x" * (ChatbotInteraction.MAX_QUESTION_LENGTH + 1), expected=400)
         self.create.assert_not_called()
 
+    def test_prompt_lists_open_times_of_the_same_type(self) -> None:
+        soon = Appointment.objects.create(
+            type=AppointmentTypes.ADULTS, instant=timezone.now() + datetime.timedelta(hours=1)
+        )
+        puppies = Appointment.objects.create(
+            type=AppointmentTypes.PUPPIES, instant=self.open_appt.instant
+        )
+        self.create.return_value = fake_response()
+
+        self.ask("Can I come an hour later?")
+
+        user_message = self.create.call_args.kwargs["messages"][0]["content"]
+        self.assertIn(f"[{self.open_appt.id}]", user_message)
+        self.assertNotIn(f"[{soon.id}]", user_message, "inside the 2-hour cutoff")
+        self.assertNotIn(f"[{puppies.id}]", user_message, "a different appointment type")
+
+    def ask_for_open_appt(self, offer_id: int | None = None) -> dict:
+        self.create.return_value = fake_response(
+            cited_policies=["no-holds"],
+            answer="That time is open, so you can switch with the button below.",
+            needs_staff=False,
+            offer_appointment_id=offer_id or self.open_appt.id,
+        )
+        return self.ask("Can I come an hour later?")
+
+    def accept(self, interaction_id: int, user: object = None) -> object:
+        return self.client_for(user or self.adopter_user).post(
+            "/Chatbot/AcceptOffer/", {"interactionID": interaction_id}, format="json"
+        )
+
+    def test_offers_an_open_time_and_moves_the_appointment(self) -> None:
+        body = self.ask_for_open_appt()
+        self.assertIsNotNone(body["offer"])
+
+        resp = self.accept(body["interactionID"])
+
+        self.assertStatus(resp, 200)
+        self.assertEqual(self.adopter.get_current_appointment(), self.open_appt)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, BookingStatus.RESCHEDULED)
+        self.assertEqual(resp.json()["currentAppt"]["ID"], self.open_appt.id)
+        self.assertEqual(len(mail.outbox), 1, "the usual rescheduled email to the adopter")
+        self.assertIsNotNone(ChatbotInteraction.objects.get().offer_accepted_instant)
+        self.assertStatus(self.accept(body["interactionID"]), 409)
+
+    def test_never_offers_a_time_that_is_not_open(self) -> None:
+        taken = Appointment.objects.create(
+            type=AppointmentTypes.ADULTS,
+            instant=self.open_appt.instant + datetime.timedelta(hours=1),
+        )
+        Booking.create_active(self.other_adopter, taken)
+
+        body = self.ask_for_open_appt(offer_id=taken.id)
+
+        self.assertIsNone(body["offer"])
+        self.assertIsNone(ChatbotInteraction.objects.get().offered_appointment)
+
+    def test_offer_fails_if_the_time_is_taken_before_accepting(self) -> None:
+        body = self.ask_for_open_appt()
+        Booking.create_active(self.other_adopter, self.open_appt)
+
+        self.assertStatus(self.accept(body["interactionID"]), 409)
+        self.assertEqual(self.adopter.get_current_appointment(), self.booked_appt)
+
+    def test_offer_can_only_be_accepted_by_its_adopter(self) -> None:
+        body = self.ask_for_open_appt()
+
+        self.assertStatus(self.accept(body["interactionID"], self.other_adopter.user_profile), 403)
+        self.assertEqual(self.adopter.get_current_appointment(), self.booked_appt)
+
+    def test_staff_email_uses_the_message_as_written(self) -> None:
+        self.create.return_value = fake_response()
+
+        resp = self.client_for(self.adopter_user).post(
+            "/Chatbot/Ask/",
+            {
+                "adopterID": self.adopter.id,
+                "question": "Hello there",
+                "message": "<p>Hello <strong>there</strong></p>",
+            },
+            format="json",
+        )
+
+        self.assertStatus(resp, 200)
+        html = mail.outbox[0].alternatives[0][0]
+        self.assertIn("<p>Hello <strong>there</strong></p>", html)
+
     def test_question_is_escaped_in_staff_email(self) -> None:
         self.create.return_value = fake_response()
 
         self.ask("<b>hi</b>\nsecond line")
 
         html = mail.outbox[0].alternatives[0][0]
-        self.assertIn("&lt;b&gt;hi&lt;/b&gt;<br>second line", html)
+        self.assertIn("<p>&lt;b&gt;hi&lt;/b&gt;</p><p>second line</p>", html)
 
     def test_send_to_staff_after_an_answer(self) -> None:
         self.create.return_value = fake_response(

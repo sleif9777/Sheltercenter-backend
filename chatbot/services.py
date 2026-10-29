@@ -5,11 +5,15 @@ import re
 from dataclasses import dataclass
 
 import anthropic
-from django.template.defaultfilters import linebreaksbr
+from django.db import transaction
 from django.utils import timezone
+from django.utils.html import escape
 
 from adopters.models import Adopter
+from appointments.models import Appointment
+from appointments.views import AppointmentViewSet
 from bookings.enums import BookingStatus
+from bookings.models import Booking
 from email_templates.views import EmailViewSet
 from pending_adoptions.enums import PendingAdoptionStatus
 from pending_adoptions.models import PendingAdoption
@@ -26,6 +30,11 @@ LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 TIMEOUT_SECONDS = 20.0
 # How far back the adopter details list past appointments (no-shows, cancellations and so on)
 RECENT_APPOINTMENTS = datetime.timedelta(days=14)
+# Adopters can't book within 2 hours of a slot, and the calendar opens two weeks ahead
+BOOKING_CUTOFF = AppointmentViewSet.ADOPTER_BOOKING_CUTOFF
+OFFER_WINDOW = datetime.timedelta(days=14)
+# An open time in the adopter details, written as 4:30 PM [37171]
+OPEN_TIME_ID = re.compile(r"\[(\d+)\]")
 
 CATEGORIES = [
     "appointments",
@@ -48,12 +57,18 @@ Answer only from the policies below and the adopter details sent with the messag
 details give the current local time, so you can work out how long it is until an appointment. Put in \
 answer only what they clearly settle, and never fill a gap with a fact the policies don't state, even one that \
 seems likely. A message can be partly settled: answer that part, and set needs_staff to true for the \
-rest. Set needs_staff to true whenever any part of the message is left over, in particular when:
-- answering it would take a fact the policies don't state;
-- it's about a specific dog (its health, behavior, availability or status) beyond the adopter details \
-given;
-- the adopter asks for an exception, a favor, or anything else that needs a staff decision;
-- the message asks staff to do something, such as booking, changing or confirming arrangements.
+rest.
+
+Set needs_staff to true only when the adopter asks for something the policies and adopter details \
+don't settle, or something only staff can do or decide, in particular:
+- a fact the policies don't state;
+- a specific dog (its health, behavior, availability or status) beyond the adopter details given;
+- an exception, a favor, or anything else that needs a staff decision;
+- booking or confirming arrangements for them, or moving their appointment to a time less than 2 \
+hours from now, which only staff can arrange.
+Don't set it for follow-up questions the adopter didn't ask. Take what adopters say about their own \
+situation at face value: if it doesn't match the adopter details, answer what they asked anyway, without \
+pointing out the difference.
 
 Leave answer empty, and set needs_staff to true, when the policies settle none of the message, or when \
 the adopter is upset, reports a problem or an emergency, or wants to surrender a dog. A message \
@@ -64,6 +79,13 @@ answer and goes to staff.
 Never promise or imply anything the policies don't promise: no guaranteed times, availability or \
 outcomes, and nothing about what staff will decide. Saving Grace never holds or reserves dogs for \
 anyone; adoptions are first come, first served.
+
+The adopter details list open times for the same kind of appointment as their current one, each with \
+an id in brackets. These are the only times you can offer. When the adopter asks to move their current \
+appointment and a listed time matches what they want, set offer_appointment_id to that id and tell them \
+they can switch with the button below your answer; nothing changes until they press it. If they ask \
+for a time at least 2 hours from now that isn't listed, it isn't open: tell them so and mention any \
+listed times close to it. Otherwise set offer_appointment_id to 0.
 
 When you write an answer:
 - Answer what they asked directly, usually in two to four short sentences and never more than about \
@@ -95,8 +117,16 @@ OUTPUT_SCHEMA = {
         "answer": {"type": "string"},
         "needs_staff": {"type": "boolean"},
         "reason": {"type": "string"},
+        "offer_appointment_id": {"type": "integer"},
     },
-    "required": ["category", "cited_policies", "answer", "needs_staff", "reason"],
+    "required": [
+        "category",
+        "cited_policies",
+        "answer",
+        "needs_staff",
+        "reason",
+        "offer_appointment_id",
+    ],
     "additionalProperties": False,
 }
 
@@ -108,6 +138,7 @@ class ChatbotReply:
     cited_policies: list[str]
     category: str
     reason: str
+    offer_appointment_id: int = 0
 
 
 class ChatbotService:
@@ -117,21 +148,26 @@ class ChatbotService:
     either answered in full, answered in part and also emailed to staff, or emailed to staff with no
     answer. Anything emailed to staff by the chatbot joins the backlog. The email carries only the
     adopter's message; the chatbot's reply stays on the interaction in the admin.
+
+    A full answer can also offer to move the adopter's appointment to an open time of the same type at
+    least 2 hours away, which happens only when the adopter accepts it (accept_offer).
     """
 
     def __init__(self, client: anthropic.Anthropic | None = None) -> None:
         self.client = client
 
-    def ask(self, adopter: Adopter, question: str) -> ChatbotInteraction:
+    def ask(self, adopter: Adopter, question: str, message_html: str = "") -> ChatbotInteraction:
         knowledge_base = PolicyEntry.compile_knowledge_base()
+        open_slots = self.open_slots(adopter)
         interaction = ChatbotInteraction(
             adopter=adopter,
             question=question,
+            message_html=message_html,
             model=MODEL,
             knowledge_base_version=PolicyEntry.knowledge_base_version(knowledge_base),
         )
 
-        user_message = self.user_message(self.adopter_details(adopter), question)
+        user_message = self.user_message(self.adopter_details(adopter, open_slots), question)
         reply = (
             self._get_reply(interaction, knowledge_base, user_message) if knowledge_base else None
         )
@@ -143,6 +179,8 @@ class ChatbotService:
             interaction.answer = self.shown_answer(reply, knowledge_base)
 
         if interaction.answer and reply is not None and not reply.needs_staff:
+            offer = {slot.id: slot for slot in open_slots}.get(reply.offer_appointment_id)
+            interaction.offered_appointment = offer
             interaction.save()
             return interaction
 
@@ -210,6 +248,7 @@ class ChatbotService:
                 cited_policies=[str(slug) for slug in data["cited_policies"]],
                 category=str(data["category"]),
                 reason=str(data["reason"]),
+                offer_appointment_id=int(data["offer_appointment_id"] or 0),
             )
         except (json.JSONDecodeError, KeyError, TypeError):
             logger.exception("Chatbot returned unreadable output")
@@ -236,7 +275,7 @@ class ChatbotService:
         return cls._keep_policy_links(reply.answer.strip(), knowledge_base)
 
     @staticmethod
-    def adopter_details(adopter: Adopter) -> list[str]:
+    def adopter_details(adopter: Adopter, open_slots: list[Appointment]) -> list[str]:
         profile = adopter.user_profile
 
         appointment = adopter.get_current_appointment()
@@ -262,6 +301,7 @@ class ChatbotService:
             f"First name: {profile.first_name}",
             "Current appointment: "
             + (appointment.instant_display if appointment else "none booked"),
+            ChatbotService.open_times(open_slots),
             "Other appointments in the last 14 days: "
             + (
                 "; ".join(
@@ -285,6 +325,100 @@ class ChatbotService:
         ]
 
     @staticmethod
+    def open_slots(adopter: Adopter) -> list[Appointment]:
+        """Open times the adopter's current appointment could move to, one slot per time."""
+        current = adopter.get_current_appointment()
+        if current is None or adopter.user_profile.adoption_completed:
+            return []
+
+        now = timezone.now()
+        candidates = (
+            Appointment.objects.filter(
+                type=current.type,
+                soft_deleted=False,
+                locked=False,
+                primary_appointment__isnull=True,
+                instant__gte=now + BOOKING_CUTOFF,
+                instant__lte=now + OFFER_WINDOW,
+            )
+            .exclude(instant=current.instant)
+            .exclude(
+                bookings__status__in=[
+                    BookingStatus.ACTIVE,
+                    BookingStatus.NOSHOW,
+                    BookingStatus.COMPLETED,
+                ]
+            )
+            .order_by("instant", "id")
+        )
+        by_time: dict[datetime.datetime, Appointment] = {}
+        for slot in candidates:
+            by_time.setdefault(slot.instant, slot)
+        return list(by_time.values())
+
+    @staticmethod
+    def open_times(open_slots: list[Appointment]) -> str:
+        by_day: dict[str, list[str]] = {}
+        for slot in open_slots:
+            local = timezone.localtime(slot.instant)
+            by_day.setdefault(local.strftime("%a %b %-d"), []).append(
+                f"{local.strftime('%-I:%M %p')} [{slot.id}]"
+            )
+        return "Open times you can offer to move their current appointment to: " + (
+            "; ".join(f"{day}: {', '.join(times)}" for day, times in by_day.items()) or "none"
+        )
+
+    @staticmethod
+    def offer_label(slot: Appointment) -> str:
+        local = timezone.localtime(slot.instant)
+        return f"{local.strftime('%A, %B')} {local.day} at {local.strftime('%-I:%M %p')}"
+
+    @staticmethod
+    @transaction.atomic
+    def accept_offer(interaction: ChatbotInteraction) -> Appointment | None:
+        """Moves the adopter's appointment to the offered time, or returns None if it's no longer open."""
+        adopter = interaction.adopter
+        if (
+            adopter is None
+            or interaction.offered_appointment_id is None
+            or interaction.offer_accepted_instant is not None
+            or adopter.user_profile.adoption_completed
+        ):
+            return None
+
+        # Lock both rows so the slot can't be booked out from under us
+        new_slot = Appointment.objects.select_for_update().get(
+            pk=interaction.offered_appointment_id
+        )
+        booking = (
+            Booking.objects.select_for_update()
+            .filter(adopter=adopter, status=BookingStatus.ACTIVE)
+            .select_related("appointment")
+            .first()
+        )
+        if booking is None or booking.appointment is None:
+            return None
+
+        old_slot = booking.appointment
+        if (
+            old_slot.check_in_time is not None
+            or old_slot.outcome is not None
+            or new_slot.type != old_slot.type
+            or new_slot.soft_deleted
+            or new_slot.locked
+            or new_slot.primary_appointment_id is not None
+            or new_slot.instant - timezone.now() < BOOKING_CUTOFF
+            or new_slot.get_current_booking() is not None
+        ):
+            return None
+
+        booking.reschedule_to(new_slot)
+        interaction.offer_accepted_instant = timezone.now()
+        interaction.save(update_fields=["offer_accepted_instant"])
+        EmailViewSet().AppointmentRescheduled(old_slot, new_slot)
+        return new_slot
+
+    @staticmethod
     def user_message(details: list[str], question: str) -> str:
         return (
             "<adopter_details>\n"
@@ -300,8 +434,11 @@ class ChatbotService:
         assert adopter is not None
         profile = adopter.user_profile
 
-        # Sent like any other Message Adoptions email: the adopter's words only, not the chatbot's reply
-        message = linebreaksbr(interaction.question, autoescape=True)
+        # Sent like any other Message Adoptions email: the adopter's message as they wrote it, not the
+        # chatbot's reply
+        message = interaction.message_html or "".join(
+            f"<p>{escape(line) or '<br>'}</p>" for line in interaction.question.split("\n")
+        )
 
         EmailViewSet().GenericMessage(
             profile, "Message from " + profile.full_name, message, to_adoptions=True

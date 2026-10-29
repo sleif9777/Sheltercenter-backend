@@ -5,6 +5,7 @@ from django.db import models
 from django.utils import timezone
 
 from adopters.models import Adopter
+from appointments.models import Appointment
 
 from .enums import BacklogStatus, InteractionReview
 
@@ -64,12 +65,20 @@ class ChatbotInteraction(models.Model):
         Adopter, null=True, on_delete=models.SET_NULL, related_name="chatbot_interactions"
     )
     question = models.TextField()
+    # The adopter's message as they wrote it, formatting included, for the email to staff
+    message_html = models.TextField(default="", blank=True)
     answer = models.TextField(default="", blank=True)
     category = models.CharField(default="", max_length=50, blank=True)
     # The chatbot's one-sentence account of what it answered and what it left for staff
     bot_reason = models.TextField(default="", blank=True)
     # Slugs of the policy entries the answer relied on
     cited_policies = models.JSONField(default=list, blank=True)
+
+    # An open time the chatbot offered to move the adopter's appointment to, and when they accepted
+    offered_appointment = models.ForeignKey(
+        Appointment, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    offer_accepted_instant = models.DateTimeField(null=True, blank=True)
 
     # The chatbot handed the question to staff instead of answering
     bot_escalated = models.BooleanField(default=False)

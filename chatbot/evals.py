@@ -22,11 +22,14 @@ class EvalCase:
     mentions: list[str] = field(default_factory=list)
     # Longest acceptable answer, for messages that only need a short reply
     max_words: int | None = None
+    # The open time (its id in the details) the chatbot should offer to move the appointment to
+    offer: int | None = None
 
 
 def details(
     now: str,
     appointment: str = "none booked",
+    open_times: str = "none",
     recent: str = "none",
     approved_until: str = "October 20, 2027",
     calendar: str = "open",
@@ -37,6 +40,7 @@ def details(
         f"Now: {now}",
         "First name: Jamie",
         f"Current appointment: {appointment}",
+        f"Open times you can offer to move their current appointment to: {open_times}",
         f"Other appointments in the last 14 days: {recent}",
         f"Approved until: {approved_until}",
         f"Calendar access: {calendar}",
@@ -45,6 +49,11 @@ def details(
     ]
 
 
+EARLIER_SLOT = (
+    "Hi. I'm wondering if my 4:30 spot is still available? I canceled to book 6:00, but my daughter "
+    "got home sooner than expected."
+)
+
 CASES = [
     EvalCase(
         name="no-show apology",
@@ -52,6 +61,13 @@ CASES = [
         details=details("Friday, October 23, 2026, 6:40 PM", recent="Oct 23, 04:00 PM, no show"),
         expected={ANSWER},
         mentions=["Book New Appointment"],
+        max_words=60,
+    ),
+    EvalCase(
+        name="no-show apology the records don't show",
+        message="I'm sorry I missed my appointment! I thought it was for Friday.",
+        details=details("Wednesday, October 28, 2026, 9:05 PM", appointment="Nov 04, 05:30 PM"),
+        expected={ANSWER},
         max_words=60,
     ),
     EvalCase(
@@ -74,31 +90,38 @@ CASES = [
         name="booking ahead, but approval runs out first",
         message="I'm traveling until mid-January. Can I book a visit for when I get back?",
         details=details("Monday, October 26, 2026, 8:20 PM", approved_until="December 17, 2026"),
-        expected={PARTIAL, STAFF},
+        expected={ANSWER},
     ),
     EvalCase(
         name="earlier slot, before the booking cutoff",
-        message=(
-            "Hi. I'm wondering if my 4:30 spot is still available? I canceled to book 6:00, but my "
-            "daughter got home sooner than expected."
-        ),
+        message=EARLIER_SLOT,
         details=details(
             "Wednesday, October 28, 2026, 1:45 PM",
             appointment="Oct 28, 06:00 PM",
+            open_times="Wed Oct 28: 4:30 PM [501], 5:00 PM [502]; Thu Oct 29: 12:00 PM [503]",
             recent="Oct 28, 04:30 PM, cancelled",
         ),
         expected={ANSWER},
-        mentions=["See Open Appointments", "Cancel My Appointment"],
+        offer=501,
+    ),
+    EvalCase(
+        name="earlier slot, before the cutoff but taken",
+        message=EARLIER_SLOT,
+        details=details(
+            "Wednesday, October 28, 2026, 1:45 PM",
+            appointment="Oct 28, 06:00 PM",
+            open_times="Wed Oct 28: 5:00 PM [502]; Thu Oct 29: 12:00 PM [503]",
+            recent="Oct 28, 04:30 PM, cancelled",
+        ),
+        expected={ANSWER},
     ),
     EvalCase(
         name="earlier slot, inside the booking cutoff",
-        message=(
-            "Hi. I'm wondering if my 4:30 spot is still available? I canceled to book 6:00, but my "
-            "daughter got home sooner than expected."
-        ),
+        message=EARLIER_SLOT,
         details=details(
             "Wednesday, October 28, 2026, 3:10 PM",
             appointment="Oct 28, 06:00 PM",
+            open_times="Thu Oct 29: 12:00 PM [503]",
             recent="Oct 28, 04:30 PM, cancelled",
         ),
         expected={PARTIAL, STAFF},

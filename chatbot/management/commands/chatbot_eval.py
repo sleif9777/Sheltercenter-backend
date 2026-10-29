@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 
 from chatbot.evals import ANSWER, CASES, PARTIAL, STAFF, EvalCase
 from chatbot.models import ChatbotInteraction, PolicyEntry
-from chatbot.services import ChatbotService
+from chatbot.services import OPEN_TIME_ID, ChatbotService
 
 
 class Command(BaseCommand):
@@ -32,7 +32,11 @@ class Command(BaseCommand):
             )
             answer = service.shown_answer(reply, knowledge_base)
             outcome = STAFF if not answer else PARTIAL if reply and reply.needs_staff else ANSWER
-            problems = self.problems(case, outcome, answer)
+            # Mirrors ask(): only a full answer can offer a time, and only one listed as open
+            open_ids = {int(i) for line in case.details for i in OPEN_TIME_ID.findall(line)}
+            offer = reply.offer_appointment_id if reply and outcome == ANSWER else 0
+            offer = offer if offer in open_ids else None
+            problems = self.problems(case, outcome, answer, offer)
             failures += bool(problems)
             input_tokens += interaction.input_tokens
             cache_read_tokens += interaction.cache_read_tokens
@@ -42,7 +46,9 @@ class Command(BaseCommand):
             self.stdout.write(style(f"{'FAIL' if problems else 'PASS'}  {case.name}"))
             for problem in problems:
                 self.stdout.write(f"      {problem}")
-            self.stdout.write(f"      outcome: {outcome}")
+            self.stdout.write(
+                f"      outcome: {outcome}" + (f", offers [{offer}]" if offer else "")
+            )
             if reply is not None:
                 self.stdout.write(f"      cited: {', '.join(reply.cited_policies) or 'none'}")
                 self.stdout.write(f"      reason: {reply.reason}")
@@ -57,10 +63,12 @@ class Command(BaseCommand):
             raise CommandError(f"{failures} case(s) failed.")
 
     @staticmethod
-    def problems(case: EvalCase, outcome: str, answer: str) -> list[str]:
+    def problems(case: EvalCase, outcome: str, answer: str, offer: int | None) -> list[str]:
         problems = []
         if outcome not in case.expected:
             problems.append(f"expected {' or '.join(sorted(case.expected))}, got {outcome}")
+        if offer != case.offer:
+            problems.append(f"expected offer {case.offer}, got {offer}")
         for text in case.mentions:
             if answer and text.lower() not in answer.lower():
                 problems.append(f'answer doesn\'t mention "{text}"')
