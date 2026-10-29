@@ -129,6 +129,30 @@ CASES = [
         expected={PARTIAL, STAFF},
     ),
     EvalCase(
+        name="move to an open time on another day",
+        message="Can I reschedule for 1pm on 11/5",
+        details=details(
+            "Wednesday, October 28, 2026, 10:00 PM",
+            appointment="Nov 04, 05:30 PM",
+            open_times="Thu Nov 5: 1:00 PM [601], 1:30 PM [602]; Fri Nov 6: 12:00 PM [603]",
+        ),
+        expected={ANSWER},
+        offer=601,
+        max_words=60,
+    ),
+    EvalCase(
+        name="move to a time outside operating hours",
+        message="Can I move my appointment to 9:30am on Thursday 11/5?",
+        details=details(
+            "Wednesday, October 28, 2026, 10:00 PM",
+            appointment="Nov 04, 05:30 PM",
+            open_times="Thu Nov 5: 1:00 PM [601], 1:30 PM [602]; Fri Nov 6: 12:00 PM [603]",
+        ),
+        expected={ANSWER},
+        mentions=["1"],
+        max_words=60,
+    ),
+    EvalCase(
         name="cancel request",
         message="Something came up and I can't make it Saturday. Please cancel my appointment, sorry!",
         details=details("Wednesday, October 28, 2026, 9:15 AM", appointment="Oct 31, 01:00 PM"),
