@@ -429,7 +429,8 @@ class ChatbotService:
             pk=interaction.offered_appointment_id
         )
         booking = (
-            Booking.objects.select_for_update()
+            # Lock only the booking: Postgres can't lock the nullable side of the appointment join
+            Booking.objects.select_for_update(of=("self",))
             .filter(adopter=adopter, status=BookingStatus.ACTIVE)
             .select_related("appointment")
             .first()
@@ -470,7 +471,8 @@ class ChatbotService:
 
         # Lock the booking so a double click can't cancel (and email) twice
         booking = (
-            Booking.objects.select_for_update()
+            # Lock only the booking: Postgres can't lock the nullable side of the appointment join
+            Booking.objects.select_for_update(of=("self",))
             .filter(adopter=adopter, status=BookingStatus.ACTIVE)
             .select_related("appointment")
             .first()
