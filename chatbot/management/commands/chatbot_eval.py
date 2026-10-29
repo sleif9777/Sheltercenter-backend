@@ -42,7 +42,16 @@ class Command(BaseCommand):
             offer_cancel = bool(
                 reply and outcome == ANSWER and reply.offer_cancel and has_appointment
             )
+            asks_follow_up = bool(
+                reply
+                and outcome == ANSWER
+                and reply.awaiting_reply
+                and not offer
+                and not offer_cancel
+            )
             problems = self.problems(case, outcome, answer, offer, offer_cancel)
+            if case.asks_follow_up is not None and asks_follow_up != case.asks_follow_up:
+                problems.append(f"expected a follow-up question: {case.asks_follow_up}")
             failures += bool(problems)
             input_tokens += interaction.input_tokens
             cache_read_tokens += interaction.cache_read_tokens
@@ -52,8 +61,10 @@ class Command(BaseCommand):
             self.stdout.write(style(f"{'FAIL' if problems else 'PASS'}  {case.name}"))
             for problem in problems:
                 self.stdout.write(f"      {problem}")
-            offers = (f", offers [{offer}]" if offer else "") + (
-                ", offers to cancel" if offer_cancel else ""
+            offers = (
+                (f", offers [{offer}]" if offer else "")
+                + (", offers to cancel" if offer_cancel else "")
+                + (", asks a follow-up" if asks_follow_up else "")
             )
             self.stdout.write(f"      outcome: {outcome}{offers}")
             if reply is not None:

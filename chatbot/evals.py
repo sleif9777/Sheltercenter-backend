@@ -26,6 +26,8 @@ class EvalCase:
     offer: int | None = None
     # Whether the chatbot should offer to cancel the current appointment
     offer_cancel: bool = False
+    # Whether the answer should ask the adopter for one more detail; None doesn't check
+    asks_follow_up: bool | None = None
 
 
 def details(
@@ -138,6 +140,30 @@ CASES = [
         ),
         expected={ANSWER},
         offer=601,
+        max_words=60,
+    ),
+    EvalCase(
+        name="reschedule without a time",
+        message="I want to reschedule my appointment",
+        details=details(
+            "Wednesday, October 28, 2026, 10:00 PM",
+            appointment="Nov 04, 05:30 PM",
+            open_times="Wed Nov 4: 3:00 PM [701], 4:00 PM [702]; Thu Nov 5: 1:00 PM [703]",
+        ),
+        expected={ANSWER},
+        asks_follow_up=True,
+        max_words=60,
+    ),
+    EvalCase(
+        name="time without a date",
+        message="I want to reschedule for 3pm",
+        details=details(
+            "Wednesday, October 28, 2026, 10:00 PM",
+            appointment="Nov 04, 05:30 PM",
+            open_times="Wed Nov 4: 3:00 PM [701], 4:00 PM [702]; Thu Nov 5: 1:00 PM [703], 3:00 PM [704]",
+        ),
+        expected={ANSWER},
+        offer=701,
         max_words=60,
     ),
     EvalCase(

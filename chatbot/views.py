@@ -48,8 +48,19 @@ class ChatbotViewSet(viewsets.GenericViewSet):
         if ChatbotInteraction.questions_remaining_today(adopter) == 0:
             return JsonResponse({"questionsRemaining": 0}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
+        previous = None
+        if query.validated_data["previousInteractionID"] is not None:
+            previous = get_object_or_404(
+                ChatbotInteraction,
+                pk=query.validated_data["previousInteractionID"],
+                adopter=adopter,
+            )
+
         interaction = ChatbotService().ask(
-            adopter, query.validated_data["question"].strip(), query.validated_data["message"]
+            adopter,
+            query.validated_data["question"].strip(),
+            query.validated_data["message"],
+            previous,
         )
         offer = interaction.offered_appointment
         current = adopter.get_current_appointment()
@@ -60,6 +71,8 @@ class ChatbotViewSet(viewsets.GenericViewSet):
                 # Shown to the adopter; may be set even when the message also went to staff
                 "answer": interaction.answer,
                 "sentToStaff": interaction.bot_escalated,
+                # The answer asks for one more detail, which the adopter can reply with in place
+                "awaitingReply": interaction.awaiting_reply,
                 # An open time the adopter can move their appointment to with one click
                 "offer": {"label": ChatbotService.offer_label(offer)} if offer else None,
                 # The adopter's current appointment, when the chatbot offered to cancel it

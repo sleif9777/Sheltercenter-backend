@@ -35,6 +35,8 @@ BOOKING_CUTOFF = AppointmentViewSet.ADOPTER_BOOKING_CUTOFF
 OFFER_WINDOW = datetime.timedelta(days=14)
 # An open time in the adopter details, written as 4:30 PM [37171]
 OPEN_TIME_ID = re.compile(r"\[(\d+)\]")
+# Earlier messages from the same conversation sent along with a reply
+MAX_EARLIER_MESSAGES = 6
 
 CATEGORIES = [
     "appointments",
@@ -82,14 +84,21 @@ anyone; adoptions are first come, first served.
 
 The adopter details list open times for the same kind of appointment as their current one, each with \
 an id in brackets. These are the only times you can offer. When the adopter asks to move their current \
-appointment and a listed time matches what they want, set offer_appointment_id to that id and tell them \
-they can switch with the button below your answer; nothing changes until they press it. If they ask \
-for a time at least 2 hours from now that isn't listed, it isn't open: tell them so and mention any \
-listed times close to it. Otherwise set offer_appointment_id to 0.
+appointment and a listed time matches what they want, set offer_appointment_id to that id and say in \
+one short sentence that the time is open and they can confirm the switch below; nothing changes until \
+they do. If they give a time but no date, assume the date of their current appointment, or today if \
+they have none. If they ask for a time at least 2 hours from now that isn't listed, it isn't open: tell them \
+so and mention any listed times close to it. Otherwise set offer_appointment_id to 0. Don't send them \
+to the "See Open Appointments" button when you can offer the time yourself.
 
-When the adopter asks to cancel their current appointment, set offer_cancel to true and tell them they \
-can cancel it with the button below your answer; nothing changes until they press it. Set it to false \
-if they have no current appointment or haven't asked to cancel.
+When the adopter asks to cancel their current appointment, set offer_cancel to true and say in one \
+short sentence that they can confirm the cancellation below; nothing changes until they do. Set it to \
+false if they have no current appointment or haven't asked to cancel.
+
+If you need one more detail before you can help, such as which day they mean, ask for it as your answer \
+and set awaiting_reply to true; the adopter can reply right below it, and their reply comes back to \
+you with the earlier messages inside <earlier_messages>. Only ask when the policies let you help once \
+you have the detail. Otherwise set awaiting_reply to false.
 
 When you write an answer:
 - Answer what they asked directly, usually in two to four short sentences and never more than about \
@@ -123,6 +132,7 @@ OUTPUT_SCHEMA = {
         "reason": {"type": "string"},
         "offer_appointment_id": {"type": "integer"},
         "offer_cancel": {"type": "boolean"},
+        "awaiting_reply": {"type": "boolean"},
     },
     "required": [
         "category",
@@ -132,6 +142,7 @@ OUTPUT_SCHEMA = {
         "reason",
         "offer_appointment_id",
         "offer_cancel",
+        "awaiting_reply",
     ],
     "additionalProperties": False,
 }
@@ -146,6 +157,7 @@ class ChatbotReply:
     reason: str
     offer_appointment_id: int = 0
     offer_cancel: bool = False
+    awaiting_reply: bool = False
 
 
 class ChatbotService:
@@ -164,18 +176,28 @@ class ChatbotService:
     def __init__(self, client: anthropic.Anthropic | None = None) -> None:
         self.client = client
 
-    def ask(self, adopter: Adopter, question: str, message_html: str = "") -> ChatbotInteraction:
+    def ask(
+        self,
+        adopter: Adopter,
+        question: str,
+        message_html: str = "",
+        previous: ChatbotInteraction | None = None,
+    ) -> ChatbotInteraction:
         knowledge_base = PolicyEntry.compile_knowledge_base()
         open_slots = self.open_slots(adopter)
         interaction = ChatbotInteraction(
             adopter=adopter,
             question=question,
             message_html=message_html,
+            previous=previous,
             model=MODEL,
             knowledge_base_version=PolicyEntry.knowledge_base_version(knowledge_base),
         )
 
-        user_message = self.user_message(self.adopter_details(adopter, open_slots), question)
+        earlier = [(turn.question, turn.answer) for turn in self.earlier_turns(interaction)]
+        user_message = self.user_message(
+            self.adopter_details(adopter, open_slots), question, earlier
+        )
         reply = (
             self._get_reply(interaction, knowledge_base, user_message) if knowledge_base else None
         )
@@ -191,6 +213,9 @@ class ChatbotService:
             interaction.offered_appointment = offer
             interaction.offered_cancellation = reply.offer_cancel and bool(
                 adopter.get_current_appointment()
+            )
+            interaction.awaiting_reply = (
+                reply.awaiting_reply and not offer and not interaction.offered_cancellation
             )
             interaction.save()
             return interaction
@@ -261,6 +286,7 @@ class ChatbotService:
                 reason=str(data["reason"]),
                 offer_appointment_id=int(data["offer_appointment_id"] or 0),
                 offer_cancel=bool(data["offer_cancel"]),
+                awaiting_reply=bool(data["awaiting_reply"]),
             )
         except (json.JSONDecodeError, KeyError, TypeError):
             logger.exception("Chatbot returned unreadable output")
@@ -464,14 +490,30 @@ class ChatbotService:
         return appointment
 
     @staticmethod
-    def user_message(details: list[str], question: str) -> str:
-        return (
-            "<adopter_details>\n"
-            + "\n".join(details)
-            + "\n</adopter_details>\n\n<question>\n"
-            + question
-            + "\n</question>"
-        )
+    def earlier_turns(interaction: ChatbotInteraction) -> list[ChatbotInteraction]:
+        """The earlier messages in this conversation, oldest first."""
+        turns = []
+        turn = interaction.previous
+        while turn is not None and len(turns) < MAX_EARLIER_MESSAGES:
+            turns.append(turn)
+            turn = turn.previous
+        return turns[::-1]
+
+    @staticmethod
+    def user_message(
+        details: list[str], question: str, earlier: list[tuple[str, str]] | None = None
+    ) -> str:
+        message = "<adopter_details>\n" + "\n".join(details) + "\n</adopter_details>\n\n"
+        if earlier:
+            message += (
+                "<earlier_messages>\n"
+                + "\n".join(
+                    f"Adopter: {q}\nYou: {a or '(passed to staff without an answer)'}"
+                    for q, a in earlier
+                )
+                + "\n</earlier_messages>\n\n"
+            )
+        return message + "<question>\n" + question + "\n</question>"
 
     @staticmethod
     def _email_staff(interaction: ChatbotInteraction) -> None:
@@ -479,10 +521,12 @@ class ChatbotService:
         assert adopter is not None
         profile = adopter.user_profile
 
-        # Sent like any other Message Adoptions email: the adopter's message as they wrote it, not the
-        # chatbot's reply
-        message = interaction.message_html or "".join(
-            f"<p>{escape(line) or '<br>'}</p>" for line in interaction.question.split("\n")
+        # Sent like any other Message Adoptions email: the adopter's messages as they wrote them, earlier
+        # ones in the conversation first, without the chatbot's replies
+        message = "".join(
+            turn.message_html
+            or "".join(f"<p>{escape(line) or '<br>'}</p>" for line in turn.question.split("\n"))
+            for turn in [*ChatbotService.earlier_turns(interaction), interaction]
         )
 
         EmailViewSet().GenericMessage(

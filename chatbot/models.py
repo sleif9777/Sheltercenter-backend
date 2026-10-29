@@ -64,6 +64,10 @@ class ChatbotInteraction(models.Model):
     adopter = models.ForeignKey(
         Adopter, null=True, on_delete=models.SET_NULL, related_name="chatbot_interactions"
     )
+    # The earlier message this replies to, when the adopter answered the chatbot's follow-up question
+    previous = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     question = models.TextField()
     # The adopter's message as they wrote it, formatting included, for the email to staff
     message_html = models.TextField(default="", blank=True)
@@ -78,6 +82,8 @@ class ChatbotInteraction(models.Model):
     offered_appointment = models.ForeignKey(
         Appointment, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
+    # The answer asked the adopter for one more detail, so they can reply in place
+    awaiting_reply = models.BooleanField(default=False)
     # The chatbot offered to cancel the adopter's current appointment
     offered_cancellation = models.BooleanField(default=False)
     # When the adopter accepted either offer; after that, neither can be accepted again

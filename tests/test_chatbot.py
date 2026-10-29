@@ -33,6 +33,7 @@ def fake_response(**reply: object) -> SimpleNamespace:
         "reason": "Not covered.",
         "offer_appointment_id": 0,
         "offer_cancel": False,
+        "awaiting_reply": False,
     } | reply
     return SimpleNamespace(
         stop_reason="end_turn",
@@ -415,6 +416,64 @@ class ChatbotTests(SmokeTestCase):
 
         self.assertIsNone(body["offerCancel"])
         self.assertFalse(ChatbotInteraction.objects.get().offered_cancellation)
+
+    def test_reply_continues_the_conversation(self) -> None:
+        self.create.return_value = fake_response(
+            cited_policies=["no-holds"],
+            answer="Which day would you like?",
+            needs_staff=False,
+            awaiting_reply=True,
+        )
+        first = self.ask("I want to reschedule")
+        self.assertTrue(first["awaitingReply"])
+        self.create.return_value = fake_response()
+
+        resp = self.client_for(self.adopter_user).post(
+            "/Chatbot/Ask/",
+            {
+                "adopterID": self.adopter.id,
+                "question": "Friday please",
+                "previousInteractionID": first["interactionID"],
+            },
+            format="json",
+        )
+
+        self.assertStatus(resp, 200)
+        user_message = self.create.call_args.kwargs["messages"][0]["content"]
+        self.assertIn(
+            "<earlier_messages>\nAdopter: I want to reschedule\nYou: Which day would you like?\n",
+            user_message,
+        )
+        self.assertIn("<question>\nFriday please\n</question>", user_message)
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0].alternatives[0][0]
+        self.assertIn("<p>I want to reschedule</p><p>Friday please</p>", email)
+
+    def test_reply_must_follow_the_adopters_own_message(self) -> None:
+        theirs = ChatbotInteraction.objects.create(adopter=self.other_adopter, question="q")
+
+        resp = self.client_for(self.adopter_user).post(
+            "/Chatbot/Ask/",
+            {"adopterID": self.adopter.id, "question": "hi", "previousInteractionID": theirs.id},
+            format="json",
+        )
+
+        self.assertStatus(resp, 404)
+        self.create.assert_not_called()
+
+    def test_no_follow_up_question_alongside_an_offer(self) -> None:
+        self.create.return_value = fake_response(
+            cited_policies=["no-holds"],
+            answer="That time is open.",
+            needs_staff=False,
+            offer_appointment_id=self.open_appt.id,
+            awaiting_reply=True,
+        )
+
+        body = self.ask("Can I come an hour later?")
+
+        self.assertIsNotNone(body["offer"])
+        self.assertFalse(body["awaitingReply"])
 
     def test_staff_email_uses_the_message_as_written(self) -> None:
         self.create.return_value = fake_response()
