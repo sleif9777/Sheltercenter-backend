@@ -1,6 +1,7 @@
 import datetime
 import io
 import logging
+from collections import Counter
 from typing import Optional
 
 from django.db.models import Count
@@ -23,6 +24,7 @@ from closed_dates.models import ClosedDate
 from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from dogs.enums import DogStatus
 from dogs.models import Dog
 from email_templates.views import EmailViewSet
 from pending_adoptions.enums import CircumstanceOptions, PendingAdoptionStatus
@@ -250,10 +252,28 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         return sorted(bookings, key=lambda b: (b.appointment.instant, b.created))
 
+    @staticmethod
+    def _get_popular_dogs(bookings: list[Booking]) -> list[dict]:
+        """Available dogs on the queued adopters' watchlists, most-watched first."""
+        watchers = Counter(
+            Dog.interest_adopters.through.objects.filter(
+                adopter_id__in={booking.adopter_id for booking in bookings},
+                dog__status=DogStatus.AVAILABLE_NOW,
+            ).values_list("dog_id", flat=True)
+        )
+        dogs = Dog.objects.in_bulk(watchers.keys())
+
+        popular = [
+            {"dogID": dog_id, "name": dogs[dog_id].name, "watchers": count}
+            for dog_id, count in watchers.items()
+        ]
+        return sorted(popular, key=lambda d: (-d["watchers"], d["name"]))
+
     @action(detail=False, methods=["GET"], url_path="GetQueueForDate", permission_classes=[AnySecurityLevel(SecurityLevel.ADMIN, SecurityLevel.SUPERUSER)])
     def GetQueueForDate(self, request):
         date, date_key = AppointmentViewSet.GetISODateFromISODateRequest(request.query_params)
 
+        bookings = self._get_queue_bookings_for_date(date)
         queue = [
             {
                 "apptID": booking.appointment.id,
@@ -263,10 +283,20 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 "bookedDisplay": booking.created_display,
                 "alreadySent": booking.sent_x_in_queue,
             }
-            for booking in self._get_queue_bookings_for_date(date)
+            for booking in bookings
         ]
+        resp = {"isoDate": date_key, "queue": queue}
 
-        return JsonResponse({"isoDate": date_key, "queue": queue}, status=status.HTTP_200_OK)
+        # Customizing the message and listing popular dogs are superuser-only for now
+        # TODO: add a Change Log entry when this opens up to admins
+        if request.user.security_level == SecurityLevel.SUPERUSER:
+            day_phrase = EmailViewSet.XInQueueDayPhrase(date)
+            resp["defaultMessage"] = EmailViewSet.XInQueueDefaultMessage(
+                EmailViewSet.XInQueueSignature(request.user), day_phrase, with_dogs=True
+            )
+            resp["popularDogs"] = self._get_popular_dogs(bookings)
+
+        return JsonResponse(resp, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["GET"], url_path="GetRecentAdoptions")
     def GetRecentAdoptions(self, request):
@@ -807,7 +837,17 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         query = SendQueueEmailsRequestSerializer(data=request.data)
         query.is_valid(raise_exception=True)
 
-        signature = request.user.full_name.strip() or "The Adoptions Team"
+        message = query.validated_data.get("message")
+        dog_ids = list(dict.fromkeys(query.validated_data.get("dogIDs", [])))
+
+        if (message or dog_ids) and request.user.security_level != SecurityLevel.SUPERUSER:
+            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
+
+        popular_dogs = sorted(
+            (dog.name for dog in Dog.objects.filter(pk__in=dog_ids)), key=str.lower
+        )
+
+        signature = EmailViewSet.XInQueueSignature(request.user)
         sent, failed = 0, []
 
         for entry in query.validated_data["entries"]:
@@ -819,7 +859,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 continue
 
             try:
-                EmailViewSet().XInQueue(appt, entry["position"], signature)
+                EmailViewSet().XInQueue(
+                    appt, entry["position"], signature, message, popular_dogs
+                )
                 booking.mark_template_sent(BookingMessageTemplate.X_IN_QUEUE)
                 sent += 1
             except Exception:

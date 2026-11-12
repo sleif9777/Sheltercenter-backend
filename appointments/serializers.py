@@ -193,6 +193,16 @@ class QueueEmailEntrySerializer(AppointmentIDRequestSerializer):
 
 class SendQueueEmailsRequestSerializer(serializers.Serializer):
     entries = QueueEmailEntrySerializer(many=True, allow_empty=False)
+    # Superusers only: a custom message body and dogs to list as popular
+    message = serializers.CharField(required=False)
+    dogIDs = serializers.ListField(child=serializers.IntegerField(), required=False)
+
+    def validate_message(self, value: str) -> str:
+        if "[NUMBER]" not in value:
+            raise serializers.ValidationError(
+                "The message must include [NUMBER] so each adopter sees their place in the queue."
+            )
+        return value
 
 
 class ScheduleAppointmentRequestSerializer(

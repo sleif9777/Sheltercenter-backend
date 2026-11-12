@@ -5,23 +5,8 @@
 {% endblock %}
 
 {% block content %}
+    <!-- The greeting and sign-off are part of the message, so staff can edit them -->
     <div>
-        <p class="pink">
-            Hi {{adopter.user_profile.first_name}},
-        </p>
-    </div>
-    <div>
-        <p>
-            We are excited to welcome you to the Funny Farm {{day_phrase}}! We're incredibly fortunate to have so many families coming to meet our available dogs. Since our schedule is currently full, we want to ensure all visitors know their place in the queue to avoid any surprises upon arrival.
-        </p>
-        <p>
-            With high demand for adoptions this week, we must follow the original appointment times scheduled through our system. You are <b>#{{position}}</b> in the queue {{day_phrase}} and will be assisted by a counselor as soon as possible. Please be mindful of time, as other visitors are also eager to meet their potential new companions.
-        </p>
-        <p>We look forward to seeing you!</p>
-    </div>
-    <div>
-        <p>Kind regards,</p>
-        <p class="pink signature">{{signature}}</p>
-        <p>Saving Grace Animals for Adoption</p>
+        {{message|safe}}
     </div>
 {% endblock %}

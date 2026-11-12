@@ -2,6 +2,8 @@ from datetime import date
 
 from adopters.models import Adopter
 from django.db.models.functions import Lower
+from django.template.loader import render_to_string
+from django.utils.html import escape
 from dogs.enums import DogStatus
 from dogs.models import Dog
 from environment_settings.models import EnvironmentSettings
@@ -13,6 +15,13 @@ from .services import EmailService
 
 
 class EmailViewSet(viewsets.ViewSet):
+    # Filled in per adopter in the X in Queue message
+    X_IN_QUEUE_NUMBER = "[NUMBER]"
+    X_IN_QUEUE_DAY = "[DAY]"
+    X_IN_QUEUE_FIRST_NAME = "[FIRST NAME]"
+    # Where a custom message lists the popular dogs
+    X_IN_QUEUE_DOGS = "[DOGS]"
+
     @staticmethod
     def _adopter_recipients(adopter: Adopter) -> list[str]:
         return [
@@ -125,17 +134,76 @@ class EmailViewSet(viewsets.ViewSet):
         )
         email.send()
 
-    def XInQueue(self, appointment, position: int, signature: str):
+    @staticmethod
+    def XInQueueDayPhrase(appt_date: date) -> str:
+        days_away = (appt_date - DateTimeUtils.get_today()).days
+        if days_away == 0:
+            return "today"
+        if days_away == 1:
+            return "tomorrow"
+        return "on {0}".format(appt_date.strftime("%A"))
+
+    @staticmethod
+    def XInQueueSignature(user) -> str:
+        return user.full_name.strip() or "The Adoptions Team"
+
+    @classmethod
+    def XInQueueDefaultMessage(
+        cls, signature: str, day_phrase: str | None = None, with_dogs: bool = False
+    ) -> str:
+        message = render_to_string(
+            "email_templates/x_in_queue_message.html",
+            {
+                # Customizers can list popular dogs, so their default leads into the list
+                "dogs_intro": (
+                    cls.XInQueuePopularDogsIntro(cls.X_IN_QUEUE_DAY) if with_dogs else ""
+                ),
+                "signature": signature,
+            },
+        ).strip()
+        # Filled in up front for the editor so staff see the actual wording
+        return message.replace(cls.X_IN_QUEUE_DAY, day_phrase) if day_phrase else message
+
+    @staticmethod
+    def XInQueuePopularDogsIntro(day_phrase: str) -> str:
+        return (
+            "A few of our pups have quite the fan club {0}! "
+            "Lots of visitors are hoping to meet:".format(day_phrase)
+        )
+
+    def XInQueue(
+        self,
+        appointment,
+        position: int,
+        signature: str,
+        message: str | None = None,
+        popular_dogs: list[str] | None = None,
+    ):
         booking = appointment.get_current_booking()
         adopter = booking.adopter
 
-        days_away = (appointment.local_dt.date() - DateTimeUtils.get_today()).days
-        if days_away == 0:
-            day_phrase = "today"
-        elif days_away == 1:
-            day_phrase = "tomorrow"
-        else:
-            day_phrase = "on {0}".format(appointment.local_dt.strftime("%A, %B %-d"))
+        day_phrase = self.XInQueueDayPhrase(appointment.local_dt.date())
+
+        body = TextUtils.fix_queue_spelling(message or self.XInQueueDefaultMessage(signature))
+
+        dogs_html = (
+            render_to_string(
+                "email_templates/x_in_queue_dogs.html", {"popular_dogs": popular_dogs}
+            ).strip()
+            if popular_dogs
+            else ""
+        )
+        if self.X_IN_QUEUE_DOGS in body:
+            body = body.replace(self.X_IN_QUEUE_DOGS, dogs_html)
+        elif dogs_html:
+            # A message without [DOGS] still gets the dogs, after the message
+            body += "<p>{0}</p>{1}".format(self.XInQueuePopularDogsIntro(day_phrase), dogs_html)
+
+        body = (
+            body.replace(self.X_IN_QUEUE_NUMBER, str(position))
+            .replace(self.X_IN_QUEUE_DAY, day_phrase)
+            .replace(self.X_IN_QUEUE_FIRST_NAME, escape(adopter.user_profile.first_name))
+        )
 
         email = EmailService(
             "Your place in the queue: {0}".format(adopter.user_profile.full_name.upper()),
@@ -143,9 +211,8 @@ class EmailViewSet(viewsets.ViewSet):
             {
                 "adopter": adopter,
                 "appointment": appointment,
-                "day_phrase": day_phrase,
+                "message": body,
                 "position": position,
-                "signature": signature,
             },
             self._adopter_recipients(adopter),
         )
