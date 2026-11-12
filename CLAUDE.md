@@ -74,6 +74,8 @@ POSTGRES_PORT="5432"
 
 If no `POSTGRES_*` vars are set, the app uses `db.sqlite3` — sufficient for local development.
 
+Outside prod (any environment without Heroku's `DYNO` var), email only reaches addresses matching `EMAIL_ALLOWLIST` in `backend/settings.py`; every other recipient is dropped and logged (`email_templates/backends.py`).
+
 ---
 
 ## Running Locally

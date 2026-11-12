@@ -221,7 +221,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # EMAIL CONFIGURATION
 
-EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
+# Heroku sets DYNO on every dyno (web, release and `heroku run`), and the only Heroku app is prod.
+IS_PRODUCTION = "DYNO" in os.environ
+
+# Outside prod, mail only reaches the allowlist so a local run can never email real adopters.
+if IS_PRODUCTION:
+    EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
+else:
+    EMAIL_BACKEND = "email_templates.backends.AllowlistEmailBackend"
+EMAIL_ALLOWLIST_INNER_BACKEND = "anymail.backends.mailgun.EmailBackend"
+EMAIL_ALLOWLIST = ["leifersam9@gmail.com", "leifersam9+*@gmail.com"]
 EMAIL_HOST = os.environ.get('EMAIL_HOST')
 EMAIL_USE_SSL = False
 EMAIL_USE_TLS = True
