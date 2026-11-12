@@ -7,7 +7,7 @@ from dogs.models import Dog
 from environment_settings.models import EnvironmentSettings
 from pending_adoptions.enums import CircumstanceOptions
 from rest_framework import viewsets
-from utils import DateTimeUtils
+from utils import DateTimeUtils, TextUtils
 
 from .services import EmailService
 
@@ -297,7 +297,7 @@ class EmailViewSet(viewsets.ViewSet):
         email = EmailService(
             subject,
             "generic",
-            {"message": custom_message},
+            {"message": TextUtils.fix_queue_spelling(custom_message)},
             adoption.adopter.user_profile.primary_email,
             attachments=attachments,
         )
@@ -325,6 +325,11 @@ class EmailViewSet(viewsets.ViewSet):
     def GenericMessage(self, user, subject, message, to_adoptions=False):
         if subject == "":
             subject = "Notification from Saving Grace"
+
+        # Staff-written messages only; adopters' own words go to Adoptions unchanged
+        if not to_adoptions:
+            subject = TextUtils.fix_queue_spelling(subject)
+            message = TextUtils.fix_queue_spelling(message)
 
         email = EmailService(
             subject,
