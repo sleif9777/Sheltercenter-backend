@@ -193,7 +193,7 @@ class QueueEmailEntrySerializer(AppointmentIDRequestSerializer):
 
 class SendQueueEmailsRequestSerializer(serializers.Serializer):
     entries = QueueEmailEntrySerializer(many=True, allow_empty=False)
-    # Superusers only: a custom message body and dogs to list as popular
+    # Optional: a custom message body and dogs to list as popular
     message = serializers.CharField(required=False)
     dogIDs = serializers.ListField(child=serializers.IntegerField(), required=False)
 

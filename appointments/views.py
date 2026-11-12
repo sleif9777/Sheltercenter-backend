@@ -285,18 +285,21 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             }
             for booking in bookings
         ]
-        resp = {"isoDate": date_key, "queue": queue}
+        default_message = EmailViewSet.XInQueueDefaultMessage(
+            EmailViewSet.XInQueueSignature(request.user),
+            EmailViewSet.XInQueueDayPhrase(date),
+            with_dogs=True,
+        )
 
-        # Customizing the message and listing popular dogs are superuser-only for now
-        # TODO: add a Change Log entry when this opens up to admins
-        if request.user.security_level == SecurityLevel.SUPERUSER:
-            day_phrase = EmailViewSet.XInQueueDayPhrase(date)
-            resp["defaultMessage"] = EmailViewSet.XInQueueDefaultMessage(
-                EmailViewSet.XInQueueSignature(request.user), day_phrase, with_dogs=True
-            )
-            resp["popularDogs"] = self._get_popular_dogs(bookings)
-
-        return JsonResponse(resp, status=status.HTTP_200_OK)
+        return JsonResponse(
+            {
+                "isoDate": date_key,
+                "queue": queue,
+                "defaultMessage": default_message,
+                "popularDogs": self._get_popular_dogs(bookings),
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["GET"], url_path="GetRecentAdoptions")
     def GetRecentAdoptions(self, request):
@@ -839,9 +842,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         message = query.validated_data.get("message")
         dog_ids = list(dict.fromkeys(query.validated_data.get("dogIDs", [])))
-
-        if (message or dog_ids) and request.user.security_level != SecurityLevel.SUPERUSER:
-            return JsonResponse({}, status=status.HTTP_403_FORBIDDEN)
 
         popular_dogs = sorted(
             (dog.name for dog in Dog.objects.filter(pk__in=dog_ids)), key=str.lower

@@ -146,7 +146,7 @@ class QueueEmailTests(QueueEmailTestCase):
 
 
 class QueueEmailCustomizationTests(QueueEmailTestCase):
-    """Custom message and popular dogs are superusers only (admin_user is a superuser)."""
+    """Admins and superusers can customize the message and list popular dogs."""
 
     def test_superuser_gets_popular_dogs_from_queued_watchlists(self) -> None:
         a = self.book(12, name="a")
@@ -188,13 +188,13 @@ class QueueEmailCustomizationTests(QueueEmailTestCase):
         self.assertLess(message.index("[DOGS]"), message.index("We look forward to seeing you!"))
         self.assertIn("Ada Admin", message)
 
-    def test_admin_does_not_get_customization_options(self) -> None:
+    def test_admin_gets_customization_options(self) -> None:
         self.book(12, name="a")
 
         data = self.get_queue_response(self.make_staff(SecurityLevel.ADMIN))
 
-        self.assertNotIn("popularDogs", data)
-        self.assertNotIn("defaultMessage", data)
+        self.assertIn("popularDogs", data)
+        self.assertIn("[NUMBER]", data["defaultMessage"])
 
     def test_default_email_fills_in_number_and_day(self) -> None:
         a = self.book(12, name="a")
@@ -303,13 +303,18 @@ class QueueEmailCustomizationTests(QueueEmailTestCase):
         self.assertStatus(resp, 400)
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_admin_cannot_customize(self) -> None:
+    def test_admin_can_customize(self) -> None:
         a = self.book(12, name="a")
         admin = self.make_staff(SecurityLevel.ADMIN)
-        entries = [{"apptID": a.appointment.id, "position": 1}]
 
-        for extra in ({"message": "<p>#[NUMBER]</p>"}, {"dogIDs": [self.dog.id]}):
-            with self.subTest(extra=extra):
-                self.assertStatus(self.send(admin, {"entries": entries, **extra}), 403)
+        resp = self.send(
+            admin,
+            {
+                "entries": [{"apptID": a.appointment.id, "position": 1}],
+                "message": "<p>#[NUMBER]</p>[DOGS]",
+                "dogIDs": [self.dog.id],
+            },
+        )
 
-        self.assertEqual(len(mail.outbox), 0)
+        self.assertStatus(resp, 200)
+        self.assertIn("Biscuit", mail.outbox[0].alternatives[0][0])
