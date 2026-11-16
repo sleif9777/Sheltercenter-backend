@@ -23,6 +23,8 @@ class AdopterIDRequestSerializer(serializers.Serializer):
 class SendMessageRequestSerializer(AdopterIDRequestSerializer):
     subject = serializers.CharField(allow_blank=True)
     message = serializers.CharField()
+    # The quick text the adopter started from; none or 0 (Blank Template) means they wrote it
+    templateFlag = serializers.IntegerField(required=False, allow_null=True, default=None)
 
     def validate_adopterID(self, value: str) -> int:
         return super().validate_adopterID(value)

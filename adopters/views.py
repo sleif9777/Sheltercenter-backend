@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from appointments.models import Appointment
 from appointments.views import AppointmentViewSet
+from chatbot.models import ChatbotInteraction
 from email_templates.views import EmailViewSet
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -245,6 +246,18 @@ class AdopterViewSet(viewsets.ModelViewSet):
         message: str = query.validated_data["message"]
 
         EmailViewSet().GenericMessage(adopter.user_profile, subject, message, to_adoptions=True)
+
+        # Messages the adopter wrote themselves feed the chatbot's backlog; quick texts and messages
+        # staff send for an adopter aren't questions. The email already went out, so a failure here
+        # mustn't tell the adopter it didn't send.
+        written_by_adopter = request.user.adopter_profile is not None and (
+            request.user.adopter_profile.id == adopter.id
+        )
+        if written_by_adopter and not query.validated_data["templateFlag"]:
+            try:
+                ChatbotInteraction.add_form_message_to_backlog(adopter, message)
+            except Exception:
+                logger.exception("Couldn't add adopter %s's message to the backlog", adopter.id)
 
         return JsonResponse({}, status=status.HTTP_204_NO_CONTENT)
 

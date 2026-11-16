@@ -18,7 +18,7 @@ from appointment_bases.enums import AppointmentTypes
 from appointments.models import Appointment
 from bookings.enums import BookingStatus
 from bookings.models import Booking
-from chatbot.enums import BacklogStatus
+from chatbot.enums import BacklogStatus, InteractionSource
 from chatbot.models import ChatbotInteraction, PolicyEntry
 
 from .base import SmokeTestCase
@@ -526,3 +526,67 @@ class ChatbotTests(SmokeTestCase):
         )
 
         self.assertStatus(resp, 403)
+
+
+class MessageFormBacklogTests(SmokeTestCase):
+    """Messages sent through the regular Message Adoptions form join the backlog, without the chatbot."""
+
+    def send(self, message: str, user: object = None, **extra: object) -> None:
+        resp = self.client_for(user or self.adopter_user).post(
+            "/Adopters/MessageAdoptions/",
+            {"adopterID": self.adopter.id, "subject": "", "message": message, **extra},
+            format="json",
+        )
+        self.assertStatus(resp, 204)
+
+    def test_written_message_joins_the_backlog(self) -> None:
+        html = "<p>Do you allow  <strong>cats</strong> &amp; dogs?</p><p><br></p><p>Thanks!</p>"
+
+        self.send(html)
+
+        interaction = ChatbotInteraction.objects.get()
+        self.assertEqual(interaction.source, InteractionSource.MESSAGE_FORM)
+        self.assertEqual(interaction.backlog_status, BacklogStatus.OPEN)
+        self.assertEqual(interaction.adopter, self.adopter)
+        self.assertEqual(interaction.question, "Do you allow  cats & dogs?\nThanks!")
+        self.assertEqual(interaction.message_html, html)
+        self.assertEqual(interaction.answer, "")
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_blank_template_counts_as_written(self) -> None:
+        self.send("<p>Is Biscuit good with kids?</p>", templateFlag=0)
+
+        self.assertEqual(ChatbotInteraction.objects.count(), 1)
+
+    def test_quick_text_is_not_kept(self) -> None:
+        self.send("<p>I would like to schedule a visit.</p>", templateFlag=2)
+
+        self.assertEqual(ChatbotInteraction.objects.count(), 0)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_message_sent_by_staff_is_not_kept(self) -> None:
+        self.send("<p>Calling on their behalf.</p>", user=self.admin_user)
+
+        self.assertEqual(ChatbotInteraction.objects.count(), 0)
+
+    def test_empty_message_is_not_kept(self) -> None:
+        self.send("<p><br></p>")
+
+        self.assertEqual(ChatbotInteraction.objects.count(), 0)
+
+    def test_message_is_sent_even_if_it_cannot_be_kept(self) -> None:
+        with mock.patch.object(
+            ChatbotInteraction, "add_form_message_to_backlog", side_effect=RuntimeError
+        ):
+            self.send("<p>Hello</p>")
+
+        self.assertEqual(len(mail.outbox), 1)
+
+    @mock.patch.object(ChatbotInteraction, "DAILY_QUESTION_CAP", 2)
+    def test_form_messages_do_not_count_toward_the_daily_cap(self) -> None:
+        self.adopter.chatbot_enabled = True
+        self.adopter.save()
+        self.send("<p>One</p>")
+        self.send("<p>Two</p>")
+
+        self.assertEqual(ChatbotInteraction.questions_remaining_today(self.adopter), 2)

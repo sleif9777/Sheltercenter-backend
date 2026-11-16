@@ -1,13 +1,16 @@
 import hashlib
+import html
+import re
 
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.utils.html import strip_tags
 
 from adopters.models import Adopter
 from appointments.models import Appointment
 
-from .enums import BacklogStatus, InteractionReview
+from .enums import BacklogStatus, InteractionReview, InteractionSource
 
 
 class PolicyEntry(models.Model):
@@ -52,6 +55,9 @@ class ChatbotInteraction(models.Model):
     Whatever the chatbot can't answer goes to staff as a regular message and joins the backlog of
     questions the knowledge base can't answer yet, until a policy entry covers it or it's dismissed.
     A partly answered message shows the adopter its answer and still goes to staff.
+
+    Messages adopters write in the regular Message Adoptions form are also kept, as backlog questions
+    the chatbot never saw (source MESSAGE_FORM), so the knowledge base grows from real questions.
     """
 
     # Past these, the adopter is sent to the regular Message Adoptions form. None means no daily cap,
@@ -60,6 +66,9 @@ class ChatbotInteraction(models.Model):
     MAX_QUESTION_LENGTH = 1000
 
     created_instant = models.DateTimeField(auto_now_add=True)
+    source = models.IntegerField(
+        choices=InteractionSource.choices, default=InteractionSource.CHATBOT
+    )
     # Kept when the adopter is deleted so the question stays usable as an eval case
     adopter = models.ForeignKey(
         Adopter, null=True, on_delete=models.SET_NULL, related_name="chatbot_interactions"
@@ -122,9 +131,35 @@ class ChatbotInteraction(models.Model):
             return None
 
         asked = cls.objects.filter(
-            adopter=adopter, created_instant__date=timezone.localdate()
+            adopter=adopter,
+            source=InteractionSource.CHATBOT,
+            created_instant__date=timezone.localdate(),
         ).count()
         return max(cls.DAILY_QUESTION_CAP - asked, 0)
+
+    @classmethod
+    def add_form_message_to_backlog(
+        cls, adopter: Adopter, message_html: str
+    ) -> "ChatbotInteraction | None":
+        """Keeps a message from the regular Message Adoptions form as an open backlog question."""
+        question = cls.html_to_text(message_html)
+        if not question:
+            return None
+
+        return cls.objects.create(
+            adopter=adopter,
+            source=InteractionSource.MESSAGE_FORM,
+            question=question,
+            message_html=message_html,
+            backlog_status=BacklogStatus.OPEN,
+        )
+
+    @staticmethod
+    def html_to_text(message_html: str) -> str:
+        """The editor's HTML as plain text, one line per paragraph or line break."""
+        text = re.sub(r"<br\s*/?>|</(p|div|li|h[1-6])>", "\n", message_html, flags=re.IGNORECASE)
+        lines = (line.strip() for line in html.unescape(strip_tags(text)).split("\n"))
+        return "\n".join(line for line in lines if line)
 
     def __str__(self) -> str:
         return self.question[:80]

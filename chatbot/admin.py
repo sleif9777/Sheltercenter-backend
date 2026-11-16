@@ -19,6 +19,7 @@ class ChatbotInteractionAdmin(ModelAdmin):
     list_display = (
         "id",
         "created_instant",
+        "source",
         "adopter",
         "question",
         "bot_reason",
@@ -31,6 +32,7 @@ class ChatbotInteractionAdmin(ModelAdmin):
     list_display_links = ("id", "question")
     list_select_related = ("adopter__user_profile",)
     list_filter = (
+        ("source", ChoicesDropdownFilter),
         ("backlog_status", ChoicesDropdownFilter),
         ("review", ChoicesDropdownFilter),
         "bot_escalated",
@@ -44,6 +46,7 @@ class ChatbotInteractionAdmin(ModelAdmin):
     autocomplete_fields = ("adopter", "resolved_by_policy")
     readonly_fields = (
         "created_instant",
+        "source",
         "adopter",
         "question",
         "message_html",
