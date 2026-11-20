@@ -267,7 +267,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             {"dogID": dog_id, "name": dogs[dog_id].name, "watchers": count}
             for dog_id, count in watchers.items()
         ]
-        return sorted(popular, key=lambda d: (-d["watchers"], d["name"]))
+        # Limit to 8 most popular dogs
+        return sorted(popular, key=lambda d: (-d["watchers"], d["name"]))[:8]
 
     @action(detail=False, methods=["GET"], url_path="GetQueueForDate", permission_classes=[AnySecurityLevel(SecurityLevel.ADMIN, SecurityLevel.SUPERUSER)])
     def GetQueueForDate(self, request):
