@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import anthropic
 from django.db import transaction
+from django.db.models import Q, QuerySet
 from django.utils import timezone
 from django.utils.html import escape
 
@@ -14,6 +15,8 @@ from appointments.models import Appointment
 from appointments.views import AppointmentViewSet
 from bookings.enums import BookingStatus
 from bookings.models import Booking
+from dogs.enums import DogStatus
+from dogs.models import Dog
 from email_templates.views import EmailViewSet
 from pending_adoptions.enums import PendingAdoptionStatus
 from pending_adoptions.models import PendingAdoption
@@ -37,6 +40,12 @@ OFFER_WINDOW = datetime.timedelta(days=14)
 OPEN_TIME_ID = re.compile(r"\[(\d+)\]")
 # Earlier messages from the same conversation sent along with a reply
 MAX_EARLIER_MESSAGES = 6
+# Dogs that left the website longer ago than this are left out, so old names don't crowd the details
+RECENT_DOGS = datetime.timedelta(days=60)
+# Most dogs listed per line of the adopter details
+MAX_DOGS_LISTED = 15
+# The parts of a dog's name that aren't what adopters call it, as in "Bodhi (fna Blue Jay)"
+NAME_ASIDE = re.compile(r"\(.*?\)")
 
 CATEGORIES = [
     "appointments",
@@ -95,6 +104,17 @@ When the adopter asks to cancel their current appointment, set offer_cancel to t
 short sentence that they can confirm the cancellation below; nothing changes until they do. Set it to \
 false if they have no current appointment or haven't asked to cancel.
 
+The adopter details give the current status of the dogs on the adopter's watchlist and of dogs \
+whose names appear in their message, as our website shows it now. When they ask whether a dog is \
+available, you can tell them that status, but never promise it will stay that way. A name in their \
+message may not mean the dog listed, so if you can't tell which dog they mean, don't guess. Anything \
+else about a specific dog still needs staff.
+
+When the adopter tells you they plan to bring their own dog to an appointment, set bringing_dog to \
+true. The website records it as soon as you reply, so thank them for letting us know, don't ask them \
+to tell us again in any other way, and give the meet-and-greet steps the policies describe. Set it to \
+false when they only ask whether they can bring a dog, or don't mention bringing one.
+
 If you need one more detail before you can help, such as which day they mean, ask for it as your answer \
 and set awaiting_reply to true; the adopter can reply right below it, and their reply comes back to \
 you with the earlier messages inside <earlier_messages>. Only ask when the policies let you help once \
@@ -133,6 +153,7 @@ OUTPUT_SCHEMA = {
         "offer_appointment_id": {"type": "integer"},
         "offer_cancel": {"type": "boolean"},
         "awaiting_reply": {"type": "boolean"},
+        "bringing_dog": {"type": "boolean"},
     },
     "required": [
         "category",
@@ -143,6 +164,7 @@ OUTPUT_SCHEMA = {
         "offer_appointment_id",
         "offer_cancel",
         "awaiting_reply",
+        "bringing_dog",
     ],
     "additionalProperties": False,
 }
@@ -158,6 +180,7 @@ class ChatbotReply:
     offer_appointment_id: int = 0
     offer_cancel: bool = False
     awaiting_reply: bool = False
+    bringing_dog: bool = False
 
 
 class ChatbotService:
@@ -170,7 +193,8 @@ class ChatbotService:
 
     A full answer can also offer to move the adopter's appointment to an open time of the same type at
     least 2 hours away, or to cancel it. Either happens only when the adopter accepts it (accept_offer,
-    accept_cancellation).
+    accept_cancellation). When the adopter says they're bringing their own dog, the answer marks
+    them as bringing it right away.
     """
 
     def __init__(self, client: anthropic.Anthropic | None = None) -> None:
@@ -196,7 +220,11 @@ class ChatbotService:
 
         earlier = [(turn.question, turn.answer) for turn in self.earlier_turns(interaction)]
         user_message = self.user_message(
-            self.adopter_details(adopter, open_slots), question, earlier
+            self.adopter_details(
+                adopter, open_slots, " ".join([*(q for q, _ in earlier), question])
+            ),
+            question,
+            earlier,
         )
         reply = (
             self._get_reply(interaction, knowledge_base, user_message) if knowledge_base else None
@@ -207,6 +235,13 @@ class ChatbotService:
             interaction.bot_reason = reply.reason
             interaction.cited_policies = self.active_citations(reply)
             interaction.answer = self.shown_answer(reply, knowledge_base)
+
+        # Recorded straight away, even alongside a partial answer, but only when the adopter is told
+        if interaction.answer and reply is not None and reply.bringing_dog:
+            interaction.marked_bringing_dog = True
+            if not adopter.bringing_dog:
+                adopter.bringing_dog = True
+                adopter.save(update_fields=["bringing_dog"])
 
         if interaction.answer and reply is not None and not reply.needs_staff:
             offer = {slot.id: slot for slot in open_slots}.get(reply.offer_appointment_id)
@@ -287,6 +322,7 @@ class ChatbotService:
                 offer_appointment_id=int(data["offer_appointment_id"] or 0),
                 offer_cancel=bool(data["offer_cancel"]),
                 awaiting_reply=bool(data["awaiting_reply"]),
+                bringing_dog=bool(data["bringing_dog"]),
             )
         except (json.JSONDecodeError, KeyError, TypeError):
             logger.exception("Chatbot returned unreadable output")
@@ -313,8 +349,12 @@ class ChatbotService:
         return cls._keep_policy_links(reply.answer.strip(), knowledge_base)
 
     @staticmethod
-    def adopter_details(adopter: Adopter, open_slots: list[Appointment]) -> list[str]:
+    def adopter_details(
+        adopter: Adopter, open_slots: list[Appointment], message: str = ""
+    ) -> list[str]:
         profile = adopter.user_profile
+        watchlist = list(ChatbotService.recent_dogs().filter(interest_adopters=adopter))
+        named = [dog for dog in ChatbotService.dogs_named(message) if dog not in watchlist]
 
         appointment = adopter.get_current_appointment()
         adoption = (
@@ -360,7 +400,57 @@ class ChatbotService:
             + (adopter.co_applicants or "none on file (this doesn't mean nobody else is listed)"),
             "Adoption in progress: "
             + (f"{adoption.dog}, status {adoption.status_display}" if adoption else "none"),
+            "Dogs on their watchlist: " + ChatbotService.dog_statuses(watchlist),
+            "Other dogs named in their message: " + ChatbotService.dog_statuses(named),
         ]
+
+    @staticmethod
+    def recent_dogs() -> "QuerySet[Dog]":
+        """Dogs on the website now, or that left it recently."""
+        return Dog.objects.filter(
+            Q(publishable=True) | Q(unavailable_date__gte=timezone.localdate() - RECENT_DOGS)
+        ).order_by("name", "id")
+
+    @staticmethod
+    def dogs_named(message: str) -> list[Dog]:
+        """Recent dogs whose name appears in the message as a whole word."""
+        named = []
+        for dog in ChatbotService.recent_dogs():
+            names = (n.strip() for n in NAME_ASIDE.sub("", dog.name).split("/"))
+            if any(
+                len(name) > 1 and re.search(rf"\b{re.escape(name)}\b", message, re.IGNORECASE)
+                for name in names
+            ):
+                named.append(dog)
+        return named[:MAX_DOGS_LISTED]
+
+    @staticmethod
+    def dog_statuses(dogs: list[Dog]) -> str:
+        return (
+            "; ".join(
+                f"{NAME_ASIDE.sub('', dog.name).strip()}"
+                + (f" ({dog.breed})" if dog.breed else "")
+                + f": {ChatbotService.dog_status(dog)}"
+                for dog in dogs[:MAX_DOGS_LISTED]
+            )
+            or "none"
+        )
+
+    @staticmethod
+    def dog_status(dog: Dog) -> str:
+        """A dog's status in the words adopters already see, never staff-only detail.
+
+        Matches the emails sent to adopters watching a dog that leaves the website: on hold, medical
+        and foster care are temporary; chosen, foster to adopt and adopted are not.
+        """
+        if dog.status in [DogStatus.UNAVAILABLE, DogStatus.FOSTER]:
+            return "temporarily unavailable"
+        if not dog.publishable or dog.status != DogStatus.AVAILABLE_NOW:
+            return "no longer available"
+        starts = dog.available_date
+        if starts and starts > timezone.localdate():
+            return f"available starting {starts.strftime('%B')} {starts.day}"
+        return "available"
 
     @staticmethod
     def open_slots(adopter: Adopter) -> list[Appointment]:

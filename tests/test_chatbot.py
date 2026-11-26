@@ -20,6 +20,9 @@ from bookings.enums import BookingStatus
 from bookings.models import Booking
 from chatbot.enums import BacklogStatus, InteractionSource
 from chatbot.models import ChatbotInteraction, PolicyEntry
+from chatbot.services import ChatbotService
+from dogs.enums import DogSex, DogStatus
+from dogs.models import Dog
 
 from .base import SmokeTestCase
 
@@ -34,6 +37,7 @@ def fake_response(**reply: object) -> SimpleNamespace:
         "offer_appointment_id": 0,
         "offer_cancel": False,
         "awaiting_reply": False,
+        "bringing_dog": False,
     } | reply
     return SimpleNamespace(
         stop_reason="end_turn",
@@ -104,6 +108,7 @@ class ChatbotTests(SmokeTestCase):
 
         self.assertFalse(body["sentToStaff"])
         self.assertEqual(body["answer"], "We don't hold dogs.")
+        self.assertEqual(body["citedPolicies"], ["no-holds"])
         self.assertEqual(body["questionsRemaining"], 4)
         self.assertEqual(len(mail.outbox), 0)
         interaction = ChatbotInteraction.objects.get()
@@ -184,6 +189,46 @@ class ChatbotTests(SmokeTestCase):
 
         user_message = self.create.call_args.kwargs["messages"][0]["content"]
         self.assertIn("Other adults listed on their application: Sam Adopter", user_message)
+
+    def recent_dog(self, name: str, status: DogStatus, days_gone: int = 5) -> Dog:
+        return Dog.objects.create(
+            name=name,
+            shelterluv_id=2000 + Dog.objects.count(),
+            sex=DogSex.MALE,
+            status=status,
+            unavailable_date=timezone.localdate() - datetime.timedelta(days=days_gone),
+        )
+
+    def test_prompt_lists_watched_and_named_dogs_by_status(self) -> None:
+        self.dog.interest_adopters.add(self.adopter)
+        self.recent_dog("Dallas", DogStatus.HEALTHY_IN_HOME)
+        self.recent_dog("Bodhi (fna Blue Jay)", DogStatus.UNAVAILABLE)
+        self.recent_dog("Rex", DogStatus.HEALTHY_IN_HOME, days_gone=200)
+        self.create.return_value = fake_response()
+
+        self.ask("Is Dallas still around? And bodhi? What about Rex, or Biscuit?")
+
+        user_message = self.create.call_args.kwargs["messages"][0]["content"]
+        self.assertIn("Dogs on their watchlist: Biscuit: available\n", user_message)
+        self.assertIn(
+            "Other dogs named in their message: "
+            "Bodhi: temporarily unavailable; Dallas: no longer available\n",
+            user_message,
+        )
+
+    def test_dog_names_match_whole_words_only(self) -> None:
+        self.recent_dog("Bear", DogStatus.CHOSEN_SN)
+
+        self.assertEqual(
+            ChatbotService.dogs_named("Is Bear still available?"), [Dog.objects.get(name="Bear")]
+        )
+        self.assertEqual(ChatbotService.dogs_named("Thanks for bearing with me"), [])
+
+    def test_dog_status_shows_a_later_available_date(self) -> None:
+        self.dog.available_date = timezone.localdate() + datetime.timedelta(days=30)
+
+        self.assertTrue(ChatbotService.dog_status(self.dog).startswith("available starting "))
+        self.assertEqual(ChatbotService.dog_status(self.other_dog), "no longer available")
 
     def test_unanswerable_question_goes_to_staff_and_backlog(self) -> None:
         self.create.return_value = fake_response(category="specific_dog")
@@ -416,6 +461,46 @@ class ChatbotTests(SmokeTestCase):
 
         self.assertIsNone(body["offerCancel"])
         self.assertFalse(ChatbotInteraction.objects.get().offered_cancellation)
+
+    def test_marks_the_adopter_as_bringing_their_dog(self) -> None:
+        self.create.return_value = fake_response(
+            cited_policies=["no-holds"],
+            needs_staff=False,
+            answer="Got it, we've noted that you're bringing your dog.",
+            bringing_dog=True,
+        )
+
+        body = self.ask("I will be bringing our dog with us to our appointment")
+
+        self.assertTrue(body["markedBringingDog"])
+        self.assertFalse(body["sentToStaff"])
+        self.assertEqual(len(mail.outbox), 0)
+        self.adopter.refresh_from_db()
+        self.assertTrue(self.adopter.bringing_dog)
+        self.assertTrue(ChatbotInteraction.objects.get().marked_bringing_dog)
+
+    def test_marks_bringing_dog_alongside_a_partial_answer(self) -> None:
+        self.create.return_value = fake_response(
+            cited_policies=["no-holds"],
+            answer="Got it, we've noted that you're bringing your dog.",
+            bringing_dog=True,
+        )
+
+        body = self.ask("I'm bringing my dog Ziggy. Is Biscuit good with other dogs?")
+
+        self.assertTrue(body["markedBringingDog"])
+        self.assertTrue(body["sentToStaff"])
+        self.adopter.refresh_from_db()
+        self.assertTrue(self.adopter.bringing_dog)
+
+    def test_never_marks_bringing_dog_without_a_shown_answer(self) -> None:
+        self.create.return_value = fake_response(bringing_dog=True)
+
+        body = self.ask("I will be bringing our dog with us to our appointment")
+
+        self.assertFalse(body["markedBringingDog"])
+        self.adopter.refresh_from_db()
+        self.assertFalse(self.adopter.bringing_dog)
 
     def test_reply_continues_the_conversation(self) -> None:
         self.create.return_value = fake_response(

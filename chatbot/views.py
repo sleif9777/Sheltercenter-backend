@@ -71,6 +71,8 @@ class ChatbotViewSet(viewsets.GenericViewSet):
                 # Shown to the adopter; may be set even when the message also went to staff
                 "answer": interaction.answer,
                 "sentToStaff": interaction.bot_escalated,
+                # Slugs of the policies the answer relied on, so the form can offer a matching template
+                "citedPolicies": interaction.cited_policies if interaction.answer else [],
                 # The answer asks for one more detail, which the adopter can reply with in place
                 "awaitingReply": interaction.awaiting_reply,
                 # An open time the adopter can move their appointment to with one click
@@ -81,6 +83,8 @@ class ChatbotViewSet(viewsets.GenericViewSet):
                     if interaction.offered_cancellation and current
                     else None
                 ),
+                # The adopter is now marked as bringing their own dog to appointments
+                "markedBringingDog": interaction.marked_bringing_dog,
                 "questionsRemaining": ChatbotInteraction.questions_remaining_today(adopter),
             },
             status=status.HTTP_200_OK,

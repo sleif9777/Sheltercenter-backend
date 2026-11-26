@@ -49,7 +49,11 @@ class Command(BaseCommand):
                 and not offer
                 and not offer_cancel
             )
+            # Mirrors ask(): only a shown answer marks the adopter as bringing their dog
+            bringing_dog = bool(reply and answer and reply.bringing_dog)
             problems = self.problems(case, outcome, answer, offer, offer_cancel)
+            if bringing_dog != case.bringing_dog:
+                problems.append(f"expected marked as bringing a dog: {case.bringing_dog}")
             if case.asks_follow_up is not None and asks_follow_up != case.asks_follow_up:
                 problems.append(f"expected a follow-up question: {case.asks_follow_up}")
             failures += bool(problems)
@@ -65,6 +69,7 @@ class Command(BaseCommand):
                 (f", offers [{offer}]" if offer else "")
                 + (", offers to cancel" if offer_cancel else "")
                 + (", asks a follow-up" if asks_follow_up else "")
+                + (", marks bringing a dog" if bringing_dog else "")
             )
             self.stdout.write(f"      outcome: {outcome}{offers}")
             if reply is not None:

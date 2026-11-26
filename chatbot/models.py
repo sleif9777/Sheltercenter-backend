@@ -95,6 +95,8 @@ class ChatbotInteraction(models.Model):
     awaiting_reply = models.BooleanField(default=False)
     # The chatbot offered to cancel the adopter's current appointment
     offered_cancellation = models.BooleanField(default=False)
+    # The adopter said they're bringing their own dog, so the chatbot marked them as bringing it
+    marked_bringing_dog = models.BooleanField(default=False)
     # When the adopter accepted either offer; after that, neither can be accepted again
     offer_accepted_instant = models.DateTimeField(null=True, blank=True)
 
